@@ -7,5 +7,10 @@ module.exports = {
   ],
   parserOptions: {
     ecmaVersion: 'latest'
-  }
+  },
+  rules: {
+    "indent": ["warn", 2],
+    "semi": ["error", "never"],
+    "no-unused-vars": "warn",
+  },
 }
