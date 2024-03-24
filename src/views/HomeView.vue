@@ -4,6 +4,7 @@ import { vInfiniteScroll } from '@vueuse/components'
 import { fetchWrapper } from '@/helpers/fetch-wrapper'
 import { API_PATH } from '@/config'
 import MasonryWall from '@yeger/vue-masonry-wall'
+import { sleep } from '@/helpers/sleep'
 
 const targetAlbum = 'root'
 const perPage = 15
@@ -47,8 +48,21 @@ async function onLoadMore() {
     })
     .catch((data) => {
       console.error({error: data})
-    })
-  
+    }) 
+}
+
+const maxRetries = 4
+const retryCounts = ref({})
+
+async function onErrorImgLoad(event) {
+  const src = event.target.attributes.src.value
+  retryCounts.value[src] ||= 0
+
+  if (retryCounts.value[src] <= maxRetries) {
+    await sleep(1000)
+    retryCounts.value[src]++
+    event.src = event.src // eslint-disable-line no-self-assign
+  }
 }
 </script>
 
@@ -72,7 +86,8 @@ async function onLoadMore() {
               :src="getThumbURL(item.hash)" 
               :alt="item.name" 
               :width="size" 
-              :height="Math.round(size / item.width * item.height)">
+              :height="Math.round(size / item.width * item.height)"
+              @error="onErrorImgLoad">
           </div>
         </template>
       </MasonryWall>

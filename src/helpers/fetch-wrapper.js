@@ -1,5 +1,6 @@
 import { API_PATH } from '@/config'
 import { useAuthStore } from '@/stores/auth.js'
+import { sleep } from './sleep'
 
 export const fetchWrapper = {
   get:    request('GET'),
@@ -60,8 +61,4 @@ function tryParceJSON(text) {
   catch (e) {
     return text
   }
-}
-
-export async function sleep(ms) {
-  return new Promise(_ => setTimeout(_, ms))
 }
