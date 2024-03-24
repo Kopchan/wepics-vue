@@ -41,7 +41,7 @@ function handleResponse(response) {
         logout()
       
       if (response.status == 429) {
-        await sleep(5000) // TODO: Сделай норм реализацию, мб серв отдаёт время когда можно ещё раз попробовать
+        await sleep(5000) // TODO: Сделать норм обработку 429, мб серв отдаёт время когда можно ещё раз попробовать
       }
 
       const error = (data?.message || data) || response.statusText

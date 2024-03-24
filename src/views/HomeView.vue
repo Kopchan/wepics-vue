@@ -107,7 +107,7 @@ async function onLoadMore() {
       height: 100%;
       object-fit: cover;
       border-radius: calc(var(--border-r) * 2);
-      &:before { // TODO: доделть блок незагруженной картинки
+      &:before { // TODO: Доделать блок незагруженной картинки
         content: '';
         background: var(--c-b2);
         width: 100%;
