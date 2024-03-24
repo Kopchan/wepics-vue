@@ -32,17 +32,36 @@ function authHeader() {
 }
 
 function handleResponse(response) {
-  return response.text().then(text => {
-    const data = text && JSON.parse(text)
+  return response.text().then(async text => {
+    const data = tryParceJSON(text)
     
     if (!response.ok) {
       const { user, logout } = useAuthStore()
       if ([401].includes(response.status) && user)
         logout()
       
-      const error = (data && data.message) || response.statusText
+      if (response.status == 429) {
+        await sleep(5000) // TODO: Сделай норм реализацию, мб серв отдаёт время когда можно ещё раз попробовать
+      }
+
+      const error = (data?.message || data) || response.statusText
+      console.log(error)
+
       return Promise.reject(error)
     }
     return data
   })
+}
+
+function tryParceJSON(text) {
+  try {
+    return JSON.parse(text)
+  }
+  catch (e) {
+    return text
+  }
+}
+
+export async function sleep(ms) {
+  return new Promise(_ => setTimeout(_, ms))
 }
