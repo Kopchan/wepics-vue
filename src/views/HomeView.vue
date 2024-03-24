@@ -6,7 +6,7 @@ import { API_PATH } from '@/config'
 import MasonryWall from '@yeger/vue-masonry-wall'
 
 const targetAlbum = 'root'
-const perPage = 5
+const perPage = 15
 const sort = 'width'
 const isReverse = true
 
@@ -43,15 +43,10 @@ async function onLoadMore() {
       canLoadMore.value = !(data.total < currentPage * perPage)
       images.value = [...images.value, ...data.pictures]
       isLoading.value = false
-
-      console.log([
-        data.total,
-        currentPage,
-        perPage,
-        canLoadMore.value,
-      ])
-      
       currentPage++
+    })
+    .catch((data) => {
+      console.error({error: data})
     })
   
 }
@@ -65,7 +60,11 @@ async function onLoadMore() {
         :column-width="size" 
         :gap="8" 
         class="grid"
-        v-infinite-scroll="[onLoadMore, { distance: 0, throttle: 250, canLoadMore: () => canLoadMore }]">
+        v-infinite-scroll="[onLoadMore, { 
+          distance: 100, 
+          throttle: 250, 
+          canLoadMore: () => canLoadMore 
+        }]">
         <template #default="{item}">
           <div class="grid-item">
             <img 
@@ -73,11 +72,13 @@ async function onLoadMore() {
               :src="getThumbURL(item.hash)" 
               :alt="item.name" 
               :width="size" 
-              :height="`${Math.round(size / item.width * item.height)}`">
+              :height="Math.round(size / item.width * item.height)">
           </div>
         </template>
       </MasonryWall>
+      <!--
       <button @click="onLoadMore">MORE</button>
+      -->
       <div v-if="isLoading">
         <p>Загрузка...</p>
       </div>
@@ -91,9 +92,6 @@ async function onLoadMore() {
   padding: var(--header-height) var(--cards-gap) 0;
   overflow-x: hidden;
   transition: 0.1s;
-}
-body.sidebar--resize-active .grid_outer {
-  transition: none;
 }
 .grid {
   justify-content: center;
@@ -109,6 +107,14 @@ body.sidebar--resize-active .grid_outer {
       height: 100%;
       object-fit: cover;
       border-radius: calc(var(--border-r) * 2);
+      &:before { // TODO: доделть блок незагруженной картинки
+        content: '';
+        background: var(--c-b2);
+        width: 100%;
+        height: 200px;
+        top: 0;
+        left: 0;
+      }
     }
   }
 }
