@@ -1,4 +1,4 @@
-export default function throttle(callee, timeout) {
+export const throttle = (callee, timeout) => {
   let timer = null
 
   return function perform(...args) {
@@ -12,3 +12,5 @@ export default function throttle(callee, timeout) {
     }, timeout)
   }
 }
+
+export default throttle

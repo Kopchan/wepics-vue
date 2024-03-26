@@ -11,11 +11,23 @@ const router = createRouter({
       component: HomeView
     },
     {
+      path: '/album/:albumHash?',
+      name: 'album',
+      component: HomeView
+    },
+    {
       path: '/:catchAll(.*)',
       name: 'notFound',
       component: () => import('@/views/PageNotExist.vue')
     },
   ]
 })
+
+/*
+router.beforeEach((to, from) => {
+  const newQuery = {...from.query, 'test': Math.random(1)}
+  to.query = newQuery
+})
+*/
 
 export default router

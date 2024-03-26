@@ -1,6 +1,6 @@
 import { API_PATH } from '@/config'
 import { useAuthStore } from '@/stores/auth.js'
-import { sleep } from './sleep'
+import sleep from '@/helpers/sleep'
 
 export const fetchWrapper = {
   get:    request('GET'),
@@ -45,10 +45,14 @@ function handleResponse(response) {
         await sleep(5000) // TODO: Сделать норм обработку 429, мб серв отдаёт время когда можно ещё раз попробовать
       }
 
-      const error = (data?.message || data) || response.statusText
-      console.log(error)
+      const message = (data?.message || data) || response.statusText
+      console.error(`fetchWrapper: ${response.status}: ${message}`)
 
-      return Promise.reject(error)
+      return Promise.reject({
+        response,
+        status: response.status,
+        message,
+      })
     }
     return data
   })
@@ -62,3 +66,5 @@ function tryParceJSON(text) {
     return text
   }
 }
+
+export default fetchWrapper
