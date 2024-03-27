@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import router from '@/router'
 
-let isReverse = ref(false)
+const isReverse = ref(false)
 
 function changeDirection() {
   isReverse.value ^= true

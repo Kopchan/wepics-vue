@@ -1,18 +1,20 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { API_PATH } from '@/config'
-import { fetchWrapper, sleep } from '@/helpers'
+import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
+import { useDevicePixelRatio, watchThrottled } from '@vueuse/core'
 import MasonryWall from '@yeger/vue-masonry-wall'
 
-const router = useRoute()
+import { API_PATH } from '@/config'
+import { fetchWrapper, sleep } from '@/helpers'
+import { useAlbumParamsStore, useSettingsStore } from '@/stores'
 
+// Параметры роутера и URL на альбом
+const  { 
+  targetAlbum, perPage, sort, isReverse 
+} = storeToRefs(useAlbumParamsStore())
 
-const targetAlbum = ref(router.params?.albumHash || 'root')
-const perPage     = ref(router.query ?.perPage   ||    30 )
-const sort        = ref(router.query ?.sort      || 'name')
-const isReverse   = ref(router.query ?.reverse   === null )
 const getAlbumURL = (page) =>
   '/albums/'  + targetAlbum.value + 
   '/images?page=' +    page + 
@@ -20,14 +22,42 @@ const getAlbumURL = (page) =>
   '&sort=' +           sort.value + 
   (isReverse.value ? '&reverse' : '')
 
-const orien = 'w'
-const size = 400
-const getThumbURL = (hash) =>  
+const router = useRoute()
+watchThrottled(() => router, () => {
+  canLoadMore.value = false
+  isLoading  .value = true
+  images     .value = []
+  currentPage = 1
+  canLoadMore.value = true
+}, {deep: true, throttle: 1000 })
+
+// Косметические параметры и URL на превью
+const { 
+  size, isStrictSize, isRealSize, lines, gap, radius, orientation 
+} = storeToRefs(useSettingsStore())
+const { pixelRatio } = useDevicePixelRatio()
+const realSize = ref(  isRealSize ? size : Math.round(realSize.value / pixelRatio.value) )
+const  cssSize = ref( !isRealSize ? size : Math.round(realSize.value * pixelRatio.value) )
+const getThumbURL = (hash) =>
   `${API_PATH}/albums/` +
   `${targetAlbum.value}/images/` +
   `${hash}/thumb/` +
-  `${orien}${size}`
+  `${orientation.value}${realSize.value}`
 
+watchThrottled(() => pixelRatio.value, () => {
+  console.log('pixelRatio.value changed')
+
+  if (!isRealSize) {
+    cssSize.value = Math.round(realSize.value / pixelRatio.value)
+    return
+  }
+  realSize.value = Math.round(cssSize.value * pixelRatio.value)
+  images.value.forEach(element => {
+    element.thumbURL = getThumbURL(element.hash)
+  })
+}, { throttle: 500 })
+
+// Порционный запрос картинок
 let currentPage = 1
 const isLoading   = ref(null)
 const canLoadMore = ref(true)
@@ -40,44 +70,49 @@ const loadMore = async () => {
     .then((data) => {
       if (!canLoadMore.value) return
       canLoadMore.value = !(data.total < currentPage * perPage.value)
+      
+      const newImages = data.pictures
+      newImages.forEach(element => {
+        element.thumbURL = getThumbURL(element.hash)
+      })
+      
       images.value = [...images.value, ...data.pictures]
       isLoading.value = false
       currentPage++
     })
-    .catch((error) => {
-      if (error.status == 404) {
+    .catch(async (error) => {
+      switch (error.status) {
+      case 404:
         canLoadMore.value = false
         alert(error.message) 
         // TODO: Сделать красивую страницу
-      }
-      if (error.status == 403) {
+        return
+      case 403:
         canLoadMore.value = false
         alert(error.message) 
         // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
+        return
+      case 429:
+        alert(error.message) 
+        // TODO: Вывсети уведомление о частых запросов
+        return
+      case 500:
+        await sleep(1000)
+        return
+      default:
+        canLoadMore.value = false
+        alert(error.message) 
       }
     }) 
 }
 
-watch(() => router, () => {
-  canLoadMore.value = false
-  images     .value = []
-  isLoading  .value = true
-  targetAlbum.value = router.params?.albumHash || 'root' 
-  perPage    .value = router.query ?.perPage   ||    30
-  sort       .value = router.query ?.sort      || 'name' 
-  isReverse  .value = router.query ?.reverse === null
-
-  currentPage = 1
-  canLoadMore.value = true
-}, {deep: true})
-
+// Перезагрузка превьюшек с ошибками
 const maxRetries = 4
 const retryCounts = ref({})
-
-async function onErrorImgLoad(event) {
+const onErrorImgLoad = async (event) => {
   const src = event.target.attributes.src.value
   retryCounts.value[src] ||= 0
-
+  
   if (retryCounts.value[src] <= maxRetries) {
     await sleep(1000)
     retryCounts.value[src]++
@@ -90,54 +125,41 @@ async function onErrorImgLoad(event) {
   <main>
     <div class="grid_outer">
       <MasonryWall 
+        class="grid"
         :items="images" 
-        :column-width="size" 
-        :gap="8"
-        class="grid">
+        :column-width="cssSize" 
+        :gap="gap"
+        :max-columns="lines"
+        :class="{strict: isStrictSize}">
         <template #default="{item}">
           <div class="grid-item">
             <img 
               loading="lazy" 
-              :src="getThumbURL(item.hash)" 
+              :src="item.thumbURL" 
               :alt="item.name" 
-              :width="size" 
-              :height="Math.round(size / item.width * item.height)"
+              :width="cssSize" 
+              :height="Math.round(cssSize / item.width * item.height)"
               @error="onErrorImgLoad">
           </div>
         </template>
       </MasonryWall>
-      <div 
-        v-if="isLoading"
-        class="message message--download">
+      <div class="message message--download"
+        v-if="isLoading">
         <p>Loading...</p>
       </div>
-      <div 
-        v-else-if="!isLoading && !canLoadMore && images"
-        class="message message--end">
+      <div class="message message--end"
+        v-else-if="!isLoading && !canLoadMore && images">
         <p>End</p>
       </div>
-      <div style="
-          position: absolute; 
-          bottom: 0;
-          height: 100%;
-          display: flex;
-          flex-direction: column-reverse;
-        ">
-        <div style="min-height: 0; height: 2000px;"></div>
-        <div
-          v-if="canLoadMore"
-          v-infinite-scroll="[loadMore, {interval: 500}]">
-        </div>
+      <div class="inf-handler-position" v-if="canLoadMore">
+        <div style="min-height: 0; height: 3000px;"></div>
+        <div v-infinite-scroll="[loadMore, {interval: 500}]"></div>
       </div>
     </div>
   </main>
 </template>
 
-/*
-style="position: absolute; bottom: 100vh"
-*/
-
-<style lang="scss">
+<style lang="scss" scoped>
 .grid_outer {
   //transition: margin 0.1s, left 0.1s;
   padding: var(--header-height) var(--cards-gap) 0;
@@ -149,18 +171,17 @@ style="position: absolute; bottom: 100vh"
   justify-content: center;
   margin: 0 auto;
   padding-bottom: 4px; // Костыль
-  .masonry-column {
-    max-width: var(--card-width);
+  &.strict:deep(.masonry-column) {
+    max-width: v-bind('cssSize + "px"');
   }
   .grid-item {
-    width: var(--card-width);
     height: auto;
     margin-bottom: -4px; // Костыль
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: calc(var(--border-r) * 2);
+      border-radius: v-bind('radius + "px"');
       &:before { // TODO: Доделать блок незагруженной картинки
         content: '';
         background: var(--c-b2);
@@ -195,6 +216,13 @@ style="position: absolute; bottom: 100vh"
     margin: 20px auto;
     background: var(--c-b2);
   }
+}
+.inf-handler-position {
+  position: absolute; 
+  bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
 }
 
 /*  = =  Кладка картинок-карточек (горизонтально)  = =  */
