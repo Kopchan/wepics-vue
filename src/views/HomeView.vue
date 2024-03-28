@@ -9,6 +9,7 @@ import MasonryWall from '@yeger/vue-masonry-wall'
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
+import { computed } from 'vue'
 
 // Параметры роутера и URL на альбом
 const  { 
@@ -36,22 +37,36 @@ const {
   size, isStrictSize, isRealSize, lines, gap, radius, orientation 
 } = storeToRefs(useSettingsStore())
 const { pixelRatio } = useDevicePixelRatio()
+// FIXME: Если установленно не строгое следование размерам, то нужно подгружать картинку качественее 
 const realSize = ref(  isRealSize ? size : Math.round(realSize.value / pixelRatio.value) )
 const  cssSize = ref( !isRealSize ? size : Math.round(realSize.value * pixelRatio.value) )
-const getThumbURL = (hash) =>
+const allowedSizes = [144, 240, 360, 480, 720, 1080] // сортированный
+const getAllowedSize = () => {
+  for (const allowedSize of allowedSizes) {
+    if (realSize.value <= allowedSize)
+      return allowedSize
+  }
+  return allowedSizes.at(-1)
+}
+const allowedRealSize = ref(getAllowedSize())
+const imgSign = ref(null)
+const getThumbURL = (hash) => 
   `${API_PATH}/albums/` +
   `${targetAlbum.value}/images/` +
   `${hash}/thumb/` +
-  `${orientation.value}${realSize.value}`
+  `${orientation.value}${allowedRealSize.value}` +
+  ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
 watchThrottled(() => pixelRatio.value, () => {
-  console.log('pixelRatio.value changed')
-
   if (!isRealSize) {
+    console.log('pixelRatio.value changed, change cssSize')
     cssSize.value = Math.round(realSize.value / pixelRatio.value)
     return
   }
+  console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...')
   realSize.value = Math.round(cssSize.value * pixelRatio.value)
+  allowedRealSize.value = getAllowedSize()
+  console.log(realSize.value +' and  '+ allowedRealSize.value)
   images.value.forEach(element => {
     element.thumbURL = getThumbURL(element.hash)
   })
@@ -63,6 +78,7 @@ const isLoading   = ref(null)
 const canLoadMore = ref(true)
 const images      = ref([])
 const loadMore = async () => {
+  console.log(imgSign.value)
   if (!canLoadMore.value) return
   isLoading.value = true
 
@@ -70,6 +86,8 @@ const loadMore = async () => {
     .then((data) => {
       if (!canLoadMore.value) return
       canLoadMore.value = !(data.total < currentPage * perPage.value)
+
+      imgSign.value = data.sign
       
       const newImages = data.pictures
       newImages.forEach(element => {
@@ -84,11 +102,13 @@ const loadMore = async () => {
       switch (error.status) {
       case 404:
         canLoadMore.value = false
+        isLoading.value = false
         alert(error.message) 
         // TODO: Сделать красивую страницу
         return
       case 403:
         canLoadMore.value = false
+        isLoading.value = false
         alert(error.message) 
         // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
         return
@@ -101,9 +121,10 @@ const loadMore = async () => {
         return
       default:
         canLoadMore.value = false
+        isLoading.value = false
         alert(error.message) 
       }
-    }) 
+    })
 }
 
 // Перезагрузка превьюшек с ошибками
@@ -118,6 +139,7 @@ const onErrorImgLoad = async (event) => {
     retryCounts.value[src]++
     event.src = event.src + ''
   }
+  console.log(retryCounts.value)
 }
 </script>
 
@@ -148,11 +170,12 @@ const onErrorImgLoad = async (event) => {
         <p>Loading...</p>
       </div>
       <div class="message message--end"
-        v-else-if="!isLoading && !canLoadMore && images">
+        v-else-if="!isLoading && !canLoadMore && images.length">
         <p>End</p>
       </div>
       <div class="inf-handler-position" v-if="canLoadMore">
         <div style="min-height: 0; height: 3000px;"></div>
+        <!-- FIXME: Если пользователь оказался резко снизу, то для него не будет подгружаться картинки -->
         <div v-infinite-scroll="[loadMore, {interval: 500}]"></div>
       </div>
     </div>
@@ -162,7 +185,7 @@ const onErrorImgLoad = async (event) => {
 <style lang="scss" scoped>
 .grid_outer {
   //transition: margin 0.1s, left 0.1s;
-  padding: var(--header-height) var(--cards-gap) 0;
+  padding: calc(var(--header-height) + 1px) var(--cards-gap) 0;
   overflow-x: hidden;
   transition: 0.1s;
   position: relative;
@@ -170,18 +193,21 @@ const onErrorImgLoad = async (event) => {
 .grid {
   justify-content: center;
   margin: 0 auto;
-  padding-bottom: 4px; // Костыль
   &.strict:deep(.masonry-column) {
     max-width: v-bind('cssSize + "px"');
   }
-  .grid-item {
-    height: auto;
-    margin-bottom: -4px; // Костыль
+  &-item {
+    background: var(--c-b2);
+    border-radius: v-bind('radius + "px"');
+    &:hover {
+      outline: 1px solid;
+    }
     img {
+      border-radius: v-bind('radius + "px"');
+      display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      border-radius: v-bind('radius + "px"');
+      object-fit: contain;
       &:before { // TODO: Доделать блок незагруженной картинки
         content: '';
         background: var(--c-b2);
@@ -189,6 +215,21 @@ const onErrorImgLoad = async (event) => {
         height: 200px;
         top: 0;
         left: 0;
+      }
+    }
+    .info {
+      @media (hover: hover) and (pointer: fine) {
+        display: none;
+      }
+      &:hover {
+        display: block;
+      }
+      padding: 10px;
+      p {
+        text-overflow: ellipsis;
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
       }
     }
   }
@@ -226,6 +267,7 @@ const onErrorImgLoad = async (event) => {
 }
 
 /*  = =  Кладка картинок-карточек (горизонтально)  = =  */
+/*
 body.grid--horizontal {
   .grid_outer {
     position: fixed;
@@ -250,4 +292,5 @@ body.grid--horizontal {
     }
   }
 }
+*/
 </style>

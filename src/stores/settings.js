@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 export const useSettingsStore = defineStore('settings', () => {
   const size = computed({
-    get: ()  => localStorage.getItem('size') || 400, 
+    get: ()  => localStorage.getItem('size') || 360, 
     set: val => localStorage.setItem('size', val)
   })
   const isStrictSize = computed({
