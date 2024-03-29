@@ -63,6 +63,11 @@ function changeQuery(key, value) {
           <option value="width">Width</option>
         </select>
       </div>
+      <div class="auth-section">
+        <button class="btn btn--quad" @click="authPopup">
+          В
+        </button>
+      </div>
     </div>
   </header>
 </template>
@@ -128,6 +133,11 @@ header {
         }
       }
     }
+  }
+  .auth-section {
+    display: flex;
+    justify-self: end;
+    gap: 4px;
   }
 }
 </style>

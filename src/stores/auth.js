@@ -1,7 +1,7 @@
 import router from "@/router/index.js"
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { fetchWrapper } from '@/helpers/fetch-wrapper.js'
+import { fetchWrapper } from '@/helpers/fetchWrapper.js'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(null)

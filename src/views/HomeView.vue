@@ -57,13 +57,27 @@ const getThumbURL = (hash) =>
   `${orientation.value}${allowedRealSize.value}` +
   ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
+const getThumbMultiURL = (hash) => {
+  const URLs = [] 
+  for (const allowSize of allowedSizes) {
+    const src = `${API_PATH}/albums/` +
+      `${targetAlbum.value}/images/` +
+      `${hash}/thumb/` +
+      `${orientation.value}${allowSize}` +
+      ( imgSign.value ? `?sign=${imgSign.value}` : '' )
+      
+    URLs.push(`${src} ${allowSize}w`)
+  }
+  return URLs.join(', ')
+}
+/*
 watchThrottled(() => pixelRatio.value, () => {
   if (!isRealSize) {
-    console.log('pixelRatio.value changed, change cssSize')
+    console.log(`pixelRatio changed to ${pixelRatio.value}, change cssSize ${isRealSize ? 'true' : 'false'}`)
     cssSize.value = Math.round(realSize.value / pixelRatio.value)
     return
   }
-  console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...')
+  console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...' +`${isRealSize ? 'true' : 'false'}` )
   realSize.value = Math.round(cssSize.value * pixelRatio.value)
   allowedRealSize.value = getAllowedSize()
   console.log(realSize.value +' and  '+ allowedRealSize.value)
@@ -71,14 +85,13 @@ watchThrottled(() => pixelRatio.value, () => {
     element.thumbURL = getThumbURL(element.hash)
   })
 }, { throttle: 500 })
-
+*/
 // Порционный запрос картинок
 let currentPage = 1
 const isLoading   = ref(null)
 const canLoadMore = ref(true)
 const images      = ref([])
 const loadMore = async () => {
-  console.log(imgSign.value)
   if (!canLoadMore.value) return
   isLoading.value = true
 
@@ -157,7 +170,8 @@ const onErrorImgLoad = async (event) => {
           <div class="grid-item">
             <img 
               loading="lazy" 
-              :src="item.thumbURL" 
+              :src="item.thumbURL"
+              :srcset="getThumbMultiURL(item.hash)"
               :alt="item.name" 
               :width="cssSize" 
               :height="Math.round(cssSize / item.width * item.height)"
