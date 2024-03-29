@@ -8,7 +8,7 @@ const readStorage = (key) => {
   }
 }
 
-const storage = (key) => {
+const storageWrapper = (key) => {
   const dataStorage = reactive(readStorage(key))
   watch(
     () => dataStorage,
@@ -20,4 +20,4 @@ const storage = (key) => {
   return dataStorage
 }
 
-export default storage
+export default storageWrapper

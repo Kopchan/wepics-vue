@@ -1,11 +1,11 @@
+import storageWrapper from './storageWrapper'
 import fetchWrapper from "./fetchWrapper"
-import sleep from "./sleep"
 import throttle from "./throttle"
-import storage from './localStorageWrapper'
+import sleep from "./sleep"
 
 export {
+  storageWrapper,
   fetchWrapper,
-  sleep,
   throttle,
-  storage,
+  sleep,
 }

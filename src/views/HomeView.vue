@@ -9,7 +9,6 @@ import MasonryWall from '@yeger/vue-masonry-wall'
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
-import { computed } from 'vue'
 
 // Параметры роутера и URL на альбом
 const  { 
@@ -26,7 +25,7 @@ const getAlbumURL = (page) =>
 const router = useRoute()
 watchThrottled(() => router, () => {
   canLoadMore.value = false
-  isLoading  .value = true
+  isLoading  .value = false
   images     .value = []
   currentPage = 1
   canLoadMore.value = true
@@ -36,39 +35,42 @@ watchThrottled(() => router, () => {
 const { 
   size, isStrictSize, isRealSize, lines, gap, radius, orientation 
 } = storeToRefs(useSettingsStore())
+
 const { pixelRatio } = useDevicePixelRatio()
 // FIXME: Если установленно не строгое следование размерам, то нужно подгружать картинку качественее 
-const realSize = ref(  isRealSize ? size : Math.round(realSize.value / pixelRatio.value) )
-const  cssSize = ref( !isRealSize ? size : Math.round(realSize.value * pixelRatio.value) )
+const realSize = ref(  isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
+const  cssSize = ref( !isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
+
 const allowedSizes = [144, 240, 360, 480, 720, 1080] // сортированный
-const getAllowedSize = () => {
+const getAllowedSize = (size) => {
   for (const allowedSize of allowedSizes) {
-    if (realSize.value <= allowedSize)
+    if (size <= allowedSize)
       return allowedSize
   }
   return allowedSizes.at(-1)
 }
-const allowedRealSize = ref(getAllowedSize())
+const refinedSize = ref(getAllowedSize(realSize))
 const imgSign = ref(null)
 const getThumbURL = (hash) => 
   `${API_PATH}/albums/` +
   `${targetAlbum.value}/images/` +
   `${hash}/thumb/` +
-  `${orientation.value}${allowedRealSize.value}` +
+  `${orientation.value}${refinedSize.value}` +
   ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
 const getThumbMultiURL = (hash) => {
-  const URLs = [] 
+  const srcsetItems = [] 
   for (const allowSize of allowedSizes) {
-    const src = `${API_PATH}/albums/` +
+    const url =  
+      `${API_PATH}/albums/` +
       `${targetAlbum.value}/images/` +
       `${hash}/thumb/` +
       `${orientation.value}${allowSize}` +
       ( imgSign.value ? `?sign=${imgSign.value}` : '' )
-      
-    URLs.push(`${src} ${allowSize}w`)
+
+    srcsetItems.push(url +' '+ allowSize + orientation.value)
   }
-  return URLs.join(', ')
+  return srcsetItems.join(', ')
 }
 /*
 watchThrottled(() => pixelRatio.value, () => {
@@ -92,7 +94,7 @@ const isLoading   = ref(null)
 const canLoadMore = ref(true)
 const images      = ref([])
 const loadMore = async () => {
-  if (!canLoadMore.value) return
+  if (!canLoadMore.value || isLoading.value) return
   isLoading.value = true
 
   await fetchWrapper.get(getAlbumURL(currentPage))
@@ -108,33 +110,22 @@ const loadMore = async () => {
       })
       
       images.value = [...images.value, ...data.pictures]
-      isLoading.value = false
       currentPage++
+      isLoading.value = false
     })
     .catch(async (error) => {
+      isLoading.value = false
       switch (error.status) {
-      case 404:
-        canLoadMore.value = false
-        isLoading.value = false
-        alert(error.message) 
-        // TODO: Сделать красивую страницу
-        return
-      case 403:
-        canLoadMore.value = false
-        isLoading.value = false
-        alert(error.message) 
-        // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
-        return
-      case 429:
-        alert(error.message) 
-        // TODO: Вывсети уведомление о частых запросов
-        return
       case 500:
         await sleep(1000)
         return
+      case 429: // TODO: Вывсети уведомление о частых запросов
+        alert(error.message) 
+        return
+      case 404: // TODO: Сделать красивую страницу
+      case 403: // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
       default:
         canLoadMore.value = false
-        isLoading.value = false
         alert(error.message) 
       }
     })
@@ -144,7 +135,8 @@ const loadMore = async () => {
 const maxRetries = 4
 const retryCounts = ref({})
 const onErrorImgLoad = async (event) => {
-  const src = event.target.attributes.src.value
+  // FIXME: не всегда срабатывает (второй раз?)
+  const src = event.target.attributes.src.value 
   retryCounts.value[src] ||= 0
   
   if (retryCounts.value[src] <= maxRetries) {
@@ -152,7 +144,6 @@ const onErrorImgLoad = async (event) => {
     retryCounts.value[src]++
     event.src = event.src + ''
   }
-  console.log(retryCounts.value)
 }
 </script>
 
@@ -188,6 +179,7 @@ const onErrorImgLoad = async (event) => {
         <p>End</p>
       </div>
       <div class="inf-handler-position" v-if="canLoadMore">
+        <div v-infinite-scroll="loadMore"></div>
         <div style="min-height: 0; height: 3000px;"></div>
         <!-- FIXME: Если пользователь оказался резко снизу, то для него не будет подгружаться картинки -->
         <div v-infinite-scroll="[loadMore, {interval: 500}]"></div>
