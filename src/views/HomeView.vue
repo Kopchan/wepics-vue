@@ -159,6 +159,7 @@ const onErrorImgLoad = async (event) => {
         :class="{strict: isStrictSize}">
         <template #default="{item}">
           <div class="grid-item">
+            <!-- FIXME: По какой-то причине загружается максимальное качество из 'srcset' -->
             <img 
               loading="lazy" 
               :src="item.thumbURL"
