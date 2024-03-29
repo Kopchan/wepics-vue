@@ -3,12 +3,14 @@ import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
-import { useDevicePixelRatio, watchThrottled } from '@vueuse/core'
+import { useDevicePixelRatio, useInfiniteScroll, useWindowSize, watchThrottled } from '@vueuse/core'
 import MasonryWall from '@yeger/vue-masonry-wall'
 
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
+import { onMounted } from 'vue'
+import { watch } from 'vue'
 
 // Параметры роутера и URL на альбом
 const  { 
@@ -23,13 +25,17 @@ const getAlbumURL = (page) =>
   (isReverse.value ? '&reverse' : '')
 
 const router = useRoute()
-watchThrottled(() => router, () => {
-  canLoadMore.value = false
-  isLoading  .value = false
-  images     .value = []
-  currentPage = 1
-  canLoadMore.value = true
-}, {deep: true, throttle: 1000 })
+watchThrottled(
+  () => router, 
+  () => {
+    canLoadMore.value = false
+    isLoading  .value = false
+    images     .value = []
+    currentPage = 1
+    canLoadMore.value = true
+  }, 
+  {deep: true, throttle: 1000 }
+)
 
 // Косметические параметры и URL на превью
 const { 
@@ -37,7 +43,6 @@ const {
 } = storeToRefs(useSettingsStore())
 
 const { pixelRatio } = useDevicePixelRatio()
-// FIXME: Если установленно не строгое следование размерам, то нужно подгружать картинку качественее 
 const realSize = ref(  isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
 const  cssSize = ref( !isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
 
@@ -49,7 +54,7 @@ const getAllowedSize = (size) => {
   }
   return allowedSizes.at(-1)
 }
-const refinedSize = ref(getAllowedSize(realSize))
+const refinedSize = ref(getAllowedSize(realSize.value))
 const imgSign = ref(null)
 const getThumbURL = (hash) => 
   `${API_PATH}/albums/` +
@@ -73,20 +78,23 @@ const getThumbMultiURL = (hash) => {
   return srcsetItems.join(', ')
 }
 /*
-watchThrottled(() => pixelRatio.value, () => {
-  if (!isRealSize) {
-    console.log(`pixelRatio changed to ${pixelRatio.value}, change cssSize ${isRealSize ? 'true' : 'false'}`)
-    cssSize.value = Math.round(realSize.value / pixelRatio.value)
-    return
-  }
-  console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...' +`${isRealSize ? 'true' : 'false'}` )
-  realSize.value = Math.round(cssSize.value * pixelRatio.value)
-  allowedRealSize.value = getAllowedSize()
-  console.log(realSize.value +' and  '+ allowedRealSize.value)
-  images.value.forEach(element => {
-    element.thumbURL = getThumbURL(element.hash)
-  })
-}, { throttle: 500 })
+watchThrottled(
+  () => pixelRatio.value, 
+  () => {
+    if (!isRealSize) {
+      console.log(`pixelRatio changed to ${pixelRatio.value}, change cssSize ${isRealSize ? 'true' : 'false'}`)
+      cssSize.value = Math.round(realSize.value / pixelRatio.value)
+      return
+    }
+    console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...' +`${isRealSize ? 'true' : 'false'}` )
+    realSize.value = Math.round(cssSize.value * pixelRatio.value)
+    allowedRealSize.value = getAllowedSize()
+    console.log(realSize.value +' and  '+ allowedRealSize.value)
+    images.value.forEach(element => {
+      element.thumbURL = getThumbURL(element.hash)
+    })
+  }, 
+  { throttle: 500 })
 */
 // Порционный запрос картинок
 let currentPage = 1
@@ -145,13 +153,37 @@ const onErrorImgLoad = async (event) => {
     event.src = event.src + ''
   }
 }
+const columnWidth = ref(cssSize.value)
+const masonryWall = ref(null)
+const windowWidth = useWindowSize().width
+
+onMounted(async () => {
+  await sleep(1000)
+  watchThrottled(
+    () => windowWidth.value, 
+    async () => {
+      console.log({throttle: masonryWall.value})
+
+      await sleep(250)
+      const columnSize = masonryWall.value?.$el?.children[0]?.clientWidth
+      columnWidth.value = Math.round(columnSize) || cssSize.value
+
+      console.log('new value ' + columnWidth.value)
+    },
+    {deep: true, immediate: true, throttle: 500}
+  )
+})
 </script>
 
 <template>
   <main>
     <div class="grid_outer">
+      <button @click="console.log(masonryWall?.$el?.children[0]?.clientWidth)">get columnWidth</button>
+      <button @click="console.log(cssSize)">get cssSize</button>
+      <button @click="console.log(currentPage)">get currentPage</button>
       <MasonryWall 
         class="grid"
+        ref="masonryWall"
         :items="images" 
         :column-width="cssSize" 
         :gap="gap"
@@ -159,11 +191,11 @@ const onErrorImgLoad = async (event) => {
         :class="{strict: isStrictSize}">
         <template #default="{item}">
           <div class="grid-item">
-            <!-- FIXME: По какой-то причине загружается максимальное качество из 'srcset' -->
             <img 
-              loading="lazy" 
+              :loading="currentPage != 1 ? 'lazy' : undefined" 
               :src="item.thumbURL"
               :srcset="getThumbMultiURL(item.hash)"
+              :sizes="columnWidth +'px'"
               :alt="item.name" 
               :width="cssSize" 
               :height="Math.round(cssSize / item.width * item.height)"
@@ -179,17 +211,18 @@ const onErrorImgLoad = async (event) => {
         v-else-if="!isLoading && !canLoadMore && images.length">
         <p>End</p>
       </div>
-      <div class="inf-handler-position" v-if="canLoadMore">
-        <div v-infinite-scroll="loadMore"></div>
+      <div class="inf-handler-position" v-if="canLoadMore && !isLoading">
+        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
         <div style="min-height: 0; height: 3000px;"></div>
-        <!-- FIXME: Если пользователь оказался резко снизу, то для него не будет подгружаться картинки -->
-        <div v-infinite-scroll="[loadMore, {interval: 500}]"></div>
+        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
       </div>
     </div>
   </main>
 </template>
 
 <style lang="scss" scoped>
+/*
+*/
 .grid_outer {
   //transition: margin 0.1s, left 0.1s;
   padding: calc(var(--header-height) + 1px) var(--cards-gap) 0;
