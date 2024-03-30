@@ -1,16 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
-import { useDevicePixelRatio, useInfiniteScroll, useWindowSize, watchThrottled } from '@vueuse/core'
+import { useDevicePixelRatio, useWindowSize, watchDebounced, watchThrottled } from '@vueuse/core'
 import MasonryWall from '@yeger/vue-masonry-wall'
 
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
-import { onMounted } from 'vue'
-import { watch } from 'vue'
 
 // Параметры роутера и URL на альбом
 const  { 
@@ -39,7 +37,7 @@ watchThrottled(
 
 // Косметические параметры и URL на превью
 const { 
-  size, isStrictSize, isRealSize, lines, gap, radius, orientation 
+  settings, size, isStrictSize, isRealSize, lines, gap, radius, orientation 
 } = storeToRefs(useSettingsStore())
 
 const { pixelRatio } = useDevicePixelRatio()
@@ -159,18 +157,13 @@ const windowWidth = useWindowSize().width
 
 onMounted(async () => {
   await sleep(1000)
-  watchThrottled(
+  watchDebounced(
     () => windowWidth.value, 
     async () => {
-      console.log({throttle: masonryWall.value})
-
-      await sleep(250)
       const columnSize = masonryWall.value?.$el?.children[0]?.clientWidth
       columnWidth.value = Math.round(columnSize) || cssSize.value
-
-      console.log('new value ' + columnWidth.value)
     },
-    {deep: true, immediate: true, throttle: 500}
+    {deep: true, immediate: true, debounce: 500}
   )
 })
 </script>
@@ -178,9 +171,11 @@ onMounted(async () => {
 <template>
   <main>
     <div class="grid_outer">
+      <!-- DEBUG
       <button @click="console.log(masonryWall?.$el?.children[0]?.clientWidth)">get columnWidth</button>
       <button @click="console.log(cssSize)">get cssSize</button>
       <button @click="console.log(currentPage)">get currentPage</button>
+      -->
       <MasonryWall 
         class="grid"
         ref="masonryWall"
@@ -223,18 +218,25 @@ onMounted(async () => {
 <style lang="scss" scoped>
 /*
 */
-.grid_outer {
-  //transition: margin 0.1s, left 0.1s;
-  padding: calc(var(--header-height) + 1px) var(--cards-gap) 0;
-  overflow-x: hidden;
-  transition: 0.1s;
-  position: relative;
-}
+// .grid_outer {
+//   //transition: margin 0.1s, left 0.1s;
+//   padding: calc(var(--header-height) + 1px) var(--cards-gap) 0;
+//   overflow-x: hidden;
+//   transition: 0.1s;
+//   position: relative;
+// }
 .grid {
   justify-content: center;
   margin: 0 auto;
   &.strict:deep(.masonry-column) {
     max-width: v-bind('cssSize + "px"');
+  }
+  &_outer {
+    //transition: margin 0.1s, left 0.1s;
+    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') 0;
+    overflow-x: hidden;
+    transition: 0.1s;
+    position: relative;
   }
   &-item {
     background: var(--c-b2);

@@ -1,4 +1,5 @@
-import { reactive, watch } from "vue"
+import { watchDebounced } from "@vueuse/core"
+import { reactive } from "vue"
 
 const readStorage = (key) => {
   try {
@@ -8,14 +9,14 @@ const readStorage = (key) => {
   }
 }
 
-const storageWrapper = (key) => {
+const storageWrapper = (key = 'data') => {
   const dataStorage = reactive(readStorage(key))
-  watch(
+  watchDebounced(
     () => dataStorage,
     () => {
       localStorage.setItem(key, JSON.stringify(dataStorage))
     },
-    { deep: true }
+    { deep: true, debounce: 250 }
   )
   return dataStorage
 }

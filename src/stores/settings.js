@@ -7,7 +7,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const createProp = (name, defaultValue) => {
     return computed({
-      get: ()      => settings[name] || defaultValue,
+      get: ()      => settings[name] ?? defaultValue,
       set: (value) => settings[name] = value
     })
   }
@@ -20,5 +20,5 @@ export const useSettingsStore = defineStore('settings', () => {
   const radius       = createProp('radius', 12)
   const orientation  = createProp('orientation', 'w')
   
-  return { size, isStrictSize, isRealSize, lines, gap, radius, orientation }
+  return { settings, size, isStrictSize, isRealSize, lines, gap, radius, orientation }
 })
