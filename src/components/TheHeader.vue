@@ -1,31 +1,11 @@
 <script setup>
 import { ref } from 'vue'
-import router from '@/router'
+import { storeToRefs } from 'pinia'
+import { useAlbumParamsStore } from '@/stores'
 
-const isReverse = ref(false)
-
-function changeDirection() {
-  isReverse.value ^= true
-  changeQuery('reverse', isReverse.value ? null : undefined)
-} 
-
-function changeSortType(event) {
-  const value = event.target.value
-  changeQuery('sort', value)
-}
-
-function changeQuery(key, value) {
-  const query = router.currentRoute.value.query
-  let newQuery = {...query}
-
-  if (value !== undefined) {
-    newQuery[key] = value
-  } else {
-    delete newQuery[key]
-  }
-  
-  router.push({query: newQuery})
-}
+const { 
+  targetAlbum, perPage, sort, isReverse 
+} = storeToRefs(useAlbumParamsStore())
 </script>
 
 <template>
@@ -52,10 +32,10 @@ function changeQuery(key, value) {
           class="btn btn--quad change-direction-btn"
           :class="{down: isReverse}"
           title="Change sort direction"
-          @click="changeDirection">
+          @click="isReverse = !isReverse">
           <span>&uarr;</span>
         </button>
-        <select class="droplist sort-droplist" title="Sort type" @change="changeSortType">
+        <select class="droplist sort-droplist" title="Sort type" v-model="sort">
           <option value="name">Name</option>
           <option value="date">Date</option>
           <option value="size">Size</option>

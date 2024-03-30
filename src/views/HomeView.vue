@@ -17,7 +17,7 @@ const  {
 
 const getAlbumURL = (page) =>
   '/albums/'  + targetAlbum.value + 
-  '/images?page=' +    page + 
+  '/images?page=' +    page       + 
   '&per_page=' +    perPage.value + 
   '&sort=' +           sort.value + 
   (isReverse.value ? '&reverse' : '')
@@ -166,6 +166,7 @@ onMounted(async () => {
     {deep: true, immediate: true, debounce: 500}
   )
 })
+
 </script>
 
 <template>
