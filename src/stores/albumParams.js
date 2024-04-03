@@ -21,14 +21,17 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     set: (value) => {
       const query = route.query
 
-      if (isParam)
+      if (isParam) {
+        const params = route.params
         router.push({
-          params: { name: value }, 
+          name: 'album',
+          params: { ...params, [name]: value ?? defaultValue }, 
           query
         })
+        return
+      }
 
       let newQuery = {...query}
-      console.log(value)
       if (value === undefined || value === false)
         delete newQuery[name]
       
@@ -37,7 +40,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
 
       else newQuery[name] = value
 
-      router.push({ query: newQuery })
+      router.replace({ query: newQuery })
     }
   })
 

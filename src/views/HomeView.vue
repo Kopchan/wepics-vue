@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
@@ -7,8 +7,9 @@ import { useDevicePixelRatio, useWindowSize, watchDebounced, watchThrottled } fr
 import MasonryWall from '@yeger/vue-masonry-wall'
 
 import { API_PATH } from '@/config'
-import { fetchWrapper, sleep } from '@/helpers'
+import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
+import { computed } from 'vue'
 
 // Параметры роутера и URL на альбом
 const  { 
@@ -22,17 +23,17 @@ const getAlbumURL = (page) =>
   '&sort=' +           sort.value + 
   (isReverse.value ? '&reverse' : '')
 
-const router = useRoute()
-watchThrottled(
-  () => router, 
-  () => {
+const route = useRoute()
+watch(
+  () => route, 
+  debounceImmediate(() => {
     canLoadMore.value = false
     isLoading  .value = false
     images     .value = []
     currentPage = 1
     canLoadMore.value = true
-  }, 
-  {deep: true, throttle: 1000 }
+  }, 500), 
+  {deep: true }
 )
 
 // Косметические параметры и URL на превью
@@ -41,8 +42,8 @@ const {
 } = storeToRefs(useSettingsStore())
 
 const { pixelRatio } = useDevicePixelRatio()
-const realSize = ref(  isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
-const  cssSize = ref( !isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
+const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
+const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
 
 const allowedSizes = [144, 240, 360, 480, 720, 1080] // сортированный
 const getAllowedSize = (size) => {
@@ -52,7 +53,7 @@ const getAllowedSize = (size) => {
   }
   return allowedSizes.at(-1)
 }
-const refinedSize = ref(getAllowedSize(realSize.value))
+const refinedSize = computed(() => getAllowedSize(realSize.value))
 const imgSign = ref(null)
 const getThumbURL = (hash) => 
   `${API_PATH}/albums/` +
@@ -159,23 +160,29 @@ onMounted(async () => {
   await sleep(1000)
   watchDebounced(
     () => windowWidth.value, 
-    async () => {
+    () => {
       const columnSize = masonryWall.value?.$el?.children[0]?.clientWidth
       columnWidth.value = Math.round(columnSize) || cssSize.value
     },
-    {deep: true, immediate: true, debounce: 500}
+    { deep: true, immediate: true, debounce: 500 }
   )
 })
-
 </script>
 
 <template>
   <main>
     <div class="grid_outer">
       <!-- DEBUG
-      <button @click="console.log(masonryWall?.$el?.children[0]?.clientWidth)">get columnWidth</button>
-      <button @click="console.log(cssSize)">get cssSize</button>
-      <button @click="console.log(currentPage)">get currentPage</button>
+      <button @click="console.log({
+        sizeNew,
+        size, 
+        cssSize, 
+        lines,
+        gap,
+        settings,
+      })">
+        get values
+      </button>
       -->
       <MasonryWall 
         class="grid"
@@ -183,6 +190,7 @@ onMounted(async () => {
         :items="images" 
         :column-width="cssSize" 
         :gap="gap"
+        :min-columns="lines"
         :max-columns="lines"
         :class="{strict: isStrictSize}">
         <template #default="{item}">
@@ -217,15 +225,6 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
-/*
-*/
-// .grid_outer {
-//   //transition: margin 0.1s, left 0.1s;
-//   padding: calc(var(--header-height) + 1px) var(--cards-gap) 0;
-//   overflow-x: hidden;
-//   transition: 0.1s;
-//   position: relative;
-// }
 .grid {
   justify-content: center;
   margin: 0 auto;
@@ -234,16 +233,19 @@ onMounted(async () => {
   }
   &_outer {
     //transition: margin 0.1s, left 0.1s;
-    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') 0;
+    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') v-bind('gap + "px"');
     overflow-x: hidden;
     transition: 0.1s;
     position: relative;
   }
   &-item {
-    background: var(--c-b2);
     border-radius: v-bind('radius + "px"');
     &:hover {
+      background: var(--c-b2);
       outline: 1px solid;
+      .info {
+        display: block;
+      }
     }
     img {
       border-radius: v-bind('radius + "px"');
@@ -261,13 +263,12 @@ onMounted(async () => {
       }
     }
     .info {
+      padding: 10px;
+      position: absolute;
+      top: 100%;
       @media (hover: hover) and (pointer: fine) {
         display: none;
       }
-      &:hover {
-        display: block;
-      }
-      padding: 10px;
       p {
         text-overflow: ellipsis;
         width: 100%;

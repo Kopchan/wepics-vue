@@ -970,6 +970,11 @@ lru-cache@^6.0.0:
   dependencies:
     yallist "^4.0.0"
 
+lucide-vue-next@^0.364.0:
+  version "0.364.0"
+  resolved "https://registry.yarnpkg.com/lucide-vue-next/-/lucide-vue-next-0.364.0.tgz#a06fa8e9b8f858407c819b1c7605f76361a49b6f"
+  integrity sha512-O8MQEEktkd5zL+1S40P3UnEXotR6lrN0oaV/8uyVQCwvBMWlnTKlwIg4Rd8yDBGrALFOAiyCLu69y4gh82fNew==
+
 magic-string@^0.30.7:
   version "0.30.8"
   resolved "https://registry.npmjs.org/magic-string/-/magic-string-0.30.8.tgz"
@@ -1105,6 +1110,11 @@ prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz"
   integrity sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==
+
+primevue@^3.50.0:
+  version "3.50.0"
+  resolved "https://registry.yarnpkg.com/primevue/-/primevue-3.50.0.tgz#fdebb63d1aa510d9aca97a285e494e2085ffb6aa"
+  integrity sha512-vYpQzvIXSmF0hWUkviHEGnwbFY/G8jI2RSxoa75noJloI2rWhzOX+JarJ8iaesVOr7b2se31N/p7zOx6uh3ddQ==
 
 punycode@^2.1.0:
   version "2.3.1"

@@ -9,7 +9,7 @@ const readStorage = (key) => {
   }
 }
 
-const storageWrapper = (key = 'data') => {
+export const storageWrapper = (key = 'data') => {
   const dataStorage = reactive(readStorage(key))
   watchDebounced(
     () => dataStorage,

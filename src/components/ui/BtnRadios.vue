@@ -1,0 +1,69 @@
+<script setup>
+import { toRefs } from 'vue'
+
+const props = defineProps({
+  name: String,
+  options: Object,
+  disabled: {
+    required: false,
+    default: false
+  }
+})
+const value = defineModel()
+
+const { name, options } = toRefs(props)
+value.value ??= Object.keys(options.value)[0]
+</script>
+
+<template>
+  <div class="line">
+    <template v-for="(option, index) in options" :key="index">
+      <input 
+        type="radio"
+        v-model="value"
+        :name  ="name"
+        :value ="index"
+        :id    ="name +'_'+ index"
+        :disabled="disabled"
+      >
+      <label :for="name +'_'+ index" class="btn">{{ option }}</label>
+    </template >
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.line {
+  background: var(--c-b0a);
+  padding: 6px;
+  display: flex;
+  gap: 6px;
+  border-radius: var(--border-r);
+  input[type="radio"] {
+    display: none;
+    & + label {
+      height: 24px;
+      flex: 1;
+    }
+    &:checked + label {
+      background: var(--c-t0);
+      color: var(--c-b0);
+      &:hover {
+        background: var(--c-t2);
+      }
+      &:active {
+        background: var(--c-t2a);
+      }
+    }
+    &:disabled + label {
+      background: none;
+      cursor: not-allowed;
+      color: var(--c-t2a);
+    }
+    &:disabled:checked + label {
+      background: var(--c-t2a);
+      cursor: not-allowed;
+      color: var(--c-b2);
+    }
+  }
+}
+</style>

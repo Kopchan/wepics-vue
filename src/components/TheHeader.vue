@@ -2,10 +2,22 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore } from '@/stores'
+import OverlayPanel from 'primevue/overlaypanel'
+import AuthForm from '@/components/AuthForm.vue'
+import SettingsForm from '@/components/SettingsForm.vue'
+import {
+  Menu, ChevronRight, Palette, LogIn,
+  ArrowDownAZ, ArrowUpAZ, ArrowDown01, ArrowUp01,
+} from 'lucide-vue-next'
 
 const { 
-  targetAlbum, perPage, sort, isReverse 
+  targetAlbum, sort, isReverse 
 } = storeToRefs(useAlbumParamsStore())
+
+const authCard = ref()
+const customizCard = ref()
+const toggleAuthCard     = (e) =>     authCard.value.toggle(e)
+const toggleCustomizCard = (e) => customizCard.value.toggle(e)
 </script>
 
 <template>
@@ -14,42 +26,70 @@ const {
       <!--    =  Кнопка меню  =    -->
       <div class="menu-btn-place">
         <button class="btn btn--quad menu-btn" title="Toggle menu" @click="toggleSidebar">
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12h12.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Z"></path>
-          </svg>
+          <Menu size="20"/>
         </button>
       </div>
       <!--    =  Путь  =    -->
-      <div class="path-line">
-        <span class="section"><RouterLink to="/" class="btn">Home</RouterLink></span>
-        <span class="section"><RouterLink to="/album/ySzskg9sYx2QolqlW62rBsQam" class="btn">ATyans</RouterLink></span>
-        <span class="section"><RouterLink to="/album/nQVSxuzLxP2iKVP7AUdxqBb8o" class="btn">Port</RouterLink></span>
-        <button class="btn btn--circle folder-select-btn" title="Show subfolders">&gt;</button>
+      <div class="breadcrumb">
+        <!--
+        <span class="section"><RouterLink class="btn" to="/">Home</RouterLink></span>
+        -->
+        <span class="section" @click="targetAlbum = undefined"><a class="btn">Home</a></span>
+        <span class="section" @click="targetAlbum = 'ySzskg9sYx2QolqlW62rBsQam'"><a class="btn">ATyans</a></span>
+        <span class="section" @click="targetAlbum = 'nQVSxuzLxP2iKVP7AUdxqBb8o'"><a class="btn">Port</a></span>
+        <button class="btn btn--circle folder-select-btn" title="Show subfolders">
+          <ChevronRight size="20" />
+        </button>
       </div>
+      <!-- Сдвиг -->
+      <div style="margin-left: auto;"></div>
       <!--    =  Сортировка  =    -->
-      <div class="sort-section">
-        <button
-          class="btn btn--quad change-direction-btn"
-          :class="{down: isReverse}"
-          title="Change sort direction"
-          @click="isReverse = !isReverse">
-          <span>&uarr;</span>
-        </button>
-        <select class="droplist sort-droplist" title="Sort type" v-model="sort">
-          <option value="name">Name</option>
-          <option value="date">Date</option>
-          <option value="size">Size</option>
-          <option value="height">Height</option>
-          <option value="width">Width</option>
-        </select>
-      </div>
-      <div class="auth-section">
-        <button class="btn btn--quad" @click="authPopup">
-          В
-        </button>
-      </div>
+      
+      <button
+        class="btn btn--quad change-direction-btn"
+        title="Change sort direction"
+        @click="isReverse = !isReverse">
+        <template v-if="sort == 'name'">
+          <ArrowUpAZ size="20" v-if="isReverse"/>
+          <ArrowDownAZ size="20" v-else/>
+        </template>
+        <template v-else>
+          <ArrowUp01 size="20" v-if="isReverse"/>
+          <ArrowDown01 size="20" v-else/>
+        </template>
+      </button>
+      <select class="droplist sort-droplist" title="Sort type" v-model="sort">
+        <option value="name">Name</option>
+        <option value="date">Date</option>
+        <option value="size">Size</option>
+        <option value="height">Height</option>
+        <option value="width">Width</option>
+        <option value="ratio">Ratio</option>
+      </select>
+      <!--    =  Кастомизации =     -->
+      <button 
+        class="btn btn--quad" 
+        title="Open customization panel"
+        @click="toggleCustomizCard">
+        <Palette size="20"/>
+      </button>
+      <!--    =  Авторизация  =    -->
+      <button 
+        class="btn btn--quad" 
+        title="Open authorization form"
+        @click="toggleAuthCard">
+        <LogIn size="20"/>
+      </button>
     </div>
   </header>
+  
+  <OverlayPanel ref="customizCard" class="popup popup--fixed">
+    <SettingsForm/>
+  </OverlayPanel>
+
+  <OverlayPanel ref="authCard" class="popup popup--fixed">
+    <AuthForm/>
+  </OverlayPanel>
 </template>
 
 <style lang="scss">
@@ -69,20 +109,18 @@ header {
     gap: 8px;
   }
   // Путь
-  .path-line {
+  .breadcrumb {
     display: flex;
     height: 32px;
     align-items: center;
     .section {
       display: flex;
       align-items: center;
-      &:not(:first-child) {
-        &::before {
-          content: '/';
-          color: var(--c-t7);
-          font-size: 24px;
-          padding: 0 4px;
-        }
+      &:not(:first-child)::before {
+        content: '/';
+        color: var(--c-t7);
+        font-size: 24px;
+        padding: 0 4px;
       }
     }
     a {
@@ -99,25 +137,6 @@ header {
         color: var(--c-t0);
       }
     }
-  }
-  // Сортировка
-  .sort-section {
-    display: flex;
-    justify-self: end;
-    margin-left: auto;
-    gap: 4px;
-    .change-direction-btn {
-      &.down {
-        > * {
-          transform: rotate(180deg);
-        }
-      }
-    }
-  }
-  .auth-section {
-    display: flex;
-    justify-self: end;
-    gap: 4px;
   }
 }
 </style>
