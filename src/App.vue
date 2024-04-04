@@ -1,6 +1,5 @@
 <script setup>
-import TheHeader from '@/components/TheHeader.vue'
-import SideBar from './components/SideBar.vue'
+import { TheHeader, SideBar } from '@/components'
 import { useSettingsStore } from './stores'
 import { storeToRefs } from 'pinia'
 import { onMounted, watch } from 'vue'

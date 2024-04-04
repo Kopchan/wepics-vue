@@ -43,6 +43,6 @@ const { user } = storeToRefs(useAuthStore())
   border-radius: var(--border-r);
 }
 button {
-  background: var(--c-b0a);
+  background-color: var(--c-b0a);
 }
 </style>

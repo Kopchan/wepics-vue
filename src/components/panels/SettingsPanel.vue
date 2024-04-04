@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from '@/stores'
-import BtnRadios from '@/components/ui/BtnRadios.vue'
+import { BtnRadios } from '@/components/ui'
 
 const settings = useSettingsStore()
 const {
@@ -64,7 +64,7 @@ const {
 }
 button {
   margin-top: 12px;
-  background: var(--c-b0a);
+  background-color: var(--c-b0a);
 }
 h4 {
   text-align: center;

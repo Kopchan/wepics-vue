@@ -3,9 +3,7 @@ import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore, useAuthStore } from '@/stores'
 import OverlayPanel from 'primevue/overlaypanel'
-import AuthForm from '@/components/AuthForm.vue'
-import UserPanel from '@/components/UserPanel.vue'
-import SettingsForm from '@/components/SettingsPanel.vue'
+import { AuthPanel, UserPanel, SettingsPanel } from '@/components/panels'
 import {
   Menu, ChevronRight, Palette, LogIn, User,
   ArrowDownAZ, ArrowUpAZ, ArrowDown01, ArrowUp01,
@@ -98,7 +96,7 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
   </header>
   
   <OverlayPanel ref="customizCard" class="popup popup--fixed">
-    <SettingsForm/>
+    <SettingsPanel/>
   </OverlayPanel>
   
   <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
@@ -106,11 +104,11 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
   </OverlayPanel>
 
   <OverlayPanel ref="authCard" class="popup popup--fixed" v-if="!user.nickname">
-    <AuthForm/>
+    <AuthPanel/>
   </OverlayPanel>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 header {
   top: 0;
   background: linear-gradient(180deg, var(--c-b0), var(--c-b0a));

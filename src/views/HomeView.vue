@@ -232,7 +232,6 @@ onMounted(async () => {
     max-width: v-bind('cssSize + "px"');
   }
   &_outer {
-    //transition: margin 0.1s, left 0.1s;
     padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') v-bind('gap + "px"');
     overflow-x: hidden;
     transition: 0.1s;
@@ -241,7 +240,7 @@ onMounted(async () => {
   &-item {
     border-radius: v-bind('radius + "px"');
     &:hover {
-      background: var(--c-b2);
+      background-color: var(--c-b2);
       outline: 1px solid;
       .info {
         display: block;
@@ -255,7 +254,7 @@ onMounted(async () => {
       object-fit: contain;
       &:before { // TODO: Доделать блок незагруженной картинки
         content: '';
-        background: var(--c-b2);
+        background-color: var(--c-b2);
         width: 100%;
         height: 200px;
         top: 0;
@@ -281,7 +280,7 @@ onMounted(async () => {
 .message {
     margin: 0 auto;
     width: 150px;
-    background: var(--c-b2);
+    background-color: var(--c-b2);
     border-radius: var(--border-r);
     text-align: center;
   p {
@@ -290,7 +289,7 @@ onMounted(async () => {
   &--download {
     position: fixed;
     bottom: 32px;
-    background: var(--c-b2a);
+    background-color: var(--c-b2a);
     backdrop-filter: blur(var(--div-blur));
     bottom: 16px;
     left: 0;
@@ -299,7 +298,7 @@ onMounted(async () => {
   }
   &--end {
     margin: 20px auto;
-    background: var(--c-b2);
+    background-color: var(--c-b2);
   }
 }
 .inf-handler-position {

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import BtnRadios from '@/components/ui/BtnRadios.vue'
+import { BtnRadios } from '@/components/ui'
 import { useAuthStore } from '@/stores'
 
 const mode = ref('login')
@@ -13,7 +13,7 @@ const auth = useAuthStore()
 const authorize = () => {
   isFetching.value = true
   error.value = null
-  
+
   auth[mode.value](form.value)
     .catch(err => error.value = err)
 
@@ -65,7 +65,7 @@ watch(
   gap: 12px
 }
 button {
-  background: var(--c-b0a);
+  background-color: var(--c-b0a);
 }
 form {
   display: flex;
@@ -73,7 +73,7 @@ form {
   gap: 12px
 }
 .error {
-  background: #a004;
+  background-color: #a004;
   padding: 10px;
   border-radius: var(--border-r);
 }

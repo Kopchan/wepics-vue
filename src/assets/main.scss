@@ -10,13 +10,15 @@
 * {
   margin:  0;
   padding: 0;
-  font-family: "Roboto Flex", sans-serif;
+  transition: background-color .2s;
 }
 
 body {
-  background: var(--c-b0);
+  background-color: var(--c-b0);
   color:      var(--c-t0);
   user-select: none;
+  font-family: "Roboto Flex", sans-serif;
+  transition: color .2s;
 }
 
 /*  ===  Элементы  ===  */
@@ -37,7 +39,6 @@ body {
   font-size: 16px;
   background-color: transparent;
   color: var(--c-t0);
-  transition: 0.2s;
   &:hover {
     background-color: var(--c-b4a);
   }
@@ -56,18 +57,23 @@ body {
     font-size: 20px;
   }
   &--inverse {
-    background: var(--c-t0);
+    background-color: var(--c-t0);
     color: var(--c-b0);
     &:hover {
-      background: var(--c-t2);
+      background-color: var(--c-t2);
     }
     &:active {
-      background: var(--c-t2a);
+      background-color: var(--c-t2a);
     }
   }
   &:disabled {
+    background-color: none;
+    cursor: not-allowed;
     color: var(--c-t2a);
-    background: red;
+    &--inverse {
+      background-color: var(--c-t2a);
+      color: var(--c-b2);
+    }
   }
 }
 // Выпадающий список
@@ -81,7 +87,6 @@ body {
   background-color: transparent;
   color: var(--c-t0);
   padding: 0 6px 0 4px;
-  transition: 0.2s;
   &:hover {
     background-color: var(--c-b4a);
   }
@@ -97,37 +102,38 @@ body {
     }
   }
 }
-
+// Текстовое поле
 .text-box {
   border: none;
+  -webkit-tap-highlight-color: transparent;
   height: 24px;
   display: block;
-  background: var(--c-b2a);
+  background-color: var(--c-b2a);
   border-radius: var(--border-r);
   padding: 0 8px;
   &[type="number"] {
     width: 50px; 
     text-align: end; 
     display: inline;
-    background: transparent;
+    background-color: transparent;
     &::-webkit-inner-spin-button {
     display: none;
     }
   }
   &:hover {
-    background: var(--c-b4a);
+    background-color: var(--c-b4a);
   }
   &:focus {
-    background: var(--c-b4);
+    background-color: var(--c-b4);
     outline: 1px solid var(--c-t0a);
   }
   &:disabled {
     color: var(--c-t2a)
   }
 }
-
+// Модальное окно
 .popup {
-  background: var(--c-b2a); 
+  background-color: var(--c-b2a); 
   backdrop-filter: blur(var(--div-blur));
   border-radius: var(--border-r);
   padding: 16px;
@@ -138,61 +144,63 @@ body {
     overflow: scroll;
     max-height: calc(100vh - 80px);
   }
+  &.p-overlaypanel-leave-active {
+    display: none !important;
+  }
 }
-
+// Ползунок
 input[type="range"] {
   -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
   appearance: none;
-  background: transparent;
+  background-color: transparent;
   cursor: pointer;
   height: 16px;
   &::-webkit-slider-runnable-track {
-    background: var(--c-b0a);
+    background-color: var(--c-b0a);
     height: 6px;
     border-radius: 3px;
   }
   &::-moz-range-track {
-    background: var(--c-b0a);
+    background-color: var(--c-b0a);
     height: 6px;
     border-radius: 3px;
   }
   &::-webkit-slider-thumb {
     appearance: none;
     margin-top: -5px;
-    background: var(--c-t0);
+    background-color: var(--c-t0);
     height: 16px;
     width: 16px;   
     border-radius: 50%;
-    transition: .2s background;
     &:hover {
-      background: var(--c-t2);
+      background-color: var(--c-t2);
     }
     &:active {
-      background: var(--c-t2a);
+      background-color: var(--c-t2a);
     }
   }
   &:disabled {
     cursor: not-allowed;
     &::-webkit-slider-thumb {
-      background: var(--c-t7);
+      background-color: var(--c-t7);
     }
   }
   &::-moz-range-thumb {
     appearance: none;
     margin-top: -5px;
-    background: var(--c-t0);
+    background-color: var(--c-t0);
     height: 16px;
     width: 16px;   
     border-radius: 50%;
-    transition: .2s background;
     &:hover {
-      background: var(--c-t2);
+      background-color: var(--c-t2);
     }
     &:active {
-      background: var(--c-t2a);
+      background-color: var(--c-t2a);
     }
   }
   &:disabled::-moz-range-thumb {
-    background: var(--c-t7);
+    background-color: var(--c-t7);
   }
 }

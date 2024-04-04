@@ -33,7 +33,7 @@ value.value ??= Object.keys(options.value)[0]
 
 <style lang="scss" scoped>
 .line {
-  background: var(--c-b0a);
+  background-color: var(--c-b0a);
   padding: 6px;
   display: flex;
   gap: 6px;
@@ -45,22 +45,22 @@ value.value ??= Object.keys(options.value)[0]
       flex: 1;
     }
     &:checked + label {
-      background: var(--c-t0);
+      background-color: var(--c-t0);
       color: var(--c-b0);
       &:hover {
-        background: var(--c-t2);
+        background-color: var(--c-t2);
       }
       &:active {
-        background: var(--c-t2a);
+        background-color: var(--c-t2a);
       }
     }
     &:disabled + label {
-      background: none;
+      background-color: none;
       cursor: not-allowed;
       color: var(--c-t2a);
     }
     &:disabled:checked + label {
-      background: var(--c-t2a);
+      background-color: var(--c-t2a);
       cursor: not-allowed;
       color: var(--c-b2);
     }
