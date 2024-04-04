@@ -12,33 +12,33 @@ import { useAlbumParamsStore, useSettingsStore } from '@/stores'
 import { computed } from 'vue'
 
 // Параметры роутера и URL на альбом
-const  { 
-  targetAlbum, perPage, sort, isReverse 
+const  {
+  targetAlbum, perPage, sort, isReverse
 } = storeToRefs(useAlbumParamsStore())
 
 const getAlbumURL = (page) =>
-  '/albums/'  + targetAlbum.value + 
-  '/images?page=' +    page       + 
-  '&per_page=' +    perPage.value + 
-  '&sort=' +           sort.value + 
+  '/albums/'  + targetAlbum.value +
+  '/images?page=' +    page       +
+  '&per_page=' +    perPage.value +
+  '&sort=' +           sort.value +
   (isReverse.value ? '&reverse' : '')
 
 const route = useRoute()
 watch(
-  () => route, 
+  () => route,
   debounceImmediate(() => {
     canLoadMore.value = false
     isLoading  .value = false
     images     .value = []
     currentPage = 1
     canLoadMore.value = true
-  }, 500), 
+  }, 500),
   {deep: true }
 )
 
 // Косметические параметры и URL на превью
-const { 
-  size, isStrictSize, isRealSize, lines, gap, radius, orientation 
+const {
+  size, isStrictSize, isRealSize, lines, gap, radius, orientation
 } = storeToRefs(useSettingsStore())
 
 const { pixelRatio } = useDevicePixelRatio()
@@ -55,7 +55,7 @@ const getAllowedSize = (size) => {
 }
 const refinedSize = computed(() => getAllowedSize(realSize.value))
 const imgSign = ref(null)
-const getThumbURL = (hash) => 
+const getThumbURL = (hash) =>
   `${API_PATH}/albums/` +
   `${targetAlbum.value}/images/` +
   `${hash}/thumb/` +
@@ -63,9 +63,9 @@ const getThumbURL = (hash) =>
   ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
 const getThumbMultiURL = (hash) => {
-  const srcsetItems = [] 
+  const srcsetItems = []
   for (const allowSize of allowedSizes) {
-    const url =  
+    const url = 
       `${API_PATH}/albums/` +
       `${targetAlbum.value}/images/` +
       `${hash}/thumb/` +
@@ -78,7 +78,7 @@ const getThumbMultiURL = (hash) => {
 }
 /*
 watchThrottled(
-  () => pixelRatio.value, 
+  () => pixelRatio.value,
   () => {
     if (!isRealSize) {
       console.log(`pixelRatio changed to ${pixelRatio.value}, change cssSize ${isRealSize ? 'true' : 'false'}`)
@@ -92,7 +92,7 @@ watchThrottled(
     images.value.forEach(element => {
       element.thumbURL = getThumbURL(element.hash)
     })
-  }, 
+  },
   { throttle: 500 })
 */
 // Порционный запрос картинок
@@ -110,12 +110,12 @@ const loadMore = async () => {
       canLoadMore.value = !(data.total < currentPage * perPage.value)
 
       imgSign.value = data.sign
-      
+     
       const newImages = data.pictures
       newImages.forEach(element => {
         element.thumbURL = getThumbURL(element.hash)
       })
-      
+     
       images.value = [...images.value, ...data.pictures]
       currentPage++
       isLoading.value = false
@@ -127,13 +127,13 @@ const loadMore = async () => {
         await sleep(1000)
         return
       case 429: // TODO: Вывсети уведомление о частых запросов
-        alert(error.message) 
+        alert(error.message)
         return
       case 404: // TODO: Сделать красивую страницу
       case 403: // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
       default:
         canLoadMore.value = false
-        alert(error.message) 
+        alert(error.message)
       }
     })
 }
@@ -143,9 +143,9 @@ const maxRetries = 4
 const retryCounts = ref({})
 const onErrorImgLoad = async (event) => {
   // FIXME: не всегда срабатывает (второй раз?)
-  const src = event.target.attributes.src.value 
+  const src = event.target.attributes.src.value
   retryCounts.value[src] ||= 0
-  
+ 
   if (retryCounts.value[src] <= maxRetries) {
     await sleep(1000)
     retryCounts.value[src]++
@@ -159,7 +159,7 @@ const windowWidth = useWindowSize().width
 onMounted(async () => {
   await sleep(1000)
   watchDebounced(
-    () => windowWidth.value, 
+    () => windowWidth.value,
     () => {
       const columnSize = masonryWall.value?.$el?.children[0]?.clientWidth
       columnWidth.value = Math.round(columnSize) || cssSize.value
@@ -175,8 +175,8 @@ onMounted(async () => {
       <!-- DEBUG
       <button @click="console.log({
         sizeNew,
-        size, 
-        cssSize, 
+        size,
+        cssSize,
         lines,
         gap,
         settings,
@@ -184,24 +184,24 @@ onMounted(async () => {
         get values
       </button>
       -->
-      <MasonryWall 
+      <MasonryWall
         class="grid"
         ref="masonryWall"
-        :items="images" 
-        :column-width="cssSize" 
+        :items="images"
+        :column-width="cssSize"
         :gap="gap"
         :min-columns="lines"
         :max-columns="lines"
         :class="{strict: isStrictSize}">
         <template #default="{item}">
           <div class="grid-item">
-            <img 
-              :loading="currentPage != 1 ? 'lazy' : undefined" 
+            <img
+              :loading="currentPage != 1 ? 'lazy' : undefined"
               :src="item.thumbURL"
               :srcset="getThumbMultiURL(item.hash)"
               :sizes="columnWidth +'px'"
-              :alt="item.name" 
-              :width="cssSize" 
+              :alt="item.name"
+              :width="cssSize"
               :height="Math.round(cssSize / item.width * item.height)"
               @error="onErrorImgLoad">
           </div>
@@ -302,7 +302,7 @@ onMounted(async () => {
   }
 }
 .inf-handler-position {
-  position: absolute; 
+  position: absolute;
   bottom: 0;
   height: 100%;
   display: flex;

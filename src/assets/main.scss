@@ -112,8 +112,8 @@ body {
   border-radius: var(--border-r);
   padding: 0 8px;
   &[type="number"] {
-    width: 50px; 
-    text-align: end; 
+    width: 50px;
+    text-align: end;
     display: inline;
     background-color: transparent;
     &::-webkit-inner-spin-button {
@@ -133,7 +133,7 @@ body {
 }
 // Модальное окно
 .popup {
-  background-color: var(--c-b2a); 
+  background-color: var(--c-b2a);
   backdrop-filter: blur(var(--div-blur));
   border-radius: var(--border-r);
   padding: 16px;
@@ -171,7 +171,7 @@ input[type="range"] {
     margin-top: -5px;
     background-color: var(--c-t0);
     height: 16px;
-    width: 16px;   
+    width: 16px;  
     border-radius: 50%;
     &:hover {
       background-color: var(--c-t2);
@@ -191,7 +191,7 @@ input[type="range"] {
     margin-top: -5px;
     background-color: var(--c-t0);
     height: 16px;
-    width: 16px;   
+    width: 16px;  
     border-radius: 50%;
     &:hover {
       background-color: var(--c-t2);

@@ -53,7 +53,7 @@ const {
   min-width: 0;
   width: 200px;
   display: flex;
-  flex-direction: column; 
+  flex-direction: column;
   gap: 8px;
 }
 .label-group {

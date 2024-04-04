@@ -9,8 +9,8 @@ import {
   ArrowDownAZ, ArrowUpAZ, ArrowDown01, ArrowUp01,
 } from 'lucide-vue-next'
 
-const { 
-  targetAlbum, sort, isReverse 
+const {
+  targetAlbum, sort, isReverse
 } = storeToRefs(useAlbumParamsStore())
 
 const { user } = storeToRefs(useAuthStore())
@@ -47,7 +47,7 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
       <!-- Сдвиг -->
       <div style="margin-left: auto;"></div>
       <!--    =  Сортировка  =    -->
-      
+     
       <button
         class="btn btn--quad change-direction-btn"
         title="Change sort direction"
@@ -70,15 +70,15 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
         <option value="ratio">Ratio</option>
       </select>
       <!--    =  Кастомизации =     -->
-      <button 
-        class="btn btn--quad" 
+      <button
+        class="btn btn--quad"
         title="Open customization panel"
         @click="toggleCustomizCard">
         <Palette size="20"/>
       </button>
       <!--    =  Панель пользователя  =    -->
       <button
-        class="btn btn--quad" 
+        class="btn btn--quad"
         title="Open user panel"
         v-if="user.nickname"
         @click="toggleUserCard">
@@ -86,7 +86,7 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
       </button>
       <!--    =  Авторизация  =    -->
       <button
-        class="btn btn--quad" 
+        class="btn btn--quad"
         title="Open authorization form"
         v-else
         @click="toggleAuthCard">
@@ -94,11 +94,11 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
       </button>
     </div>
   </header>
-  
+ 
   <OverlayPanel ref="customizCard" class="popup popup--fixed">
     <SettingsPanel/>
   </OverlayPanel>
-  
+ 
   <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
     <UserPanel/>
   </OverlayPanel>

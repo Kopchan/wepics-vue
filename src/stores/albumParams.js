@@ -7,15 +7,15 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const route = useRoute()
 
   const createProp = (
-    name, 
-    defaultValue = null, 
+    name,
+    defaultValue = null,
     isParam = false
   ) => computed({
     get: () => {
       const prop = route[isParam ? 'params' : 'query'][name]
       if (prop === null)
         return true
-      
+     
       return prop ?? defaultValue
     },
     set: (value) => {
@@ -25,7 +25,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
         const params = route.params
         router.push({
           name: 'album',
-          params: { ...params, [name]: value ?? defaultValue }, 
+          params: { ...params, [name]: value ?? defaultValue },
           query
         })
         return
@@ -34,7 +34,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       let newQuery = {...query}
       if (value === undefined || value === false)
         delete newQuery[name]
-      
+     
       else if (value === true)
         newQuery[name] = null
 
@@ -48,6 +48,6 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const perPage     = createProp('perPage', 30 )
   const sort        = createProp('sort', 'name')
   const isReverse   = createProp('reverse', false)
-  
+ 
   return { targetAlbum, perPage, sort, isReverse }
 })

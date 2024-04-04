@@ -19,7 +19,7 @@ function request(method) {
       requestOptions.headers['Content-Type'] = 'application/json'
       requestOptions.body = JSON.stringify(body)
     }
-    
+   
     return fetch(API_PATH + path, requestOptions).then(handleResponse)
   }
 }
@@ -28,19 +28,19 @@ function authHeader() {
   const auth = useAuthStore()
   if (auth.token)
     return { Authorization: `Bearer ${auth.user.token}` }
-  
+ 
   return {}
 }
 
 function handleResponse(response) {
   return response.text().then(async text => {
     const data = tryParceJSON(text)
-    
+   
     if (!response.ok) {
       const auth = useAuthStore()
       if ([401].includes(response.status) && auth.user.token)
         auth.logout()
-      
+     
       if (response.status == 429) {
         await sleep(5000) // FIXME: Сделать норм обработку 429, мб серв отдаёт время когда можно ещё раз попробовать
       }

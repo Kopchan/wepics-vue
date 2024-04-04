@@ -26,6 +26,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const radius       = createProp('radius', 12)
   const orientation  = createProp('orientation', 'w')
   const theme        = createProp('theme', 'auto')
-  
+ 
   return { settings, reset, size, isStrictSize, isRealSize, lines, gap, radius, orientation, theme }
 })

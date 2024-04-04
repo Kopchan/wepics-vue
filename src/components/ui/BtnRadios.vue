@@ -18,7 +18,7 @@ value.value ??= Object.keys(options.value)[0]
 <template>
   <div class="line">
     <template v-for="(option, index) in options" :key="index">
-      <input 
+      <input
         type="radio"
         v-model="value"
         :name  ="name"

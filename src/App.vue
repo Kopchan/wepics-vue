@@ -36,7 +36,7 @@ const setupTheme = () => {
     })
     return
   }
-}  
+} 
 
 onMounted(() => {
   if (theme.value == 'light' ||
