@@ -25,9 +25,9 @@ function request(method) {
 }
 
 function authHeader() {
-  const token = localStorage.getItem('token')
-  if (token)
-    return { Authorization: `Bearer ${token}` }
+  const auth = useAuthStore()
+  if (auth.token)
+    return { Authorization: `Bearer ${auth.user.token}` }
   
   return {}
 }
@@ -37,9 +37,9 @@ function handleResponse(response) {
     const data = tryParceJSON(text)
     
     if (!response.ok) {
-      const { user, logout } = useAuthStore()
-      if ([401].includes(response.status) && user)
-        logout()
+      const auth = useAuthStore()
+      if ([401].includes(response.status) && auth.user.token)
+        auth.logout()
       
       if (response.status == 429) {
         await sleep(5000) // FIXME: Сделать норм обработку 429, мб серв отдаёт время когда можно ещё раз попробовать

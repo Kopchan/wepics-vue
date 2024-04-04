@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
-import { useDevicePixelRatio, useWindowSize, watchDebounced, watchThrottled } from '@vueuse/core'
+import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
 import MasonryWall from '@yeger/vue-masonry-wall'
 
 import { API_PATH } from '@/config'
@@ -38,7 +38,7 @@ watch(
 
 // Косметические параметры и URL на превью
 const { 
-  settings, size, isStrictSize, isRealSize, lines, gap, radius, orientation 
+  size, isStrictSize, isRealSize, lines, gap, radius, orientation 
 } = storeToRefs(useSettingsStore())
 
 const { pixelRatio } = useDevicePixelRatio()

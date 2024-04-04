@@ -3,7 +3,7 @@ import TheHeader from '@/components/TheHeader.vue'
 import SideBar from './components/SideBar.vue'
 import { useSettingsStore } from './stores'
 import { storeToRefs } from 'pinia'
-import { onMounted, watch } from 'vue';
+import { onMounted, watch } from 'vue'
 
 const { theme } = storeToRefs(useSettingsStore())
 
@@ -14,18 +14,19 @@ const getNodesFromString = (html) => {
 }
 
 const setupTheme = () => {
-  document.body.className = ''
-  let metaTags = document.head.querySelectorAll('[name="theme-color"]')
+  document.documentElement.classList.remove('light', 'dark')
+  const metaTags = document.head.querySelectorAll('[name="theme-color"]')
   for(const metaTag of metaTags) metaTag.remove()
 
   switch (theme.value) {
   case 'light':
   case 'dark':
-    document.body.classList.add(theme.value)
-    getNodesFromString(`<meta name="theme-color" content="#${theme.value == 'light' ? 'fff' : '000' }">`)
-      .forEach(node => {
-        document.head.appendChild(node)
-      })
+    document.documentElement.classList.add(theme.value)
+    getNodesFromString(
+      `<meta name="theme-color" content="#${theme.value == 'light' ? 'fff' : '000'}">`
+    ).forEach(node => {
+      document.head.appendChild(node)
+    })
     return
   case 'auto':
     getNodesFromString(

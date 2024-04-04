@@ -1,27 +1,35 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchWrapper, storageWrapper } from '@/helpers'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = storageWrapper('user')
   
-  async function registrate({ nickname, email, password }) {
+  async function signup({ nickname, login, password }) {
     const response = await fetchWrapper
-      .post('/signup', { nickname, email, password })
+      .post('/users/reg', { nickname, login, password })
       
     user.token = response.token
-    user.isAdmin = response.isAdmin
+    user.isAdmin = false
+    user.nickname = nickname
   }
-  async function login({ email, password }) {
-    const response = await fetchWrapper
-      .post('/login', { email, password })
+
+  async function login({ login, password }) {
+    const res = await fetchWrapper
+      .post('/users/login', { login, password })
       
-    user.token = response.token
-    user.isAdmin = response.isAdmin
+    user.token = res.token
+    user.isAdmin = res.isAdmin ?? false
+    user.nickname = res.nickname
   }
+
   async function logout() {
-    fetchWrapper.post('/logout')
-    user.length = 0
+    await fetch('/users/logout', {
+      headers: { Authorization: `Bearer ${user.token}` }
+    }).catch()
+    
+    for (const key in user)
+      delete user[key]
   }
-  return { user, token: user.token, registrate, login, logout }
+
+  return { user, signup, login, logout }
 })

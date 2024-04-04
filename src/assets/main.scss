@@ -65,6 +65,10 @@ body {
       background: var(--c-t2a);
     }
   }
+  &:disabled {
+    color: var(--c-t2a);
+    background: red;
+  }
 }
 // Выпадающий список
 .droplist {
@@ -131,6 +135,8 @@ body {
     position: fixed !important;
     display: block !important;
     top: 40px !important;
+    overflow: scroll;
+    max-height: calc(100vh - 80px);
   }
 }
 

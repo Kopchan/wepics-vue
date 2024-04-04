@@ -1,12 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAlbumParamsStore } from '@/stores'
+import { useAlbumParamsStore, useAuthStore } from '@/stores'
 import OverlayPanel from 'primevue/overlaypanel'
 import AuthForm from '@/components/AuthForm.vue'
-import SettingsForm from '@/components/SettingsForm.vue'
+import UserPanel from '@/components/UserPanel.vue'
+import SettingsForm from '@/components/SettingsPanel.vue'
 import {
-  Menu, ChevronRight, Palette, LogIn,
+  Menu, ChevronRight, Palette, LogIn, User,
   ArrowDownAZ, ArrowUpAZ, ArrowDown01, ArrowUp01,
 } from 'lucide-vue-next'
 
@@ -14,9 +15,13 @@ const {
   targetAlbum, sort, isReverse 
 } = storeToRefs(useAlbumParamsStore())
 
+const { user } = storeToRefs(useAuthStore())
+
 const authCard = ref()
+const userCard = ref()
 const customizCard = ref()
 const toggleAuthCard     = (e) =>     authCard.value.toggle(e)
+const toggleUserCard     = (e) =>     userCard.value.toggle(e)
 const toggleCustomizCard = (e) => customizCard.value.toggle(e)
 </script>
 
@@ -73,10 +78,19 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
         @click="toggleCustomizCard">
         <Palette size="20"/>
       </button>
+      <!--    =  Панель пользователя  =    -->
+      <button
+        class="btn btn--quad" 
+        title="Open user panel"
+        v-if="user.nickname"
+        @click="toggleUserCard">
+        <User size="20"/>
+      </button>
       <!--    =  Авторизация  =    -->
-      <button 
+      <button
         class="btn btn--quad" 
         title="Open authorization form"
+        v-else
         @click="toggleAuthCard">
         <LogIn size="20"/>
       </button>
@@ -86,8 +100,12 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
   <OverlayPanel ref="customizCard" class="popup popup--fixed">
     <SettingsForm/>
   </OverlayPanel>
+  
+  <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
+    <UserPanel/>
+  </OverlayPanel>
 
-  <OverlayPanel ref="authCard" class="popup popup--fixed">
+  <OverlayPanel ref="authCard" class="popup popup--fixed" v-if="!user.nickname">
     <AuthForm/>
   </OverlayPanel>
 </template>
