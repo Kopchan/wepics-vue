@@ -8,8 +8,9 @@ import MasonryWall from '@yeger/vue-masonry-wall'
 
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
-import { useAlbumParamsStore, useSettingsStore } from '@/stores'
+import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores';
 import { computed } from 'vue'
+import { SmilePlus, Download } from 'lucide-vue-next'
 
 // Параметры роутера и URL на альбом
 const  {
@@ -97,6 +98,7 @@ watchThrottled(
 */
 // Порционный запрос картинок
 let currentPage = 1
+let retries = 0
 const isLoading   = ref(null)
 const canLoadMore = ref(true)
 const images      = ref([])
@@ -119,11 +121,12 @@ const loadMore = async () => {
       images.value = [...images.value, ...data.pictures]
       currentPage++
       isLoading.value = false
-    })
-    .catch(async (error) => {
+    }).catch(async (error) => {
       isLoading.value = false
       switch (error.status) {
       case 500:
+        retries++
+        if (retries > 5) canLoadMore.value = false
         await sleep(1000)
         return
       case 429: // TODO: Вывсети уведомление о частых запросов
@@ -167,6 +170,32 @@ onMounted(async () => {
     { deep: true, immediate: true, debounce: 500 }
   )
 })
+const units = ['B', 'kB', 'MB', 'GB', 'TB']
+const humanFileSize = (bytes) => {
+  var i = bytes == 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024))
+  return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + units[i]
+}
+
+const { user } = storeToRefs(useAuthStore())
+const downloadOriginal = (hash, name = '') => {
+  fetch(`${API_PATH}/albums/${targetAlbum.value}/images/${hash}/orig`, {
+    [user.value.token ? 'headers' : null]: { 
+      Authorization: `Bearer ${user.value.token}` 
+    }
+  })
+    .then(resp => resp.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = name
+      a.click()
+      window.URL.revokeObjectURL(url)
+    })
+}
+
+const reactions = ref(null)
+fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.value))
 </script>
 
 <template>
@@ -174,12 +203,7 @@ onMounted(async () => {
     <div class="grid_outer">
       <!-- DEBUG
       <button @click="console.log({
-        sizeNew,
-        size,
-        cssSize,
-        lines,
-        gap,
-        settings,
+        reactions,
       })">
         get values
       </button>
@@ -196,7 +220,7 @@ onMounted(async () => {
         <template #default="{item}">
           <div class="grid-item">
             <img
-              :loading="currentPage != 1 ? 'lazy' : undefined"
+              loading="lazy"
               :src="item.thumbURL"
               :srcset="getThumbMultiURL(item.hash)"
               :sizes="columnWidth +'px'"
@@ -204,6 +228,41 @@ onMounted(async () => {
               :width="cssSize"
               :height="Math.round(cssSize / item.width * item.height)"
               @error="onErrorImgLoad">
+            <div class="overlay">
+              <div>
+                <div class="top-group">
+                  <span class="badge">{{ item.name.split('.').at(-1) }}</span>
+                  <span class="name">{{ item.name.replace(/\.[^/.]+$/, "") }}</span>
+                </div>  
+              </div>
+              <div class="bottom-group">
+                <input type="checkbox" :id="item.hash">
+                <label 
+                  v-if="user.token"
+                  class="btn btn--reaction"
+                  :for="item.hash">
+                  <div class="options">
+                    <label 
+                      :key="option"
+                      :for="item.hash"
+                      class="btn btn--circle option"
+                      v-for="option in reactions">
+                      {{ option }}
+                    </label>
+                  </div>
+                  <SmilePlus size="20"/>
+                </label>
+                <button class="btn btn--download" @click="downloadOriginal(item.hash, item.name)">
+                  <span class="size">{{ humanFileSize(item.size) }}</span>
+                  <Download size="20"/>
+                </button>
+              </div>
+            </div>
+            <div class="reactions">
+              <div class="reaction" v-for="reaction in item.reactions" :key="reaction">
+
+              </div>
+            </div>
           </div>
         </template>
       </MasonryWall>
@@ -239,11 +298,18 @@ onMounted(async () => {
   }
   &-item {
     border-radius: v-bind('radius + "px"');
+    position: relative;
+    transition: outline .2s;
+    outline: 1px solid transparent;
     &:hover {
       background-color: var(--c-b2);
-      outline: 1px solid;
+      outline: 1px solid var(--c-t0a);
       .info {
         display: block;
+      }
+      .overlay {
+        //display: flex;
+        opacity: 1;
       }
     }
     img {
@@ -261,6 +327,148 @@ onMounted(async () => {
         left: 0;
       }
     }
+    .reactions {
+      display: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      :hover {
+        display: none;
+      }
+      .reaction {
+        background-color: #000a;
+        height: 24px;
+        padding: 2px 5px;
+        border-radius: 12px;
+      }
+    }
+    .overlay {
+      //display: none;
+      display: flex;
+      opacity: 0;
+      transition: opacity .2s;
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      top: 0;
+      padding: calc(v-bind('radius + "px"') / 4 + 6px);
+      flex-direction: column;
+      justify-content: space-between;
+      .top-group {
+        display: flex;
+        gap: 6px;
+        filter:
+          drop-shadow(0 0 10px #000) 
+          drop-shadow(0 0 3px #000);
+        .name {
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          color: #fff;
+        }
+        .badge {
+          font-size: 12px;
+          padding: 2px 5px;
+          background-color: #fffa;
+          border-radius: var(--border-r);
+          color: #000;
+          display: flex;
+          justify-items: center;
+          align-items: center;
+          text-transform: uppercase
+        }
+      }
+      .bottom-group {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: calc(100% - 64px);
+        input[type='checkbox'] {
+          position: absolute;
+          z-index: -1;
+          opacity: 0;
+        }
+        .btn--reaction {
+          transition: background 0s;
+          backdrop-filter: none;
+          height: unset;
+          min-height: 32px;
+          min-width: 32px;
+          max-height: 100%;
+          padding: 0;
+          color: #fff;
+          flex-direction: column;
+          filter:
+            drop-shadow(0 0 10px #000) 
+            drop-shadow(0 0 3px #000);
+          .options {
+            transition: .5s;
+            display: flex;
+            flex-direction: column;
+            max-height: 0;
+            opacity: 0;
+            gap: 8px;
+            overflow-x: auto;
+            .option {
+
+            }
+          }
+          .lucide {
+            min-height: 20px;
+            margin: 8px;
+          }
+          &:hover {
+            background-color: #222a;
+            backdrop-filter: blur(var(--div-blur));
+            filter: none;
+          }
+          &:active {
+            background-color: #222;
+          }
+        }
+        input[type='checkbox']:checked + .btn--reaction {
+          background-color: #222a;
+          backdrop-filter: blur(var(--div-blur));
+          filter: none;
+          .options {
+            max-height: 500px;
+            opacity: unset;
+          }
+        }
+        .btn--download {
+          transition: background 0s;
+          margin-left: auto;
+          font-size: 14px;
+          color: #fff;
+          backdrop-filter: none;
+          gap: 6px;
+          filter:
+            drop-shadow(0 0 10px #000) 
+            drop-shadow(0 0 3px #000);
+          .size {
+            transition: .5s;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            text-wrap: nowrap;
+          }
+          &:hover,
+          &:active {
+            background-color: #222a;
+            backdrop-filter: blur(var(--div-blur));
+            filter: unset;
+            &:active {
+              background-color: #222;
+            }
+            .size {
+              max-width: 150px;
+              opacity: unset;
+            }
+          }
+        }
+      }
+    }
     .info {
       padding: 10px;
       position: absolute;
@@ -268,7 +476,7 @@ onMounted(async () => {
       @media (hover: hover) and (pointer: fine) {
         display: none;
       }
-      p {
+      .name {
         text-overflow: ellipsis;
         width: 100%;
         white-space: nowrap;
@@ -308,32 +516,4 @@ onMounted(async () => {
   display: flex;
   flex-direction: column-reverse;
 }
-
-/*  = =  Кладка картинок-карточек (горизонтально)  = =  */
-/*
-body.grid--horizontal {
-  .grid_outer {
-    position: fixed;
-    top:   0;
-    left:  0;
-    right: 0;
-    box-sizing: border-box;
-    height: 100%;
-    margin: 0;
-    overflow-x: unset;
-    overflow-y: hidden;
-    padding: var(--header-height) 0 var(--cards-gap) var(--cards-gap);
-  }
-  .grid {
-    margin: 0;
-    height: 100%;
-    &-item {
-      margin-bottom: 0;
-      width: auto;
-      height: var(--card-width);
-      margin-right: var(--cards-gap);
-    }
-  }
-}
-*/
 </style>

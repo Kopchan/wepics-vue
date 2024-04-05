@@ -26,7 +26,7 @@ function request(method) {
 
 function authHeader() {
   const auth = useAuthStore()
-  if (auth.token)
+  if (auth.user.token)
     return { Authorization: `Bearer ${auth.user.token}` }
  
   return {}

@@ -11,13 +11,13 @@
   margin:  0;
   padding: 0;
   transition: background-color .2s;
+  font-family: "Roboto Flex", sans-serif;
 }
 
 body {
   background-color: var(--c-b0);
   color:      var(--c-t0);
   user-select: none;
-  font-family: "Roboto Flex", sans-serif;
   transition: color .2s;
 }
 
