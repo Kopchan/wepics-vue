@@ -9,11 +9,15 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const createProp = (
     name,
     defaultValue = null,
-    isParam = false
+    routeName = false,
+    isArray = false,
   ) => computed({
     get: () => {
-      const prop = route[isParam ? 'params' : 'query'][name]
-      if (prop === null)
+      const prop = route[routeName ? 'params' : 'query'][name]
+      if (isArray) {
+        return prop?.split(',')?.map(elem => decodeURIComponent(elem)) ?? []
+      }
+      else if (prop === null)
         return true
      
       return prop ?? defaultValue
@@ -21,10 +25,18 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     set: (value) => {
       const query = route.query
 
-      if (isParam) {
+      if (routeName) {
+        if (value === undefined || value === defaultValue) {
+          router.push({
+            name: 'home',
+            query
+          })
+          return
+        }
+        
         const params = route.params
         router.push({
-          name: 'album',
+          name: routeName,
           params: { ...params, [name]: value ?? defaultValue },
           query
         })
@@ -32,22 +44,26 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       }
 
       let newQuery = {...query}
-      if (value === undefined || value === false)
+      if (value === undefined || value === false || value.length === 0)
         delete newQuery[name]
      
       else if (value === true)
         newQuery[name] = null
 
+      else if (value instanceof Array) {
+        newQuery[name] = value.map(elem => encodeURIComponent(elem))?.join(',')
+      }
       else newQuery[name] = value
 
       router.replace({ query: newQuery })
     }
   })
 
-  const targetAlbum = createProp('albumHash', 'root', true)
-  const perPage     = createProp('perPage', 30 )
+  const targetAlbum = createProp('albumHash', 'root', 'album')
+  const limit       = createProp('limit', 30 )
   const sort        = createProp('sort', 'name')
   const isReverse   = createProp('reverse', false)
+  const tags        = createProp('tags', [], undefined, true)
  
-  return { targetAlbum, perPage, sort, isReverse }
+  return { targetAlbum, limit, sort, isReverse, tags }
 })

@@ -36,6 +36,7 @@ value.value ??= Object.keys(options.value)[0]
   background-color: var(--c-b0a);
   padding: 6px;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   border-radius: var(--border-r);
   input[type="radio"] {
@@ -55,7 +56,7 @@ value.value ??= Object.keys(options.value)[0]
       }
     }
     &:disabled + label {
-      background-color: none;
+      background-color: transparent;
       cursor: not-allowed;
       color: var(--c-t2a);
     }

@@ -141,7 +141,7 @@ body {
     position: fixed !important;
     display: block !important;
     top: 40px !important;
-    overflow: scroll;
+    overflow-x: auto;
     max-height: calc(100vh - 80px);
   }
   &.p-overlaypanel-leave-active {

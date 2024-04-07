@@ -1,40 +1,48 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
+import { SmilePlus, Download } from 'lucide-vue-next'
 import MasonryWall from '@yeger/vue-masonry-wall'
 
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
-import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores';
-import { computed } from 'vue'
-import { SmilePlus, Download } from 'lucide-vue-next'
+import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 
 // Параметры роутера и URL на альбом
 const  {
-  targetAlbum, perPage, sort, isReverse
+  targetAlbum, limit, sort, isReverse, tags
 } = storeToRefs(useAlbumParamsStore())
 
 const getAlbumURL = (page) =>
   '/albums/'  + targetAlbum.value +
   '/images?page=' +    page       +
-  '&per_page=' +    perPage.value +
+  '&limit=' +         limit.value +
   '&sort=' +           sort.value +
   (isReverse.value ? '&reverse' : '')
 
 const route = useRoute()
+const cleanUpWall = () => {
+  canLoadMore.value = false
+  isLoading  .value = false
+  images     .value = []
+  currentPage = 1
+  canLoadMore.value = true
+}
 watch(
   () => route,
   debounceImmediate(() => {
-    canLoadMore.value = false
-    isLoading  .value = false
-    images     .value = []
-    currentPage = 1
-    canLoadMore.value = true
+    if (isLoading.value) watch(
+      () => isLoading.value, 
+      cleanUpWall, 
+      { once: true }
+    )
+    else 
+      cleanUpWall()
   }, 500),
-  {deep: true }
+  { deep: true }
 )
 
 // Косметические параметры и URL на превью
@@ -106,57 +114,62 @@ const loadMore = async () => {
   if (!canLoadMore.value || isLoading.value) return
   isLoading.value = true
 
-  await fetchWrapper.get(getAlbumURL(currentPage))
-    .then((data) => {
-      if (!canLoadMore.value) return
-      canLoadMore.value = !(data.total < currentPage * perPage.value)
+  await fetchWrapper.get(
+    getAlbumURL(currentPage)
+  ).then((data) => {
+    if (!canLoadMore.value) return
+    canLoadMore.value = !(data.total < currentPage * limit.value)
 
-      imgSign.value = data.sign
-     
-      const newImages = data.pictures
-      newImages.forEach(element => {
-        element.thumbURL = getThumbURL(element.hash)
-      })
-     
-      images.value = [...images.value, ...data.pictures]
-      currentPage++
-      isLoading.value = false
-    }).catch(async (error) => {
-      isLoading.value = false
-      switch (error.status) {
-      case 500:
-        retries++
-        if (retries > 5) canLoadMore.value = false
-        await sleep(1000)
-        return
-      case 429: // TODO: Вывсети уведомление о частых запросов
-        alert(error.message)
-        return
-      case 404: // TODO: Сделать красивую страницу
-      case 403: // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
-      default:
-        canLoadMore.value = false
-        alert(error.message)
-      }
+    imgSign.value = data.sign
+   
+    const newImages = data.pictures
+    newImages.forEach(element => {
+      element.thumbURL = getThumbURL(element.hash)
     })
+
+    // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
+    images.value = images.value.concat(data.pictures)
+
+    currentPage++
+    isLoading.value = false
+  }).catch(async (error) => {
+    isLoading.value = false
+    switch (error.status) {
+    case 500:
+      retries++
+      if (retries > 5) canLoadMore.value = false
+      await sleep(1000)
+      return
+    case 429: // TODO: Вывсети уведомление о частых запросов
+      alert(error.message)
+      return
+    case 404: // TODO: Сделать красивую страницу
+    case 403: // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
+    default:
+      canLoadMore.value = false
+      alert(error.message)
+    }
+  })
 }
 
 // Перезагрузка превьюшек с ошибками
-const maxRetries = 4
-const retryCounts = ref({})
+const maxImgRetries = 4
+const imgRetryCounts = ref({})
 const onErrorImgLoad = async (event) => {
   // FIXME: не всегда срабатывает (второй раз?)
   const src = event.target.attributes.src.value
-  retryCounts.value[src] ||= 0
+  imgRetryCounts.value[src] ||= 0
  
-  if (retryCounts.value[src] <= maxRetries) {
+  if (imgRetryCounts.value[src] <= maxImgRetries) {
     await sleep(1000)
-    retryCounts.value[src]++
+    imgRetryCounts.value[src]++
     event.src = event.src + ''
   }
 }
-const columnWidth = ref(cssSize.value)
+
+// Получение инфо о колонках
 const masonryWall = ref(null)
+const columnWidth = ref(cssSize.value)
 const windowWidth = useWindowSize().width
 
 onMounted(async () => {
@@ -170,32 +183,43 @@ onMounted(async () => {
     { deep: true, immediate: true, debounce: 500 }
   )
 })
+
+// Человеческие размеры файлов
 const units = ['B', 'kB', 'MB', 'GB', 'TB']
 const humanFileSize = (bytes) => {
   var i = bytes == 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024))
   return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + units[i]
 }
 
+// Загрузчик оригинала картинки
 const { user } = storeToRefs(useAuthStore())
 const downloadOriginal = (hash, name = '') => {
   fetch(`${API_PATH}/albums/${targetAlbum.value}/images/${hash}/orig`, {
     [user.value.token ? 'headers' : null]: { 
       Authorization: `Bearer ${user.value.token}` 
     }
+  }).then(
+    resp => resp.blob()
+  ).then(blob => {
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = name
+    a.click()
+    window.URL.revokeObjectURL(url)
   })
-    .then(resp => resp.blob())
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = name
-      a.click()
-      window.URL.revokeObjectURL(url)
-    })
 }
 
-const reactions = ref(null)
-fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.value))
+// Получение разрешённых реакций
+const allowedReactions = ref(null)
+fetchWrapper.get('/reactions').then(data => 
+  allowedReactions.value = data.map(el => el.value)
+)
+
+// Переключение реакции на картинке
+const toggleReaction = (image, reaction) => {
+
+}
 </script>
 
 <template>
@@ -203,7 +227,7 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
     <div class="grid_outer">
       <!-- DEBUG
       <button @click="console.log({
-        reactions,
+        tags,
       })">
         get values
       </button>
@@ -224,7 +248,7 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
               :src="item.thumbURL"
               :srcset="getThumbMultiURL(item.hash)"
               :sizes="columnWidth +'px'"
-              :alt="item.name"
+              alt=""
               :width="cssSize"
               :height="Math.round(cssSize / item.width * item.height)"
               @error="onErrorImgLoad">
@@ -235,32 +259,40 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
                   <span class="name">{{ item.name.replace(/\.[^/.]+$/, "") }}</span>
                 </div>  
               </div>
+
               <div class="bottom-group">
                 <input type="checkbox" :id="item.hash">
                 <label 
                   v-if="user.token"
                   class="btn btn--reaction"
                   :for="item.hash">
-                  <div class="options">
+                    <div class="options">
                     <label 
-                      :key="option"
                       :for="item.hash"
+                      :key="option"
                       class="btn btn--circle option"
-                      v-for="option in reactions">
+                      v-for="option in allowedReactions"
+                      @click="toggleReaction(item, reaction)">
                       {{ option }}
                     </label>
                   </div>
                   <SmilePlus size="20"/>
                 </label>
+
                 <button class="btn btn--download" @click="downloadOriginal(item.hash, item.name)">
                   <span class="size">{{ humanFileSize(item.size) }}</span>
                   <Download size="20"/>
                 </button>
               </div>
             </div>
+            <div class="download-line"></div>
             <div class="reactions">
-              <div class="reaction" v-for="reaction in item.reactions" :key="reaction">
-
+              <div 
+                class="reaction" 
+                v-for="reaction in item.reactions" 
+                :key="reaction"
+                @click="toggleReaction(item, reaction)">
+                {{ reaction }}
               </div>
             </div>
           </div>
@@ -275,6 +307,10 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
         <p>End</p>
       </div>
       <div class="inf-handler-position" v-if="canLoadMore && !isLoading">
+        <!-- 
+          // FIXME: Еслип пользователь опустится моментально в самый низ и экран по высоте будет меньше
+                    3000px, то подгружаться будет если опустится в самый конец 
+        -->
         <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
         <div style="min-height: 0; height: 3000px;"></div>
         <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
@@ -299,17 +335,15 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
   &-item {
     border-radius: v-bind('radius + "px"');
     position: relative;
-    transition: outline .2s;
-    outline: 1px solid transparent;
     &:hover {
       background-color: var(--c-b2);
-      outline: 1px solid var(--c-t0a);
       .info {
         display: block;
       }
       .overlay {
         //display: flex;
         opacity: 1;
+        border: 1px solid var(--c-t0a);
       }
     }
     img {
@@ -343,15 +377,17 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
       }
     }
     .overlay {
+      border-radius: v-bind('radius + "px"');
       //display: none;
       display: flex;
       opacity: 0;
-      transition: opacity .2s;
+      transition: opacity .2s, border .2s;
       position: absolute;
       bottom: 0;
       right: 0;
       left: 0;
       top: 0;
+      border: 1px solid transparent;
       padding: calc(v-bind('radius + "px"') / 4 + 6px);
       flex-direction: column;
       justify-content: space-between;
@@ -390,7 +426,7 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
           opacity: 0;
         }
         .btn--reaction {
-          transition: background 0s;
+          transition: background 0s, color 0s;
           backdrop-filter: none;
           height: unset;
           min-height: 32px;
@@ -418,17 +454,26 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
             min-height: 20px;
             margin: 8px;
           }
-          &:hover {
-            background-color: #222a;
+          &:hover,
+          &:active {
+            transition: background .2s, color .2s;
+            background-color: var(--c-b0a);
+            color: var(--c-t0);
             backdrop-filter: blur(var(--div-blur));
             filter: none;
+            &:active {
+              background-color: var(--c-b0);
+              color: var(--c-t0);
+            }
           }
           &:active {
-            background-color: #222;
+            background-color: var(--c-b0);
+            color: var(--c-t0);
           }
         }
         input[type='checkbox']:checked + .btn--reaction {
-          background-color: #222a;
+          background-color: var(--c-b0a);
+          color: var(--c-t0);
           backdrop-filter: blur(var(--div-blur));
           filter: none;
           .options {
@@ -437,7 +482,7 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
           }
         }
         .btn--download {
-          transition: background 0s;
+          transition: background 0s, color 0s;
           margin-left: auto;
           font-size: 14px;
           color: #fff;
@@ -447,7 +492,8 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
             drop-shadow(0 0 10px #000) 
             drop-shadow(0 0 3px #000);
           .size {
-            transition: .5s;
+            color: transparent;
+            transition: max-width .5s;
             max-width: 0;
             opacity: 0;
             overflow: hidden;
@@ -455,13 +501,17 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
           }
           &:hover,
           &:active {
-            background-color: #222a;
+            transition: background .2s, color .2s;
+            background-color: var(--c-b0a);
             backdrop-filter: blur(var(--div-blur));
+            color: var(--c-t0);
             filter: unset;
             &:active {
-              background-color: #222;
+              background-color: var(--c-b0);
             }
             .size {
+              transition: max-width .5s, color .5s;
+              color: var(--c-t0);
               max-width: 150px;
               opacity: unset;
             }
@@ -469,20 +519,16 @@ fetchWrapper.get('/reactions').then(data => reactions.value = data.map(el => el.
         }
       }
     }
-    .info {
-      padding: 10px;
+    /*.download-line {
+      bottom: 0;
+      right: 0;
+      left: 0;
       position: absolute;
-      top: 100%;
-      @media (hover: hover) and (pointer: fine) {
-        display: none;
-      }
-      .name {
-        text-overflow: ellipsis;
-        width: 100%;
-        white-space: nowrap;
-        overflow: hidden;
-      }
-    }
+      background-color: #0906;
+      backdrop-filter: blur(var(--div-blur));
+      border-radius: 0 0 v-bind('radius + "px"') v-bind('radius + "px"');
+      height: 8px;
+    }*/
   }
 }
 .message {

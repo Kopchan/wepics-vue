@@ -25,11 +25,11 @@ const {
     <input type="range" min="0" max="12" v-model.number="lines">
 
     <div class="label-group">
-      <label>Size</label>
-      <input type="number" min="144" max="1080" v-model.number="size" class="text-box" :disabled="lines">
+      <label>{{ orientation == 'w' ? 'Width' : 'Height' }}</label>
+      <input type="number" min="144" max="1080" v-model.number="size" class="text-box" :disabled="lines && !isStrictSize">
     </div>
-    <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="lines">
-    <BtnRadios name="isRealSize" :options="['Relative', 'Real']" v-model="isRealSize" :disabled="lines"/>
+    <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="lines && !isStrictSize">
+    <BtnRadios name="isRealSize" :options="['Relative', 'Absolute']" v-model="isRealSize" :disabled="lines && !isStrictSize"/>
     <BtnRadios name="isStrictSize" :options="['Fill', 'Strict']" v-model="isStrictSize"/>
 
     <div class="label-group">

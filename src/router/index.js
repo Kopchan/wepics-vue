@@ -1,9 +1,9 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  relative: true, // FIXME: Не работают относительные роуты, мб надо # роуты
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  //relative: true, // FIXME: Не работают относительные роуты, мб надо # роуты
   routes: [
     {
       path: '/',
@@ -22,12 +22,5 @@ const router = createRouter({
     },
   ]
 })
-
-/*
-router.beforeEach((to, from) => {
-  const newQuery = {...from.query, 'test': Math.random(1)}
-  to.query = newQuery
-})
-*/
 
 export default router
