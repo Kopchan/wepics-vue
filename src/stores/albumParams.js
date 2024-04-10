@@ -1,11 +1,9 @@
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { useRoute } from 'vue-router'
-import router from '@/router'
+import { router } from '@/router'
+import { fetchWrapper } from '@/helpers'
 
 export const useAlbumParamsStore = defineStore('albumParams', () => {
-  const route = useRoute()
-
   const createProp = (
     name,
     defaultValue = null,
@@ -13,7 +11,11 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     isArray = false,
   ) => computed({
     get: () => {
-      const prop = route[routeName ? 'params' : 'query'][name]
+      const prop = router.currentRoute.value[routeName ? 'params' : 'query'][name]
+      if (name === 'albumHash') console.log({
+        get: prop, 
+        by: `router.currentRoute.value[${routeName} ? 'params' : 'query'][${name}]`
+      });
       if (isArray) {
         return prop?.split(',')?.map(elem => decodeURIComponent(elem)) ?? []
       }
@@ -23,7 +25,8 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       return prop ?? defaultValue
     },
     set: (value) => {
-      const query = route.query
+      if (name === 'albumHash') console.log({set: value});
+      const query = router.currentRoute.value.query
 
       if (routeName) {
         if (value === undefined || value === defaultValue) {
@@ -34,7 +37,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
           return
         }
         
-        const params = route.params
+        const params = router.currentRoute.value.params
         router.push({
           name: routeName,
           params: { ...params, [name]: value ?? defaultValue },
@@ -64,6 +67,18 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const sort        = createProp('sort', 'name')
   const isReverse   = createProp('reverse', false)
   const tags        = createProp('tags', [], undefined, true)
+  /*
+  const getAlbumData = () => {
+    fetchWrapper.get('/albums/' + (router.currentRoute.value.params.albumHash ?? 'root'))
+      .then(data => albumData.value = data)
+  }
+  setTimeout(getAlbumData(), 100)
+
+  watch(
+    () => targetAlbum.value, 
+    getAlbumData(),
+  )*/
+  const albumData = ref({})
  
-  return { targetAlbum, limit, sort, isReverse, tags }
+  return { targetAlbum, limit, sort, isReverse, tags, albumData }
 })

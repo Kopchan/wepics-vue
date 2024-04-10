@@ -133,6 +133,7 @@ body {
 }
 // Модальное окно
 .popup {
+  box-shadow: 0 0 10px #000;
   background-color: var(--c-b2a);
   backdrop-filter: blur(var(--div-blur));
   border-radius: var(--border-r);

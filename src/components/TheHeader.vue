@@ -1,26 +1,54 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia'
-import { useAlbumParamsStore, useAuthStore } from '@/stores'
 import OverlayPanel from 'primevue/overlaypanel'
-import { AuthPanel, UserPanel, SettingsPanel } from '@/components/panels'
 import {
   Menu, ChevronRight, Palette, LogIn, User,
   ArrowDownAZ, ArrowUpAZ, ArrowDown01, ArrowUp01,
 } from 'lucide-vue-next'
 
+import { fetchWrapper, debounceImmediate } from '@/helpers';
+import { router } from '@/router'
+import { useAlbumParamsStore, useAuthStore } from '@/stores'
+import { 
+  AuthPanel, UserPanel, SettingsPanel, SubAlbumsPanel 
+} from '@/components/panels'
+import { debouncedWatch } from '@vueuse/core';
+
+const albumParamsStore = useAlbumParamsStore()
+
 const {
-  targetAlbum, sort, isReverse
-} = storeToRefs(useAlbumParamsStore())
+  targetAlbum, sort, isReverse, albumData
+} = storeToRefs(albumParamsStore)
 
 const { user } = storeToRefs(useAuthStore())
+
 
 const authCard = ref()
 const userCard = ref()
 const customizCard = ref()
-const toggleAuthCard     = (e) =>     authCard.value.toggle(e)
-const toggleUserCard     = (e) =>     userCard.value.toggle(e)
-const toggleCustomizCard = (e) => customizCard.value.toggle(e)
+const subAlbumsCard = ref()
+
+const albumChildren = ref(null)
+
+const toggleSubAlbumsCard = (e, hash) => {
+  albumChildren.value = hash
+  subAlbumsCard.value.toggle(e)
+}
+
+onMounted(() => {
+  debouncedWatch(
+    () => targetAlbum.value,
+    () => {
+      fetchWrapper.get(
+        '/albums/' + targetAlbum.value
+      ).then(data => {
+        albumData.value = data
+      })
+    },
+    { debounce: 250 }
+  )
+})
 </script>
 
 <template>
@@ -34,15 +62,44 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
       </div>
       <!--    =  Путь  =    -->
       <div class="breadcrumb">
-        <!--
-        <span class="section"><RouterLink class="btn" to="/">Home</RouterLink></span>
-        -->
-        <span class="section" @click="targetAlbum = undefined"><a class="btn">Home</a></span>
-        <span class="section" @click="targetAlbum = 'ySzskg9sYx2QolqlW62rBsQam'"><a class="btn">ATyans</a></span>
-        <span class="section" @click="targetAlbum = 'nQVSxuzLxP2iKVP7AUdxqBb8o'"><a class="btn">Port</a></span>
-        <button class="btn btn--circle folder-select-btn" title="Show subfolders">
-          <ChevronRight size="20" />
-        </button>
+        <span class="section">
+          <a class="btn" @click="targetAlbum = undefined">Home</a>
+          <button 
+            class="btn btn--circle folder-select-btn" 
+            title="Show subfolders"
+            @click="toggleSubAlbumsCard($event, 'root')">
+            <ChevronRight size="20" />
+          </button>
+        </span>
+        <span 
+          v-for="(parentParams, parent) in albumData?.parentsChain"
+          :key="parent"
+          class="section">
+          <template v-if="parent !== '/'">
+            <a class="btn" @click="targetAlbum = parentParams.hash">
+              {{ parent }}
+            </a>
+            <button 
+              class="btn btn--circle folder-select-btn" 
+              title="Show subfolders"
+              @click="toggleSubAlbumsCard($event, parentParams.hash)">
+              <ChevronRight size="20" />
+            </button>
+          </template>
+        </span>
+        <span
+          v-if="targetAlbum !== 'root'" 
+          class="section">
+          <a class="btn">
+            {{ albumData?.name ?? '...' }}
+          </a>
+          <button 
+            class="btn btn--circle folder-select-btn" 
+            title="Show subfolders"
+            @click="toggleSubAlbumsCard($event, targetAlbum)">
+            <ChevronRight size="20" />
+          </button>
+        </span>
       </div>
       <!-- Сдвиг -->
       <div style="margin-left: auto;"></div>
@@ -73,7 +130,7 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
       <button
         class="btn btn--quad"
         title="Open customization panel"
-        @click="toggleCustomizCard">
+        @click="customizCard.toggle">
         <Palette size="20"/>
       </button>
       <!--    =  Панель пользователя  =    -->
@@ -81,7 +138,7 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
         class="btn btn--quad"
         title="Open user panel"
         v-if="user.nickname"
-        @click="toggleUserCard">
+        @click="userCard.toggle">
         <User size="20"/>
       </button>
       <!--    =  Авторизация  =    -->
@@ -89,11 +146,15 @@ const toggleCustomizCard = (e) => customizCard.value.toggle(e)
         class="btn btn--quad"
         title="Open authorization form"
         v-else
-        @click="toggleAuthCard">
+        @click="authCard.toggle">
         <LogIn size="20"/>
       </button>
     </div>
   </header>
+ 
+ <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
+   <SubAlbumsPanel :hash="albumChildren"/>
+ </OverlayPanel>
  
   <OverlayPanel ref="customizCard" class="popup popup--fixed">
     <SettingsPanel/>
@@ -129,15 +190,10 @@ header {
     display: flex;
     height: 32px;
     align-items: center;
+    overflow: hidden;
     .section {
       display: flex;
       align-items: center;
-      &:not(:first-child)::before {
-        content: '/';
-        color: var(--c-t7);
-        font-size: 24px;
-        padding: 0 4px;
-      }
     }
     a {
       height: 24px;
@@ -145,6 +201,7 @@ header {
       border-radius: var(--border-r);
       overflow: hidden;
       text-overflow: ellipsis;
+      text-wrap: nowrap;
     }
     .folder-select-btn {
       color: var(--c-t7);

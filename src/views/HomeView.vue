@@ -6,10 +6,12 @@ import { vInfiniteScroll } from '@vueuse/components'
 import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
 import { SmilePlus, Download } from 'lucide-vue-next'
 import MasonryWall from '@yeger/vue-masonry-wall'
+import OverlayPanel from 'primevue/overlaypanel'
 
 import { API_PATH } from '@/config'
 import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
+import { AuthPanel } from '@/components/panels'
 
 // Параметры роутера и URL на альбом
 const  {
@@ -21,6 +23,7 @@ const getAlbumURL = (page) =>
   '/images?page=' +    page       +
   '&limit=' +         limit.value +
   '&sort=' +           sort.value +
+  (tags.value.length ? '&tags=' + tags.value.map(elem => encodeURIComponent(elem))?.join(',') : '') +
   (isReverse.value ? '&reverse' : '')
 
 const route = useRoute()
@@ -216,10 +219,36 @@ fetchWrapper.get('/reactions').then(data =>
   allowedReactions.value = data.map(el => el.value)
 )
 
+const authCard = ref()
+const toggleAuthCard = (e) => authCard.value.toggle(e)
 // Переключение реакции на картинке
-const toggleReaction = (image, reaction) => {
+const toggleReaction = (image, reaction, e) => {
+  if (!user.value.token) {
+    toggleAuthCard(e)
+    return
+  }
+  const isYouSetted = image.reactions?.[reaction]?.isYouSet || false
 
+  fetchWrapper[isYouSetted ? 'delete' : 'post'](
+    '/albums/' + targetAlbum.value + 
+    '/images/' + image.hash +
+    '/reactions?reaction=' + reaction
+  ).then(() => {
+    if (!image.reactions)
+      image.reactions = {}
+    
+    if (!image.reactions[reaction])
+      image.reactions[reaction] = {
+        isYouSet: !isYouSetted,
+        count: isYouSetted ? -1 : 1,
+      }
+    else {
+      image.reactions[reaction].isYouSet = !isYouSetted
+      image.reactions[reaction].count += isYouSetted ? -1 : 1
+    }
+  })
 }
+
 </script>
 
 <template>
@@ -270,9 +299,10 @@ const toggleReaction = (image, reaction) => {
                     <label 
                       :for="item.hash"
                       :key="option"
+                      :class="{'btn--inverse': item?.reactions?.[option]?.isYouSet}"
                       class="btn btn--circle option"
                       v-for="option in allowedReactions"
-                      @click="toggleReaction(item, reaction)">
+                      @click="toggleReaction(item, option, $event)">
                       {{ option }}
                     </label>
                   </div>
@@ -285,16 +315,21 @@ const toggleReaction = (image, reaction) => {
                 </button>
               </div>
             </div>
-            <div class="download-line"></div>
             <div class="reactions">
-              <div 
-                class="reaction" 
-                v-for="reaction in item.reactions" 
-                :key="reaction"
-                @click="toggleReaction(item, reaction)">
-                {{ reaction }}
-              </div>
+              <template 
+                v-for="(reactionParams, reaction) in item.reactions" 
+                :key="reaction">
+                <div 
+                  v-if="reactionParams.count > 0"
+                  class="reaction"
+                  :class="{setted: reactionParams.isYouSet}"
+                  @click="toggleReaction(item, reactionParams, $event)">
+                  {{ reaction }}
+                  {{ reactionParams.count }}
+                </div>
+              </template>
             </div>
+            <div class="download-line"></div>
           </div>
         </template>
       </MasonryWall>
@@ -316,6 +351,10 @@ const toggleReaction = (image, reaction) => {
         <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
       </div>
     </div>
+    
+    <OverlayPanel ref="authCard" class="popup popup--fixed">
+      <AuthPanel/>
+    </OverlayPanel>
   </main>
 </template>
 
@@ -345,6 +384,9 @@ const toggleReaction = (image, reaction) => {
         opacity: 1;
         border: 1px solid var(--c-t0a);
       }
+      .reactions {
+        opacity: 0;
+      }
     }
     img {
       border-radius: v-bind('radius + "px"');
@@ -362,21 +404,28 @@ const toggleReaction = (image, reaction) => {
       }
     }
     .reactions {
-      display: absolute;
+      transition: opacity .2s;
+      position: absolute;
+      padding: 6px; 
+      display: flex;
+      flex-wrap: wrap-reverse;
+      gap: 6px;
       bottom: 0;
       right: 0;
       left: 0;
-      :hover {
-        display: none;
-      }
       .reaction {
-        background-color: #000a;
+        background-color: var(--c-b0a);
         height: 24px;
-        padding: 2px 5px;
-        border-radius: 12px;
+        padding: 2px 8px;
+        border-radius: 24px;
+        &.setted {
+          background-color: var(--c-t0);
+          color: var(--c-b0);
+        }
       }
     }
     .overlay {
+      z-index: 50;
       border-radius: v-bind('radius + "px"');
       //display: none;
       display: flex;
@@ -446,9 +495,6 @@ const toggleReaction = (image, reaction) => {
             opacity: 0;
             gap: 8px;
             overflow-x: auto;
-            .option {
-
-            }
           }
           .lucide {
             min-height: 20px;

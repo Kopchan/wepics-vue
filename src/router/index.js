@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 
-const router = createRouter({
+export const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   //relative: true, // FIXME: Не работают относительные роуты, мб надо # роуты
   routes: [
