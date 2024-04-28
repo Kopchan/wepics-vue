@@ -42,6 +42,10 @@ const { user } = storeToRefs(useAuthStore())
   padding: 2px 5px;
   border-radius: var(--border-r);
 }
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 button {
   background-color: var(--c-b0a);
 }

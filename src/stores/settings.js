@@ -3,14 +3,16 @@ import { defineStore } from 'pinia'
 import { storageWrapper } from '@/helpers'
 
 export const useSettingsStore = defineStore('settings', () => {
+  // Инфа об настройках в localStorage
   const settings = storageWrapper('settings')
 
+  // Сброс настроек
   const reset = () => {
     for (const key in settings) {
       delete settings[key]
     }
   }
-
+  // Создание параметра в localStorage со значением по умолчанию
   const createProp = (name, defaultValue) => {
     return computed({
       get: ()      => settings[name] ?? defaultValue,
@@ -27,5 +29,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const orientation  = createProp('orientation', 'w')
   const theme        = createProp('theme', 'auto')
  
-  return { settings, reset, size, isStrictSize, isRealSize, lines, gap, radius, orientation, theme }
+  return { 
+    settings, reset, size, isStrictSize, isRealSize, 
+    lines, gap, radius, orientation, theme 
+  }
 })

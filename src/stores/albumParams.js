@@ -1,35 +1,40 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { router } from '@/router'
-import { fetchWrapper } from '@/helpers'
 
 export const useAlbumParamsStore = defineStore('albumParams', () => {
+  // Функция создания get-set переменной для параметра в адресной строке
   const createProp = (
     name,
     defaultValue = null,
     routeName = false,
     isArray = false,
   ) => computed({
-    get: () => {
+    get: () => { 
+      // Получение параметра из адресной строки
       const prop = router.currentRoute.value[routeName ? 'params' : 'query'][name]
-      if (name === 'albumHash') console.log({
-        get: prop, 
-        by: `router.currentRoute.value[${routeName} ? 'params' : 'query'][${name}]`
-      });
-      if (isArray) {
+
+      // Если переменная была с предустноновкой "это массив", 
+      // то элементы массива считываются через запятую 
+      if (isArray) 
         return prop?.split(',')?.map(elem => decodeURIComponent(elem)) ?? []
-      }
+
+      // Если null, то это true
       else if (prop === null)
         return true
      
+      // Если undefined, то возвращается стандартное значение, 
+      // иначе полученное из адресной строки
       return prop ?? defaultValue
     },
     set: (value) => {
-      if (name === 'albumHash') console.log({set: value});
+      // Полученние query-параметров из адресной строки
       const query = router.currentRoute.value.query
 
       if (routeName) {
         if (value === undefined || value === defaultValue) {
+          // Если получено значение "ничего" или равняющееся по умолчанию, 
+          // то перейти на главную страницу
           router.push({
             name: 'home',
             query
@@ -37,6 +42,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
           return
         }
         
+        // Переход на новое заданное значение
         const params = router.currentRoute.value.params
         router.push({
           name: routeName,
@@ -45,7 +51,8 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
         })
         return
       }
-
+      
+      // Обработка нового параметра
       let newQuery = {...query}
       if (value === undefined || value === false || value.length === 0)
         delete newQuery[name]
@@ -53,11 +60,12 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       else if (value === true)
         newQuery[name] = null
 
-      else if (value instanceof Array) {
+      else if (value instanceof Array)
         newQuery[name] = value.map(elem => encodeURIComponent(elem))?.join(',')
-      }
+      
       else newQuery[name] = value
 
+      // Замена параметров в адресной строке
       router.replace({ query: newQuery })
     }
   })

@@ -1,6 +1,7 @@
 <script setup>
 import { toRefs } from 'vue'
 
+// Параметры компонента
 const props = defineProps({
   name: String,
   options: Object,
@@ -9,9 +10,12 @@ const props = defineProps({
     default: false
   }
 })
+// v-model компонента
 const value = defineModel()
 
+// Параметры компонента в переменные
 const { name, options } = toRefs(props)
+// Установка по умолчанию
 value.value ??= Object.keys(options.value)[0]
 </script>
 

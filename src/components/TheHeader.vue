@@ -1,41 +1,47 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { debouncedWatch } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
-  Menu, ChevronRight, Palette, LogIn, User,
-  ArrowDownAZ, ArrowUpAZ, ArrowDown01, ArrowUp01,
+  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon,
+  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon,
 } from 'lucide-vue-next'
 
-import { fetchWrapper, debounceImmediate } from '@/helpers';
-import { router } from '@/router'
-import { useAlbumParamsStore, useAuthStore } from '@/stores'
-import { 
-  AuthPanel, UserPanel, SettingsPanel, SubAlbumsPanel 
+import { fetchWrapper } from '@/helpers'
+import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
+import {
+  AuthPanel, UserPanel, SettingsPanel, 
+  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
 } from '@/components/panels'
-import { debouncedWatch } from '@vueuse/core';
 
-const albumParamsStore = useAlbumParamsStore()
+// Попапы
+const { isOpened } = storeToRefs(useSidebarStore())
 
+// Данные об текущем открытом альбоме
 const {
   targetAlbum, sort, isReverse, albumData
-} = storeToRefs(albumParamsStore)
+} = storeToRefs(useAlbumParamsStore())
 
+// Данные об текущем пользователе
 const { user } = storeToRefs(useAuthStore())
 
-
+// Попапы
 const authCard = ref()
 const userCard = ref()
 const customizCard = ref()
 const subAlbumsCard = ref()
+const albumShareCard = ref()
+const objCreateCard = ref()
 
+// Логика переключение попапа со списком дочерних альбомов
 const albumChildren = ref(null)
-
 const toggleSubAlbumsCard = (e, hash) => {
   albumChildren.value = hash
   subAlbumsCard.value.toggle(e)
 }
 
+// Заполнение данных об альбоме
 onMounted(() => {
   debouncedWatch(
     () => targetAlbum.value,
@@ -43,24 +49,28 @@ onMounted(() => {
       fetchWrapper.get(
         '/albums/' + targetAlbum.value
       ).then(data => {
+        console.log({albumData: data})
         albumData.value = data
       })
     },
-    { debounce: 250 }
+    { debounce: 250, immediate: true }
   )
 })
 </script>
 
 <template>
   <header>
-    <div class="header_inner d-flex ai-cen">
+    <div class="header_inner">
       <!--    =  Кнопка меню  =    -->
       <div class="menu-btn-place">
-        <button class="btn btn--quad menu-btn" title="Toggle menu" @click="toggleSidebar">
-          <Menu size="20"/>
+        <button 
+          class="btn btn--quad menu-btn" 
+          title="Toggle menu" 
+          @click="isOpened = !isOpened">
+          <MenuIcon size="20"/>
         </button>
       </div>
-      <!--    =  Путь  =    -->
+      <!--    =  Навигационная цепочка  =    -->
       <div class="breadcrumb">
         <span class="section">
           <a class="btn" @click="targetAlbum = undefined">Home</a>
@@ -68,7 +78,7 @@ onMounted(() => {
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
             @click="toggleSubAlbumsCard($event, 'root')">
-            <ChevronRight size="20" />
+            <ChevronRightIcon size="20" />
           </button>
         </span>
         <span 
@@ -83,7 +93,7 @@ onMounted(() => {
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
               @click="toggleSubAlbumsCard($event, parentParams.hash)">
-              <ChevronRight size="20" />
+              <ChevronRightIcon size="20" />
             </button>
           </template>
         </span>
@@ -97,25 +107,49 @@ onMounted(() => {
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
             @click="toggleSubAlbumsCard($event, targetAlbum)">
-            <ChevronRight size="20" />
+            <ChevronRightIcon size="20" />
           </button>
         </span>
       </div>
+      <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
+        <SubAlbumsPanel :hash="albumChildren"/>
+      </OverlayPanel>
       <!-- Сдвиг -->
-      <div style="margin-left: auto;"></div>
-      <!--    =  Сортировка  =    -->
-     
+      <div style="margin-left: auto"></div>
+      <!--    =  Панель создания  =    -->
+      <button
+        class="btn btn--quad"
+        title="Open creation panel"
+        v-if="user.isAdmin"
+        @click="objCreateCard.toggle">
+        <PlusCircleIcon size="20"/>
+      </button>
+      <OverlayPanel ref="objCreateCard" class="popup popup--fixed">
+        <ObjCreatePanel :hash="targetAlbum"/>
+      </OverlayPanel>
+      <!--    =  Панель поделится  =    -->
+      <button
+        class="btn btn--quad"
+        title="Open share panel"
+        v-if="user.isAdmin"
+        @click="albumShareCard.toggle">
+        <Share2Icon size="20"/>
+      </button>
+      <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
+        <AlbumSharePanel :hash="targetAlbum"/>
+      </OverlayPanel>
+      <!--    =  Сортировка =     -->
       <button
         class="btn btn--quad change-direction-btn"
         title="Change sort direction"
         @click="isReverse = !isReverse">
         <template v-if="sort == 'name'">
-          <ArrowUpAZ size="20" v-if="isReverse"/>
-          <ArrowDownAZ size="20" v-else/>
+          <ArrowUpAZIcon size="20" v-if="isReverse"/>
+          <ArrowDownAZIcon size="20" v-else/>
         </template>
         <template v-else>
-          <ArrowUp01 size="20" v-if="isReverse"/>
-          <ArrowDown01 size="20" v-else/>
+          <ArrowUp01Icon size="20" v-if="isReverse"/>
+          <ArrowDown01Icon size="20" v-else/>
         </template>
       </button>
       <select class="droplist sort-droplist" title="Sort type" v-model="sort">
@@ -126,47 +160,40 @@ onMounted(() => {
         <option value="width">Width</option>
         <option value="ratio">Ratio</option>
       </select>
-      <!--    =  Кастомизации =     -->
+      <!--    =  Панель кастомизации =     -->
       <button
         class="btn btn--quad"
         title="Open customization panel"
         @click="customizCard.toggle">
-        <Palette size="20"/>
+        <PaletteIcon size="20"/>
       </button>
+      <OverlayPanel ref="customizCard" class="popup popup--fixed">
+        <SettingsPanel/>
+      </OverlayPanel>
       <!--    =  Панель пользователя  =    -->
       <button
         class="btn btn--quad"
         title="Open user panel"
         v-if="user.nickname"
         @click="userCard.toggle">
-        <User size="20"/>
+        <UserIcon size="20"/>
       </button>
+      <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
+        <UserPanel/>
+      </OverlayPanel>
       <!--    =  Авторизация  =    -->
       <button
         class="btn btn--quad"
         title="Open authorization form"
         v-else
         @click="authCard.toggle">
-        <LogIn size="20"/>
+        <LogInIcon size="20"/>
       </button>
+      <OverlayPanel ref="authCard" class="popup popup--fixed" v-if="!user.nickname">
+        <AuthPanel/>
+      </OverlayPanel>
     </div>
   </header>
- 
- <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
-   <SubAlbumsPanel :hash="albumChildren"/>
- </OverlayPanel>
- 
-  <OverlayPanel ref="customizCard" class="popup popup--fixed">
-    <SettingsPanel/>
-  </OverlayPanel>
- 
-  <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
-    <UserPanel/>
-  </OverlayPanel>
-
-  <OverlayPanel ref="authCard" class="popup popup--fixed" v-if="!user.nickname">
-    <AuthPanel/>
-  </OverlayPanel>
 </template>
 
 <style lang="scss" scoped>

@@ -5,20 +5,25 @@ import { storeToRefs } from 'pinia'
 import { fetchWrapper } from '@/helpers'
 import { useAlbumParamsStore } from '@/stores'
 
+// Заданные данные компоненту
 const props = defineProps({
   hash: String
 })
+// Хеш тыкнутого альбома
 const { hash } = toRefs(props)
+// Данные по текущему открытому альбому
 const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
 
-const isLoading = ref(true)
-const isErrored = ref(false)
-const subAlbumData = ref(null)
+const subAlbumData = ref(null) // Данные по тыкнутому альбому
+const isErrored = ref(false)  // Статус "произошла ошибка"
+const isLoading = ref(true)  // Статус "загружаюсь"
 if (hash.value === targetAlbum.value) {
+  // Если тыкнутый альбом = текущий альбом, то данные уже есть 
   isLoading.value = false
   subAlbumData.value = albumData.value
 }
 else fetchWrapper.get('/albums/' + hash.value)
+  // Иначе загрузить по хешу
   .then(data => {
     isLoading.value = false
     subAlbumData.value = data
@@ -49,25 +54,17 @@ else fetchWrapper.get('/albums/' + hash.value)
 
 <style lang="scss" scoped>
 .outer {
-  width: 200px;
+  min-width: 100px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
-.gray {
-  color: var(--c-t2a);
-  font-size: 12px;
-  display: flex;
-  justify-content: space-between;
-}
-.badge {
-  font-size: 12px;
-  background-color: var(--c-t0);
-  color: var(--c-b0);
-  padding: 2px 5px;
-  border-radius: var(--border-r);
-}
-button {
-  background-color: var(--c-b0a);
+.btn {
+  justify-content: start;
+  &:hover {
+    background-color: var(--c-b0a);
+  }
+  &:active {
+    background-color: var(--c-b0);
+  }
 }
 </style>

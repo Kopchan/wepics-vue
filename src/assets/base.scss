@@ -1,16 +1,19 @@
 :root {
+  // Белые тона
   --white0: #fff; --white0a: #fff9;
   --white1: #d8d8d8; --white1a: #d8d8d898;
   --white2: #ddd; --white2a: #ddd9;
   --white4: #bbb; --white4a: #bbb9;
   --white7: #777; --white7a: #7779;
   
+  // Тёмные тона
   --black0: #000; --black0a: #0009;
   --black1: #111; --black1a: #1119;
   --black2: #222; --black2a: #2229;
   --black4: #444; --black4a: #4449;
   --black7: #888; --black7a: #8889;
 
+  // Тёмная авто тема
   color-scheme: dark;
   --c-b0: var(--black0); --c-b0a: var(--black0a);
   --c-b1: var(--black1); --c-b1a: var(--black1a);
@@ -21,6 +24,7 @@
   --c-t2: var(--white2); --c-t2a: var(--white2a);
   --c-t7: var(--white7); --c-t7a: var(--white7a);
   
+  // Светлая авто тема
   @media (prefers-color-scheme: light) {
     color-scheme: normal;
     --c-b0: var(--white0); --c-b0a: var(--white0a);
@@ -32,6 +36,7 @@
     --c-t2: var(--black2); --c-t2a: var(--black2a);
     --c-t7: var(--black7); --c-t7a: var(--black7a);
   }
+  // Тёмная ручная тема
   &.dark {
     color-scheme: dark;
     --c-b0: var(--black0); --c-b0a: var(--black0a);
@@ -43,6 +48,7 @@
     --c-t2: var(--white2); --c-t2a: var(--white2a);
     --c-t7: var(--white7); --c-t7a: var(--white7a);
   }
+  // Светлая ручная тема
   &.light {
     color-scheme: normal;
     --c-b0: var(--white0); --c-b0a: var(--white0a);
@@ -55,6 +61,7 @@
     --c-t7: var(--black7); --c-t7a: var(--black7a);
   }
 
+  // Всякие параметры
   --border-r:        6px;
   --card-width:    400px;
   --cards-gap:       8px;

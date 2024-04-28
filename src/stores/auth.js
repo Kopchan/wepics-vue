@@ -2,8 +2,10 @@ import { defineStore } from 'pinia'
 import { fetchWrapper, storageWrapper } from '@/helpers'
 
 export const useAuthStore = defineStore('auth', () => {
+  // Инфа об юзере в localStorage
   const user = storageWrapper('user')
  
+  // Регистрация
   async function signup({ nickname, login, password }) {
     const response = await fetchWrapper
       .post('/users/reg', { nickname, login, password })
@@ -13,6 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.nickname = nickname
   }
 
+  // Вход
   async function login({ login, password }) {
     const res = await fetchWrapper
       .post('/users/login', { login, password })
@@ -22,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.nickname = res.nickname
   }
 
+  // Выход
   async function logout() {
     await fetch('/users/logout', {
       headers: { Authorization: `Bearer ${user.token}` }

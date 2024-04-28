@@ -11,6 +11,7 @@ const readStorage = (key) => {
 
 export const storageWrapper = (key = 'data') => {
   const dataStorage = reactive(readStorage(key))
+
   watchDebounced(
     () => dataStorage,
     () => {
@@ -18,6 +19,7 @@ export const storageWrapper = (key = 'data') => {
     },
     { deep: true, debounce: 250 }
   )
+  
   return dataStorage
 }
 

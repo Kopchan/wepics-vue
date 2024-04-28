@@ -14,19 +14,16 @@ export const debounceImmediate = (func, ms) => {
   }
 
   return (...args) => {
-
     if (!isAsked) {
       func(...args)
       createTimeout(...args)
     }
-
     if (isAsked) {
       isDoubleAsked = true
 
       clearTimeout(timeout)
       createTimeout(...args)
     }
-
     isAsked = true
   }
 }

@@ -13,11 +13,11 @@ import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
 
-// Параметры роутера и URL на альбом
+// Параметры текущего альбома
 const  {
   targetAlbum, limit, sort, isReverse, tags
 } = storeToRefs(useAlbumParamsStore())
-
+// Генерация URL для получения страницы ответа
 const getAlbumURL = (page) =>
   '/albums/'  + targetAlbum.value +
   '/images?page=' +    page       +
@@ -27,6 +27,7 @@ const getAlbumURL = (page) =>
   (isReverse.value ? '&reverse' : '')
 
 const route = useRoute()
+// Функция очистки всех картинок
 const cleanUpWall = () => {
   canLoadMore.value = false
   isLoading  .value = false
@@ -34,6 +35,7 @@ const cleanUpWall = () => {
   currentPage = 1
   canLoadMore.value = true
 }
+// Наблюдение за изменением в роуте, если они есть, то перезагружаются картинки
 watch(
   () => route,
   debounceImmediate(() => {
@@ -53,6 +55,7 @@ const {
   size, isStrictSize, isRealSize, lines, gap, radius, orientation
 } = storeToRefs(useSettingsStore())
 
+// Требуемые размеры карточек на представлении / скачиваемого изображения 
 const { pixelRatio } = useDevicePixelRatio()
 const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
 const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
@@ -74,6 +77,7 @@ const getThumbURL = (hash) =>
   `${orientation.value}${refinedSize.value}` +
   ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
+// Получение превью всех размеров, если устройство поддерживает srcset 
 const getThumbMultiURL = (hash) => {
   const srcsetItems = []
   for (const allowSize of allowedSizes) {
@@ -143,11 +147,11 @@ const loadMore = async () => {
       if (retries > 5) canLoadMore.value = false
       await sleep(1000)
       return
-    case 429: // TODO: Вывсети уведомление о частых запросов
+    case 429: // TODO: Вывести уведомление о частых запросов
       alert(error.message)
       return
     case 404: // TODO: Сделать красивую страницу
-    case 403: // TODO: Вывсети окно входа (с инфой о заблокированном альбоме)
+    case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
     default:
       canLoadMore.value = false
       alert(error.message)
@@ -343,7 +347,7 @@ const toggleReaction = (image, reaction, e) => {
       </div>
       <div class="inf-handler-position" v-if="canLoadMore && !isLoading">
         <!-- 
-          // FIXME: Еслип пользователь опустится моментально в самый низ и экран по высоте будет меньше
+          // FIXME: Если пользователь опустится моментально в самый низ и экран по высоте будет меньше
                     3000px, то подгружаться будет если опустится в самый конец 
         -->
         <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
@@ -425,7 +429,7 @@ const toggleReaction = (image, reaction, e) => {
       }
     }
     .overlay {
-      z-index: 50;
+      z-index: 20;
       border-radius: v-bind('radius + "px"');
       //display: none;
       display: flex;
@@ -468,7 +472,7 @@ const toggleReaction = (image, reaction, e) => {
         display: flex;
         align-items: flex-end;
         gap: 6px;
-        height: calc(100% - 64px);
+        height: calc(100% - 32px);
         input[type='checkbox'] {
           position: absolute;
           z-index: -1;
