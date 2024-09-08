@@ -78,7 +78,7 @@ const getThumbURL = (hash) =>
   ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
 // Получение превью всех размеров, если устройство поддерживает srcset 
-const getThumbMultiURL = (hash) => {
+const getThumbMultiURL = (hash, ratio = 1) => {
   const srcsetItems = []
   for (const allowSize of allowedSizes) {
     const url = 
@@ -88,7 +88,11 @@ const getThumbMultiURL = (hash) => {
       `${orientation.value}${allowSize}` +
       ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
-    srcsetItems.push(url +' '+ allowSize + orientation.value)
+    const srcsetSize = orientation.value == 'w' 
+      ? allowSize
+      : Math.round(allowSize / ratio)
+
+    srcsetItems.push(url +' '+ srcsetSize +'w')
   }
   return srcsetItems.join(', ')
 }
@@ -131,11 +135,18 @@ const loadMore = async () => {
    
     const newImages = data.pictures
     newImages.forEach(element => {
-      element.thumbURL = getThumbURL(element.hash)
+      element.ext = element.name.split('.').at(-1).toLowerCase()
+      element.thumbURL = element.ext != 'gif'
+        ? getThumbURL(element.hash) 
+        : `${API_PATH}/albums/` +
+          `${targetAlbum.value}/images/` +
+          `${element.hash}/orig`
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
-    images.value = images.value.concat(data.pictures)
+    //images.value = images.value.concat(data.pictures)
+
+    images.value.push(...newImages)
 
     currentPage++
     isLoading.value = false
@@ -143,8 +154,9 @@ const loadMore = async () => {
     isLoading.value = false
     switch (error.status) {
     case 500:
+    case 504:
       retries++
-      if (retries > 5) canLoadMore.value = false
+      if (retries > 10000) canLoadMore.value = false
       await sleep(1000)
       return
     case 429: // TODO: Вывести уведомление о частых запросов
@@ -153,8 +165,10 @@ const loadMore = async () => {
     case 404: // TODO: Сделать красивую страницу
     case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
     default:
-      canLoadMore.value = false
-      alert(error.message)
+      retries++
+      if (retries > 10000) canLoadMore.value = false
+      await sleep(1000)
+      return
     }
   })
 }
@@ -264,7 +278,11 @@ const toggleReaction = (image, reaction, e) => {
       })">
         get values
       </button>
+      
+      <button @click="console.log(images)">Тест</button>
       -->
+
+      <!--
       <MasonryWall
         class="grid"
         ref="masonryWall"
@@ -337,6 +355,15 @@ const toggleReaction = (image, reaction, e) => {
           </div>
         </template>
       </MasonryWall>
+      -->
+      <section class="wall">
+        <div v-for="img in images" :key="img" class="img"
+          :style="'width:'+ img.width*size / img.height +'px;flex-grow:'+ img.width*size / img.height" >
+          <i :style="'padding-bottom:'+ img.height / img.width * 100 +'%'"></i>
+          <img :src="img.thumbURL" alt="" :srcset="img.ext != 'gif' ? getThumbMultiURL(img.hash, img.width / img.height) : ''" loading="lazy">
+        </div>
+      </section>
+
       <div class="message message--download"
         v-if="isLoading">
         <p>Loading...</p>
@@ -363,6 +390,30 @@ const toggleReaction = (image, reaction, e) => {
 </template>
 
 <style lang="scss" scoped>
+.wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v-bind('gap +"px"');
+  &:after {
+    content: '';
+    flex-grow: 1e4;
+    //min-width: 20%;
+  }
+  .img {
+    position: relative;
+    i {
+      display: block;
+    }
+    img {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      vertical-align: bottom;
+      border-radius: v-bind('radius + "px"');
+    }
+  }
+}
+
 .grid {
   justify-content: center;
   margin: 0 auto;
