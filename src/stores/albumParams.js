@@ -1,6 +1,7 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { router } from '@/router'
+import { SITE_NAME } from '@/config'
 
 export const useAlbumParamsStore = defineStore('albumParams', () => {
   // Функция создания get-set переменной для параметра в адресной строке
@@ -75,6 +76,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const sort        = createProp('sort', 'name')
   const isReverse   = createProp('reverse', false)
   const tags        = createProp('tags', [], undefined, true)
+  const albumData = ref({})
   /*
   const getAlbumData = () => {
     fetchWrapper.get('/albums/' + (router.currentRoute.value.params.albumHash ?? 'root'))
@@ -86,7 +88,12 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     () => targetAlbum.value, 
     getAlbumData(),
   )*/
-  const albumData = ref({})
+  watch(
+    () => albumData.value?.name, 
+    () => {
+      document.title = (albumData.value?.name ? albumData.value.name + ' • ' : '') + SITE_NAME
+    },
+  )
  
   return { targetAlbum, limit, sort, isReverse, tags, albumData }
 })

@@ -5,11 +5,12 @@ import { debouncedWatch } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon,
-  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon,
+  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon
 } from 'lucide-vue-next'
 
-import { fetchWrapper } from '@/helpers'
+import { fetchWrapper, sleep } from '@/helpers';
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
+import { API_PATH } from '@/config';
 import {
   AuthPanel, UserPanel, SettingsPanel, 
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
@@ -36,23 +37,64 @@ const objCreateCard = ref()
 
 // Логика переключение попапа со списком дочерних альбомов
 const albumChildren = ref(null)
-const toggleSubAlbumsCard = (e, hash) => {
+const albumChildrenNextName = ref(null)
+const toggleSubAlbumsCard = (e, hash, nextName) => {
   albumChildren.value = hash
+  albumChildrenNextName.value = nextName
   subAlbumsCard.value.toggle(e)
 }
 
-// Заполнение данных об альбоме
+const isLoading = ref(null)
+const isError = ref(false)
+
+// Запрос данных об альбоме
+const getAlbumData = async () => {
+  isLoading.value = true
+  isError.value = false
+
+  await fetchWrapper.get(
+    '/albums/' + targetAlbum.value
+  ).then(data => {
+    albumData.value = data
+  }).catch(() => {
+    isError.value = true
+  })
+
+  isLoading.value = false
+}
+
+// Запрос на переиндексацию
+const reindexAlbum = () => {
+  fetchWrapper.get(
+    '/albums/' + targetAlbum.value + '/reindex'
+  ).then(async () => {
+    const temp = targetAlbum.value
+    targetAlbum.value = null // FIXME: успевает за это время загрузить root альбом
+    await sleep(10)
+    targetAlbum.value = temp
+  })
+}
+
+function getNextFieldValue(obj, currentKey) {
+  const keys = Object.keys(obj?.parentsChain || {});
+  const currentIndex = keys.indexOf(currentKey);
+
+  if (currentIndex === keys.length - 1) {
+    return obj.name;
+  }
+  if (currentIndex === -1) {
+    return;
+  }
+
+  const nextKey = keys[currentIndex + 1];
+  return nextKey;
+}
+
+// Заполнение данных об альбоме при изменении открытого альбома
 onMounted(() => {
   debouncedWatch(
     () => targetAlbum.value,
-    () => {
-      fetchWrapper.get(
-        '/albums/' + targetAlbum.value
-      ).then(data => {
-        console.log({albumData: data})
-        albumData.value = data
-      })
-    },
+    () => getAlbumData(),
     { debounce: 250, immediate: true }
   )
 })
@@ -73,11 +115,11 @@ onMounted(() => {
       <!--    =  Навигационная цепочка  =    -->
       <div class="breadcrumb">
         <span class="section">
-          <a class="btn" @click="targetAlbum = undefined">Home</a>
+          <RouterLink class="btn" :to="{ path: '/', query: $route.query }">Home</RouterLink>
           <button 
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
-            @click="toggleSubAlbumsCard($event, 'root')">
+            @click="toggleSubAlbumsCard($event, 'root', getNextFieldValue(albumData, '/'))">
             <ChevronRightIcon size="20" />
           </button>
         </span>
@@ -86,13 +128,13 @@ onMounted(() => {
           :key="parent"
           class="section">
           <template v-if="parent !== '/'">
-            <a class="btn" @click="targetAlbum = parentParams.hash">
+            <RouterLink class="btn" :to="{ path: parentParams.hash, query: $route.query }">
               {{ parent }}
-            </a>
+            </RouterLink>
             <button 
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
-              @click="toggleSubAlbumsCard($event, parentParams.hash)">
+              @click="toggleSubAlbumsCard($event, parentParams.hash, getNextFieldValue(albumData, parent))">
               <ChevronRightIcon size="20" />
             </button>
           </template>
@@ -100,22 +142,31 @@ onMounted(() => {
         <span
           v-if="targetAlbum !== 'root'" 
           class="section">
-          <a class="btn">
+          <RouterLink class="btn" :to="{ path: targetAlbum, query: $route.query }">
             {{ albumData?.name ?? '...' }}
-          </a>
+          </RouterLink>
           <button 
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
-            @click="toggleSubAlbumsCard($event, targetAlbum)">
+            @click="toggleSubAlbumsCard($event, targetAlbum, null)">
             <ChevronRightIcon size="20" />
           </button>
         </span>
       </div>
       <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
-        <SubAlbumsPanel :hash="albumChildren"/>
+        <SubAlbumsPanel :hash="albumChildren" :nextName="albumChildrenNextName"/>
       </OverlayPanel>
       <!-- Сдвиг -->
       <div style="margin-left: auto"></div>
+      <!--    =  Кнопка переиндексации  =    -->
+      <button
+        class="btn btn--quad"
+        title="Reindex this album"
+        :disabled="isLoading"
+        :class="{spin: isLoading, error: isError}"
+        @click="reindexAlbum">
+        <RefreshCcwIcon size="20"/>
+      </button>
       <!--    =  Панель создания  =    -->
       <button
         class="btn btn--quad"
@@ -237,6 +288,17 @@ header {
         color: var(--c-t0);
       }
     }
+  }
+  .spin > *:first-child {
+    animation: spin 4s linear infinite;
+  }
+  @keyframes spin { 
+    100% {
+      transform:rotate(360deg); 
+    } 
+  }
+  .error > *:first-child {
+    color: red;
   }
 }
 </style>

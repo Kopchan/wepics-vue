@@ -3,9 +3,12 @@ import { TheHeader, SideBar } from '@/components'
 import { useSettingsStore } from './stores'
 import { storeToRefs } from 'pinia'
 import { onMounted, watch } from 'vue'
+import { SITE_NAME } from './config';
+
+document.title = SITE_NAME
 
 // Установленная пользователем тема
-const { theme } = storeToRefs(useSettingsStore())
+const { theme, scroll } = storeToRefs(useSettingsStore())
 
 // Функция получения HTML Node'ов по обычной строке
 const getNodesFromString = (html) => {
@@ -45,6 +48,13 @@ const setupTheme = () => {
   }
 } 
 
+watch(
+  () => scroll.value, 
+  () => {
+    document.body.classList[scroll.value ? 'remove' : 'add']('no-scroll')
+  }
+)
+
 onMounted(() => {
   // Убираем авто-тему, если пользователь установил конкретную
   if (theme.value == 'light' ||
@@ -61,3 +71,9 @@ watch(() => theme.value, setupTheme)
   <SideBar/>
   <RouterView/>
 </template>
+
+<style lang="scss">
+.no-scroll {
+  overflow: hidden;
+}
+</style>

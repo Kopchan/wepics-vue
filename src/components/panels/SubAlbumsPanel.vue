@@ -7,17 +7,18 @@ import { useAlbumParamsStore } from '@/stores'
 
 // Заданные данные компоненту
 const props = defineProps({
-  hash: String
+  hash: String,
+  nextName: String|null,
 })
 // Хеш тыкнутого альбома
-const { hash } = toRefs(props)
+const { hash, nextName } = toRefs(props)
 // Данные по текущему открытому альбому
 const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
 
 const subAlbumData = ref(null) // Данные по тыкнутому альбому
 const isErrored = ref(false)  // Статус "произошла ошибка"
 const isLoading = ref(true)  // Статус "загружаюсь"
-if (hash.value === targetAlbum.value) {
+if (hash.value === targetAlbum.value) { // FIXME: проверять что пустое 
   // Если тыкнутый альбом = текущий альбом, то данные уже есть 
   isLoading.value = false
   subAlbumData.value = albumData.value
@@ -36,13 +37,15 @@ else fetchWrapper.get('/albums/' + hash.value)
 <template>
   <div class="outer">
     <template v-if="subAlbumData?.children">
-      <button 
+      <router-link 
         v-for="(childParams, child) in subAlbumData?.children"
         :key="child"
-        class="btn" 
-        @click="targetAlbum = childParams.hash">
+        class="btn"
+        :class="{'btn--inverse': nextName == child}"
+        :disabled="nextName == child"
+        :to="{ path: '/album/'+childParams.hash, query: $route.query }">
         {{ child }}
-      </button>
+      </router-link>
     </template>
     <template v-else>
       <p v-if="isLoading">Loading...</p>
@@ -60,10 +63,10 @@ else fetchWrapper.get('/albums/' + hash.value)
 }
 .btn {
   justify-content: start;
-  &:hover {
+  &:not(.btn--inverse):hover {
     background-color: var(--c-b0a);
   }
-  &:active {
+  &:not(.btn--inverse):active {
     background-color: var(--c-b0);
   }
 }

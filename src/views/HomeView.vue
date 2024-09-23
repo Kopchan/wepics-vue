@@ -4,14 +4,14 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
-import { SmilePlus, Download } from 'lucide-vue-next'
-import MasonryWall from '@yeger/vue-masonry-wall'
+import { SmilePlusIcon, DownloadIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
 
 import { API_PATH } from '@/config'
-import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
+import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers';
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
+import { ImageViewer } from '@/components'
 
 // Параметры текущего альбома
 const  {
@@ -52,7 +52,7 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, isStrictSize, isRealSize, lines, gap, radius, orientation
+  size, isStrictSize, isRealSize, lines, gap, radius, orientation, scroll
 } = storeToRefs(useSettingsStore())
 
 // Требуемые размеры карточек на представлении / скачиваемого изображения 
@@ -188,47 +188,9 @@ const onErrorImgLoad = async (event) => {
   }
 }
 
-// Получение инфо о колонках
-const masonryWall = ref(null)
-const columnWidth = ref(cssSize.value)
-const windowWidth = useWindowSize().width
-
-onMounted(async () => {
-  await sleep(1000)
-  watchDebounced(
-    () => windowWidth.value,
-    () => {
-      const columnSize = masonryWall.value?.$el?.children[0]?.clientWidth
-      columnWidth.value = Math.round(columnSize) || cssSize.value
-    },
-    { deep: true, immediate: true, debounce: 500 }
-  )
-})
-
-// Человеческие размеры файлов
-const units = ['B', 'kB', 'MB', 'GB', 'TB']
-const humanFileSize = (bytes) => {
-  var i = bytes == 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024))
-  return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + units[i]
-}
-
-// Загрузчик оригинала картинки
-const { user } = storeToRefs(useAuthStore())
-const downloadOriginal = (hash, name = '') => {
-  fetch(`${API_PATH}/albums/${targetAlbum.value}/images/${hash}/orig`, {
-    [user.value.token ? 'headers' : null]: { 
-      Authorization: `Bearer ${user.value.token}` 
-    }
-  }).then(
-    resp => resp.blob()
-  ).then(blob => {
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = name
-    a.click()
-    window.URL.revokeObjectURL(url)
-  })
+const downloadOriginal = (hash) => {
+  window.location.href = 
+    `${API_PATH}/albums/${targetAlbum.value}/images/${hash}/download${imgSign.value ? '?sign=' + imgSign.value : ''}`
 }
 
 // Получение разрешённых реакций
@@ -239,6 +201,9 @@ fetchWrapper.get('/reactions').then(data =>
 
 const authCard = ref()
 const toggleAuthCard = (e) => authCard.value.toggle(e)
+
+// Загрузчик оригинала картинки
+const { user } = storeToRefs(useAuthStore())
 // Переключение реакции на картинке
 const toggleReaction = (image, reaction, e) => {
   if (!user.value.token) {
@@ -267,6 +232,14 @@ const toggleReaction = (image, reaction, e) => {
   })
 }
 
+const targetImage = ref(null)
+watch(
+  () => targetImage.value,
+  () => {
+    scroll.value = !(targetImage.value != null)
+  }
+)
+
 </script>
 
 <template>
@@ -281,86 +254,76 @@ const toggleReaction = (image, reaction, e) => {
       
       <button @click="console.log(images)">Тест</button>
       -->
-
-      <!--
-      <MasonryWall
-        class="grid"
-        ref="masonryWall"
-        :items="images"
-        :column-width="cssSize"
-        :gap="gap"
-        :min-columns="lines"
-        :max-columns="lines"
-        :class="{strict: isStrictSize}">
-        <template #default="{item}">
-          <div class="grid-item">
-            <img
-              loading="lazy"
-              :src="item.thumbURL"
-              :srcset="getThumbMultiURL(item.hash)"
-              :sizes="columnWidth +'px'"
-              alt=""
-              :width="cssSize"
-              :height="Math.round(cssSize / item.width * item.height)"
-              @error="onErrorImgLoad">
-            <div class="overlay">
-              <div>
-                <div class="top-group">
-                  <span class="badge">{{ item.name.split('.').at(-1) }}</span>
-                  <span class="name">{{ item.name.replace(/\.[^/.]+$/, "") }}</span>
-                </div>  
-              </div>
-
-              <div class="bottom-group">
-                <input type="checkbox" :id="item.hash">
-                <label 
-                  v-if="user.token"
-                  class="btn btn--reaction"
-                  :for="item.hash">
-                    <div class="options">
-                    <label 
-                      :for="item.hash"
-                      :key="option"
-                      :class="{'btn--inverse': item?.reactions?.[option]?.isYouSet}"
-                      class="btn btn--circle option"
-                      v-for="option in allowedReactions"
-                      @click="toggleReaction(item, option, $event)">
-                      {{ option }}
-                    </label>
-                  </div>
-                  <SmilePlus size="20"/>
-                </label>
-
-                <button class="btn btn--download" @click="downloadOriginal(item.hash, item.name)">
-                  <span class="size">{{ humanFileSize(item.size) }}</span>
-                  <Download size="20"/>
-                </button>
-              </div>
-            </div>
-            <div class="reactions">
-              <template 
-                v-for="(reactionParams, reaction) in item.reactions" 
-                :key="reaction">
-                <div 
-                  v-if="reactionParams.count > 0"
-                  class="reaction"
-                  :class="{setted: reactionParams.isYouSet}"
-                  @click="toggleReaction(item, reactionParams, $event)">
-                  {{ reaction }}
-                  {{ reactionParams.count }}
-                </div>
-              </template>
-            </div>
-            <div class="download-line"></div>
-          </div>
-        </template>
-      </MasonryWall>
-      -->
       <section class="wall">
-        <div v-for="img in images" :key="img" class="img"
-          :style="'width:'+ img.width*size / img.height +'px;flex-grow:'+ img.width*size / img.height" >
+        <div 
+          v-for="img in images" 
+          :key="img" 
+          class="img"
+          @click="targetImage = img"
+          :style="
+            'width:'    + img.width*size / img.height +'px;'+
+            'flex-grow:'+ img.width*size / img.height
+          ">
+
           <i :style="'padding-bottom:'+ img.height / img.width * 100 +'%'"></i>
-          <img :src="img.thumbURL" alt="" :srcset="img.ext != 'gif' ? getThumbMultiURL(img.hash, img.width / img.height) : ''" loading="lazy">
+          <img 
+            :src="img.thumbURL" 
+            alt="" 
+            loading="lazy"
+            :srcset="img.ext != 'gif' 
+            ? getThumbMultiURL(img.hash, img.width / img.height) 
+            : ''
+            ">
+
+          <div class="reactions">
+            <template 
+              v-for="(reactionParams, reaction) in img.reactions" 
+              :key="reaction">
+              <div 
+                v-if="reactionParams.count > 0"
+                class="reaction"
+                :class="{setted: reactionParams.isYouSet}"
+                @click="toggleReaction(img, reactionParams, $event)">
+                {{ reaction }}
+                {{ reactionParams.count }}
+              </div>
+            </template>
+          </div>
+          
+          <div class="overlay">
+            <div>
+              <div class="top-group">
+                <span class="badge">{{ img.ext }}</span>
+                <span class="name">{{ img.name }}</span>
+              </div>  
+            </div>
+
+            <div class="bottom-group">
+              <input type="checkbox" :id="img.hash" @click.stop @change="checkboxChange" >
+              <label 
+                v-if="user.token"
+                class="btn btn--reaction"
+                :for="img.hash">
+                  <div class="options">
+                  <label 
+                    :for="img.hash"
+                    :key="option"
+                    :class="{'btn--inverse': img?.reactions?.[option]?.isYouSet}"
+                    class="btn btn--circle option"
+                    v-for="option in allowedReactions"
+                    @click="toggleReaction(img, option, $event)">
+                    {{ option }}
+                  </label>
+                </div>
+                <SmilePlusIcon size="20"/>
+              </label>
+
+              <button class="btn btn--download" @click.stop="downloadOriginal(img.hash)">
+                <span class="size">{{ humanFileSize(img.size) }}</span>
+                <DownloadIcon size="20"/>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -386,10 +349,36 @@ const toggleReaction = (image, reaction, e) => {
     <OverlayPanel ref="authCard" class="popup popup--fixed">
       <AuthPanel/>
     </OverlayPanel>
+
+    <ImageViewer 
+      v-if="targetImage" 
+      :album="targetAlbum" 
+      :image.sync="targetImage" 
+      :sign="imgSign"
+      @targetImage="(target) => targetImage = target"/>
   </main>
 </template>
 
 <style lang="scss" scoped>
+.grid {
+  justify-content: center;
+  margin: 0 auto;
+  &_outer {
+    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') v-bind('gap + "px"');
+    overflow-x: hidden;
+    transition: 0.1s;
+    position: relative;
+  }
+}
+
+.inf-handler-position {
+  position: absolute;
+  bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
 .wall {
   display: flex;
   flex-wrap: wrap;
@@ -401,6 +390,16 @@ const toggleReaction = (image, reaction, e) => {
   }
   .img {
     position: relative;
+    &:hover {
+      border-radius: v-bind('radius * 2 + "px"');
+      .reactions {
+        opacity: 0;
+      }
+      .overlay {
+        opacity: 1;
+        border: 1px solid var(--c-t0a);
+      }
+    }
     i {
       display: block;
     }
@@ -410,53 +409,6 @@ const toggleReaction = (image, reaction, e) => {
       width: 100%;
       vertical-align: bottom;
       border-radius: v-bind('radius + "px"');
-    }
-  }
-}
-
-.grid {
-  justify-content: center;
-  margin: 0 auto;
-  &.strict:deep(.masonry-column) {
-    max-width: v-bind('cssSize + "px"');
-  }
-  &_outer {
-    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') v-bind('gap + "px"');
-    overflow-x: hidden;
-    transition: 0.1s;
-    position: relative;
-  }
-  &-item {
-    border-radius: v-bind('radius + "px"');
-    position: relative;
-    &:hover {
-      background-color: var(--c-b2);
-      .info {
-        display: block;
-      }
-      .overlay {
-        //display: flex;
-        opacity: 1;
-        border: 1px solid var(--c-t0a);
-      }
-      .reactions {
-        opacity: 0;
-      }
-    }
-    img {
-      border-radius: v-bind('radius + "px"');
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      &:before { // TODO: Доделать блок незагруженной картинки
-        content: '';
-        background-color: var(--c-b2);
-        width: 100%;
-        height: 200px;
-        top: 0;
-        left: 0;
-      }
     }
     .reactions {
       transition: opacity .2s;
@@ -620,16 +572,6 @@ const toggleReaction = (image, reaction, e) => {
         }
       }
     }
-    /*.download-line {
-      bottom: 0;
-      right: 0;
-      left: 0;
-      position: absolute;
-      background-color: #0906;
-      backdrop-filter: blur(var(--div-blur));
-      border-radius: 0 0 v-bind('radius + "px"') v-bind('radius + "px"');
-      height: 8px;
-    }*/
   }
 }
 .message {
@@ -655,12 +597,5 @@ const toggleReaction = (image, reaction, e) => {
     margin: 20px auto;
     background-color: var(--c-b2);
   }
-}
-.inf-handler-position {
-  position: absolute;
-  bottom: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column-reverse;
 }
 </style>

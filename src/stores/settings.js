@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { storageWrapper } from '@/helpers'
 
@@ -28,9 +28,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const radius       = createProp('radius', 12)
   const orientation  = createProp('orientation', 'h')
   const theme        = createProp('theme', 'auto')
+  const scroll = ref(true)
  
   return { 
     settings, reset, size, isStrictSize, isRealSize, 
-    lines, gap, radius, orientation, theme 
+    lines, gap, radius, orientation, theme, scroll
   }
 })
