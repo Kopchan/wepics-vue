@@ -2,6 +2,7 @@
 import { toRefs, ref } from 'vue'
 import { fetchWrapper } from '@/helpers'
 import { BanIcon, CircleMinusIcon, PlusIcon } from 'lucide-vue-next'
+import { urls } from '@/api';
 
 // Параметры компонента
 const props = defineProps({
@@ -23,10 +24,10 @@ const guestObj = {
 
 // Запрос списка прав на выбранном альбоме
 fetchWrapper.get(
-  '/albums/' + hash.value + '/access'
+  urls.albumAccesses(hash.value)
 ).then(data => {
   isLoading.value = false
-  isForGuest.value = data.isGuestAllowed ?? null
+  isForGuest      .value = data.isGuestAllowed ?? null
   allowedRights   .value = data.listAllowed    ?? []
   disallowedRights.value = data.listDisallowed ?? []
 
@@ -41,11 +42,8 @@ fetchWrapper.get(
 
 // Удаление правила
 const removeAccess = (user_id = null) => {
-  console.log(user_id)
   fetchWrapper.delete(
-    '/albums/' + hash.value + 
-    '/access' + 
-    (user_id ? ('?user_id=' + user_id) : '')
+    urls.albumAccesses(hash.value), {user_id}
   )
   if (user_id) {
     allowedRights.value = allowedRights.value
@@ -64,7 +62,7 @@ const toUserSelect = () => {
   isLoading.value = true
 
   // Получение всех пользователей
-  fetchWrapper.get('/users').then(gettedUsers => {
+  fetchWrapper.get(urls.users()).then(gettedUsers => {
     // Все правила на выбранном альбоме
     const rules = [
       ...(   allowedRights.value), 
@@ -92,10 +90,7 @@ const toUserSelect = () => {
 // Создания правила
 const addAccess = (user = null, isAllow = true) => {
   fetchWrapper.post(
-    '/albums/' + hash.value + 
-    '/access' + 
-    '?allow=' + (isAllow ? 1 : 0) +
-    (user.id ? ('&user_id=' + user.id) : '')
+    urls.albumAccesses(hash.value), {user_id: user.id, allow: isAllow}
   ).then(() => {
     if (isAllow) allowedRights.value.push({user_id: user.id, nickname: user.nickname})
     else      disallowedRights.value.push({user_id: user.id, nickname: user.nickname})

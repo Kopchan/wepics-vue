@@ -4,6 +4,7 @@ import { BtnRadios } from '@/components/ui'
 import { fetchWrapper } from '@/helpers'
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore } from '@/stores'
+import { urls } from '@/api';
 
 // Получаем данные о текущем открытом альбоме
 const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
@@ -16,7 +17,7 @@ const form = ref({})       // Данные для отправки
 
 // Создание альбома
 const createAlbum = () => {
-  fetchWrapper.post('/albums/' + targetAlbum.value, form.value)
+  fetchWrapper.post(urls.albumInfo(targetAlbum.value), form.value)
     .then(data => {
       albumData.value.children[form.value.name] = { hash: data.hash }
     })
@@ -26,7 +27,7 @@ const createAlbum = () => {
 }
 // Отправка картинок
 const sendImages = () => {
-  fetchWrapper.post('/albums/' + targetAlbum.value, form.value)
+  fetchWrapper.post(urls.albumInfo(targetAlbum.value), form.value)
     .catch(() => {
       isErrored.value = true
     })

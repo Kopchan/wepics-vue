@@ -1,9 +1,9 @@
 <script setup>
+import { ref, toRefs, onMounted, onBeforeUnmount, watch } from 'vue';
 import { XIcon } from 'lucide-vue-next'
-import { API_PATH } from '@/config'
-import { ref, toRefs, onMounted, onBeforeUnmount, defineEmits } from 'vue';
-import { useSettingsStore } from '@/stores';
 import { storeToRefs } from 'pinia';
+import { useSettingsStore } from '@/stores';
+import { urls } from '@/api';
 
 // Параметры компонента
 const props = defineProps({
@@ -20,6 +20,7 @@ const {
 } = storeToRefs(useSettingsStore())
 
 const isScope = ref(false)
+const isFill = ref(false)
 
 const pxRatio = ref(window.devicePixelRatio || 1)
 
@@ -29,6 +30,9 @@ const handleKeyDown = (event) => {
     emit('targetImage', null)
   }
 };
+
+// Закрываем просмотр если альбом сменился
+watch(() => album.value, () => emit('targetImage', null))
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
@@ -42,17 +46,12 @@ onBeforeUnmount(() => {
 <template>
   <div class="place" 
     @click="$emit('targetImage', null)"
-    :class="{'scoped': isScope}">
+    :class="{'scoped': isScope, 'fill': isFill}">
     <img
       @click.stop="isScope ^= 1" 
       alt="name"
-      :height="image.height / pxRatio"
-      :src="
-        API_PATH + '/albums/' +
-        album + '/images/' +
-        image.hash + '/orig' + 
-        (sign ? '?sign='+ sign : '')
-      ">
+      :height="isScope ? image.height / pxRatio : 'none'"
+      :src="urls.imageOrig(album, image.hash, sign)">
       <button class="btn close" @click="$emit('targetImage', null)">
         <XIcon size="32"/>
       </button>
@@ -72,16 +71,26 @@ onBeforeUnmount(() => {
   right: 0;
   bottom: 0;
   img {
+    // FIXME: широкие картинки нажимаются сверху и снизу (вместо закрытия), нету закругления
     margin: auto;
     object-fit: contain;
     filter: drop-shadow(0 0 4px black);
   }
-  &:not(.scoped) {
+  &:not(.scoped):not(.fill) {
     img {
       border-radius: v-bind("radius + 'px'");
       max-width:  calc(100% - v-bind("gap*2 +'px'"));
       max-height: calc(100% - v-bind("gap*2 +'px'"));
     }
+  }
+  &.fill {
+    img {
+      width: 100%;
+      object-fit: cover;
+    }
+  }
+  &.scoped .btn {
+    display: none;
   }
   .btn.close {
     position: fixed;

@@ -7,7 +7,7 @@ import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core
 import { SmilePlusIcon, DownloadIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
 
-import { API_PATH } from '@/config'
+import { urls } from '@/api'
 import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers';
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
@@ -17,15 +17,7 @@ import { ImageViewer } from '@/components'
 const  {
   targetAlbum, limit, sort, isReverse, tags
 } = storeToRefs(useAlbumParamsStore())
-// Генерация URL для получения страницы ответа
-const getAlbumURL = (page) =>
-  '/albums/'  + targetAlbum.value +
-  '/images?page=' +    page       +
-  '&limit=' +         limit.value +
-  '&sort=' +           sort.value +
-  (tags.value.length ? '&tags=' + tags.value.map(elem => encodeURIComponent(elem))?.join(',') : '') +
-  (isReverse.value ? '&reverse' : '')
-
+  
 const route = useRoute()
 // Функция очистки всех картинок
 const cleanUpWall = () => {
@@ -52,7 +44,7 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, isStrictSize, isRealSize, lines, gap, radius, orientation, scroll
+  size, isStrictSize, isRealSize, lines, gap, extGap, radius, orientation, scroll, ambient
 } = storeToRefs(useSettingsStore())
 
 // Требуемые размеры карточек на представлении / скачиваемого изображения 
@@ -68,31 +60,18 @@ const getAllowedSize = (size) => {
   }
   return allowedSizes.at(-1)
 }
-const refinedSize = computed(() => getAllowedSize(realSize.value))
+//const refinedSize = computed(() => getAllowedSize(realSize.value))
 const imgSign = ref(null)
-const getThumbURL = (hash) =>
-  `${API_PATH}/albums/` +
-  `${targetAlbum.value}/images/` +
-  `${hash}/thumb/` +
-  `${orientation.value}${refinedSize.value}` +
-  ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
 // Получение превью всех размеров, если устройство поддерживает srcset 
-const getThumbMultiURL = (hash, ratio = 1) => {
+const getThumbMultiURL = (img) => {
   const srcsetItems = []
   for (const allowSize of allowedSizes) {
-    const url = 
-      `${API_PATH}/albums/` +
-      `${targetAlbum.value}/images/` +
-      `${hash}/thumb/` +
-      `${orientation.value}${allowSize}` +
-      ( imgSign.value ? `?sign=${imgSign.value}` : '' )
+    const urlW = urls.imageThumb(targetAlbum.value, img.hash, imgSign.value, 'w', allowSize)
+    srcsetItems.push(urlW +' '+ allowSize +'w')
 
-    const srcsetSize = orientation.value == 'w' 
-      ? allowSize
-      : Math.round(allowSize / ratio)
-
-    srcsetItems.push(url +' '+ srcsetSize +'w')
+    const urlH = urls.imageThumb(targetAlbum.value, img.hash, imgSign.value, 'h', allowSize)
+    srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio) +'w')
   }
   return srcsetItems.join(', ')
 }
@@ -126,7 +105,13 @@ const loadMore = async () => {
   isLoading.value = true
 
   await fetchWrapper.get(
-    getAlbumURL(currentPage)
+    urls.albumImages(targetAlbum.value, {
+      page: currentPage, 
+      limit: limit.value,
+      tags: tags.value,
+      sort: sort.value,
+      isReverse: isReverse.value,
+    })
   ).then((data) => {
     if (!canLoadMore.value) return
     canLoadMore.value = !(data.total < currentPage * limit.value)
@@ -136,11 +121,10 @@ const loadMore = async () => {
     const newImages = data.pictures
     newImages.forEach(element => {
       element.ext = element.name.split('.').at(-1).toLowerCase()
+      element.ratio = element.width / element.height
       element.thumbURL = element.ext != 'gif'
-        ? getThumbURL(element.hash) 
-        : `${API_PATH}/albums/` +
-          `${targetAlbum.value}/images/` +
-          `${element.hash}/orig`
+        ? urls.imageThumb(targetAlbum.value, element.hash, imgSign.value, orientation.value, size.value) 
+        : urls.imageOrig (targetAlbum.value, element.hash, imgSign.value) 
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
@@ -188,14 +172,12 @@ const onErrorImgLoad = async (event) => {
   }
 }
 
-const downloadOriginal = (hash) => {
-  window.location.href = 
-    `${API_PATH}/albums/${targetAlbum.value}/images/${hash}/download${imgSign.value ? '?sign=' + imgSign.value : ''}`
-}
+const downloadOriginal = (hash) =>
+  window.location.href = urls.imageDownload(targetAlbum.value, hash, imgSign.value)
 
 // Получение разрешённых реакций
 const allowedReactions = ref(null)
-fetchWrapper.get('/reactions').then(data => 
+fetchWrapper.get(urls.reactions()).then(data => 
   allowedReactions.value = data.map(el => el.value)
 )
 
@@ -213,9 +195,7 @@ const toggleReaction = (image, reaction, e) => {
   const isYouSetted = image.reactions?.[reaction]?.isYouSet || false
 
   fetchWrapper[isYouSetted ? 'delete' : 'post'](
-    '/albums/' + targetAlbum.value + 
-    '/images/' + image.hash +
-    '/reactions?reaction=' + reaction
+    urls.imageReaction(targetAlbum.value, image.hash, reaction)
   ).then(() => {
     if (!image.reactions)
       image.reactions = {}
@@ -240,38 +220,36 @@ watch(
   }
 )
 
+/*
+<button @click="console.log({
+  tags,
+})">
+  get values
+</button>
+
+<button @click="console.log(images)">Тест</button>
+*/
 </script>
+
 
 <template>
   <main>
     <div class="grid_outer">
-      <!-- DEBUG
-      <button @click="console.log({
-        tags,
-      })">
-        get values
-      </button>
-      
-      <button @click="console.log(images)">Тест</button>
-      -->
-      <section class="wall">
+      <section class="wall" :style="'--size:'+ size">
         <div 
           v-for="img in images" 
           :key="img" 
           class="img"
           @click="targetImage = img"
-          :style="
-            'width:'    + img.width*size / img.height +'px;'+
-            'flex-grow:'+ img.width*size / img.height
-          ">
+          :style="'--ratio:'+ img.ratio">
 
-          <i :style="'padding-bottom:'+ img.height / img.width * 100 +'%'"></i>
+          <i></i>
           <img 
             :src="img.thumbURL" 
             alt="" 
             loading="lazy"
             :srcset="img.ext != 'gif' 
-            ? getThumbMultiURL(img.hash, img.width / img.height) 
+            ? getThumbMultiURL(img) 
             : ''
             ">
 
@@ -364,7 +342,7 @@ watch(
   justify-content: center;
   margin: 0 auto;
   &_outer {
-    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') v-bind('gap + "px"');
+    padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap + "px") : 0') v-bind('gap + "px"');
     overflow-x: hidden;
     transition: 0.1s;
     position: relative;
@@ -390,6 +368,8 @@ watch(
   }
   .img {
     position: relative;
+    width:     calc(var(--ratio) * var(--size) * 1px);
+    flex-grow: calc(var(--ratio) * var(--size));
     &:hover {
       border-radius: v-bind('radius * 2 + "px"');
       .reactions {
@@ -397,11 +377,16 @@ watch(
       }
       .overlay {
         opacity: 1;
-        border: 1px solid var(--c-t0a);
+        border: 1px solid v-bind('ambient ? "transparent" : "var(--c-t0a)"');
+      }
+      img {
+        z-index: -1;
+        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
       }
     }
     i {
       display: block;
+      padding-bottom: calc(1 / var(--ratio) * 100%)
     }
     img {
       position: absolute;

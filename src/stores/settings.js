@@ -25,13 +25,15 @@ export const useSettingsStore = defineStore('settings', () => {
   const isRealSize   = createProp('isRealSize', 0)
   const lines        = createProp('lines', 0)
   const gap          = createProp('gap', 8)
+  const extGap       = createProp('extGap', true)
   const radius       = createProp('radius', 12)
   const orientation  = createProp('orientation', 'h')
   const theme        = createProp('theme', 'auto')
+  const ambient      = createProp('ambient', true)
   const scroll = ref(true)
  
   return { 
-    settings, reset, size, isStrictSize, isRealSize, 
-    lines, gap, radius, orientation, theme, scroll
+    settings, reset, size, isStrictSize, isRealSize, ambient,
+    lines, gap, extGap, radius, orientation, theme, scroll
   }
 })

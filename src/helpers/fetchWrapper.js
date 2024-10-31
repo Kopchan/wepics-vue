@@ -1,6 +1,5 @@
-import { API_PATH } from '@/config'
 import { useAuthStore } from '@/stores/auth.js'
-import sleep from '@/helpers/sleep'
+import { sleep } from '@/helpers'
 
 export const fetchWrapper = {
   get:    request('GET'),
@@ -20,7 +19,7 @@ function request(method) {
       requestOptions.body = JSON.stringify(body)
     }
    
-    return fetch(API_PATH + path, requestOptions).then(handleResponse)
+    return fetch(path, requestOptions).then(handleResponse)
   }
 }
 

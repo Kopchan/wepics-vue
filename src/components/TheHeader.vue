@@ -10,7 +10,7 @@ import {
 
 import { fetchWrapper, sleep } from '@/helpers';
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
-import { API_PATH } from '@/config';
+import { urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, 
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
@@ -53,7 +53,7 @@ const getAlbumData = async () => {
   isError.value = false
 
   await fetchWrapper.get(
-    '/albums/' + targetAlbum.value
+    urls.albumInfo(targetAlbum.value)
   ).then(data => {
     albumData.value = data
   }).catch(() => {
@@ -65,8 +65,9 @@ const getAlbumData = async () => {
 
 // Запрос на переиндексацию
 const reindexAlbum = () => {
+  isLoading.value = true
   fetchWrapper.get(
-    '/albums/' + targetAlbum.value + '/reindex'
+    urls.albumReindex(targetAlbum.value)
   ).then(async () => {
     const temp = targetAlbum.value
     targetAlbum.value = null // FIXME: успевает за это время загрузить root альбом
@@ -257,6 +258,7 @@ header {
   height: var(--header-height);
   backdrop-filter: blur(var(--div-blur));
   .header_inner {
+    overflow-x: auto;
     display: flex;
     align-items: center;
     height: 32px;
@@ -268,7 +270,7 @@ header {
     display: flex;
     height: 32px;
     align-items: center;
-    overflow: hidden;
+    //overflow: hidden;
     .section {
       display: flex;
       align-items: center;

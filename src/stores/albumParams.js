@@ -79,7 +79,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const albumData = ref({})
   /*
   const getAlbumData = () => {
-    fetchWrapper.get('/albums/' + (router.currentRoute.value.params.albumHash ?? 'root'))
+    fetchWrapper.get(urls.albumInfo(router.currentRoute.value.params.albumHash ?? 'root'))
       .then(data => albumData.value = data)
   }
   setTimeout(getAlbumData(), 100)
