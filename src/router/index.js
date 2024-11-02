@@ -1,8 +1,11 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
+import HomeView from '@/views/HomeView.vue'
+import { BASE_URL } from '@/config'
 
 export const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: BASE_URL 
+    ? createWebHistory    (import.meta.env.VITE_BASE_URL) 
+    : createWebHashHistory(import.meta.env.VITE_BASE_URL),
   routes: [
     {
       path: '/',
