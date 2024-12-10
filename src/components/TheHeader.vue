@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { debouncedWatch } from '@vueuse/core'
+import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon,
@@ -46,6 +46,8 @@ const toggleSubAlbumsCard = (e, hash, nextName) => {
 
 const isLoading = ref(null)
 const isError = ref(false)
+const { y: yScroll } = useWindowScroll();
+const isScrolledDown = computed(() => yScroll.value !== 0)
 
 // Запрос данных об альбоме
 const getAlbumData = async () => {
@@ -117,7 +119,7 @@ onMounted(() => {
       <div class="breadcrumb">
         <span class="section">
           <RouterLink class="btn" :to="{ path: '/', query: $route.query }">Home</RouterLink>
-          <button 
+          <button
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
             @click="toggleSubAlbumsCard($event, 'root', getNextFieldValue(albumData, '/'))">
@@ -146,7 +148,7 @@ onMounted(() => {
           <RouterLink class="btn" :to="{ path: targetAlbum, query: $route.query }">
             {{ albumData?.name ?? '...' }}
           </RouterLink>
-          <button 
+          <button v-if="albumData?.children"
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
             @click="toggleSubAlbumsCard($event, targetAlbum, null)">
@@ -251,12 +253,12 @@ onMounted(() => {
 <style lang="scss" scoped>
 header {
   top: 0;
-  background: linear-gradient(180deg, var(--c-b0), var(--c-b0a));
+  background: linear-gradient(180deg, var(--c-b0), v-bind("isScrolledDown ? 'var(--c-b0a)' : 'transparent'"));
   position: fixed;
   width: 100%;
   z-index: 100;
   height: var(--header-height);
-  backdrop-filter: blur(var(--div-blur));
+  backdrop-filter: v-bind("isScrolledDown ? 'blur(var(--div-blur))' : 'none'");
   .header_inner {
     overflow-x: auto;
     display: flex;

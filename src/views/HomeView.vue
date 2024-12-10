@@ -15,7 +15,7 @@ import { ImageViewer } from '@/components'
 
 // Параметры текущего альбома
 const  {
-  targetAlbum, limit, sort, isReverse, tags
+  targetAlbum, albumData, limit, sort, isReverse, tags
 } = storeToRefs(useAlbumParamsStore())
   
 const route = useRoute()
@@ -64,13 +64,13 @@ const getAllowedSize = (size) => {
 const imgSign = ref(null)
 
 // Получение превью всех размеров, если устройство поддерживает srcset 
-const getThumbMultiURL = (img) => {
+const getThumbMultiURL = (img, albumHash = null, sign = null) => {
   const srcsetItems = []
   for (const allowSize of allowedSizes) {
-    const urlW = urls.imageThumb(targetAlbum.value, img.hash, imgSign.value, 'w', allowSize)
+    const urlW = urls.imageThumb(albumHash ?? targetAlbum.value, img.hash, sign ?? imgSign.value, 'w', allowSize)
     srcsetItems.push(urlW +' '+ allowSize +'w')
 
-    const urlH = urls.imageThumb(targetAlbum.value, img.hash, imgSign.value, 'h', allowSize)
+    const urlH = urls.imageThumb(albumHash ?? targetAlbum.value, img.hash, sign ?? imgSign.value, 'h', allowSize)
     srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio) +'w')
   }
   return srcsetItems.join(', ')
@@ -146,7 +146,11 @@ const loadMore = async () => {
     case 429: // TODO: Вывести уведомление о частых запросов
       alert(error.message)
       return
-    case 404: // TODO: Сделать красивую страницу
+    case 404:
+      //router.replaceView(PageNotExist)
+      canLoadMore.value = false
+      alert(error.message || 'Not Found')
+      return // TODO: Сделать красивую страницу
     case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
     default:
       retries++
@@ -212,29 +216,72 @@ const toggleReaction = (image, reaction, e) => {
   })
 }
 
-const targetImage = ref(null)
-watch(
-  () => targetImage.value,
-  () => {
-    scroll.value = !(targetImage.value != null)
+watch(albumData, async () => {
+  for (const [childName, childParams] of Object.entries(albumData.value?.children ?? {})) {
+    try {
+      albumData.value.children[childName].preview = await getPreviews(childParams.hash)
+    }
+    catch {}
   }
-)
+})
+const getPreviews = async (hash) => {
+  const data = await fetchWrapper.get(
+    urls.albumImages(hash, {
+      page: 1, 
+      limit: 4,
+      tags: tags.value,
+      sort: sort.value,
+      isReverse: isReverse.value,
+    })
+  )
+  const sign = data.sign
+  const images = data.pictures
+  images.forEach(element => {
+    element.ext = element.name.split('.').at(-1).toLowerCase()
+    element.ratio = element.width / element.height
+    element.thumbURL = element.ext != 'gif'
+    ? urls.imageThumb(hash, element.hash, sign, orientation.value, size.value) 
+    : urls.imageOrig (hash, element.hash, sign) 
+  })
+  return { sign: sign, images: images }
+}
 
-/*
-<button @click="console.log({
-  tags,
-})">
-  get values
-</button>
+const targetImage = ref(null)
+watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
-<button @click="console.log(images)">Тест</button>
-*/
 </script>
-
 
 <template>
   <main>
     <div class="grid_outer">
+      <section class="albums" v-if="albumData?.children">
+        <p>Albums</p>
+        <div class="grid">
+          <RouterLink 
+            v-for="(childParams, childName) in albumData?.children" 
+            :to="{ path: '/album/'+childParams.hash, query: $route.query }"
+            class="square">
+            <div class="previews">
+              <img 
+                v-for="img in childParams?.preview?.images" 
+                :src="img.thumbURL" 
+                alt="" 
+                loading="lazy"
+                :srcset="img.ext != 'gif' 
+                ? getThumbMultiURL(img, childParams.hash, childParams?.preview.sign) 
+                : ''
+              ">
+            </div>
+            <div class="overlay">
+              <div class="center">
+                <div class="block">
+                  <p>{{ childName }}</p>
+                </div>
+              </div>
+            </div>
+          </RouterLink>
+        </div>
+      </section>
       <section class="wall" :style="'--size:'+ size">
         <div 
           v-for="img in images" 
@@ -338,14 +385,15 @@ watch(
 </template>
 
 <style lang="scss" scoped>
-.grid {
-  justify-content: center;
-  margin: 0 auto;
-  &_outer {
-    padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap + "px") : 0') v-bind('gap + "px"');
-    overflow-x: hidden;
-    transition: 0.1s;
-    position: relative;
+.grid_outer {
+  padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap + "px") : 0') v-bind('gap + "px"');
+  overflow-x: hidden;
+  transition: 0.1s;
+  position: relative;
+  min-height: calc(100vh - var(--header-height) - v-bind('gap + "px"') - 1px);
+  .grid {
+    justify-content: center;
+    margin: 0 auto;
   }
 }
 
@@ -355,6 +403,90 @@ watch(
   height: 100%;
   display: flex;
   flex-direction: column-reverse;
+}
+.albums {
+  p {
+    width: unset;
+    padding: 10px 5px;
+    font-size: 26px;
+    font-weight: 300;
+  }
+  .grid {
+    display: grid;
+    padding-bottom: v-bind('gap * 2 + "px"');
+    grid-template-columns: repeat(auto-fill, minmax(v-bind('size / 2 + "px"'), 1fr));
+    gap: v-bind('gap + "px"');
+    .square {
+      background-color: var(--c-b2a);
+      aspect-ratio: 1 / 1;
+      border-radius: v-bind('radius + "px"');
+      position: relative;
+      z-index: 3;
+      &:hover {
+        background-color: var(--c-b4a);
+        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        img {
+          z-index: 2;
+        }
+        .overlay .block {
+          background-color: transparent !important;
+          backdrop-filter: none !important;
+          box-shadow: unset !important;
+        }
+      }
+      &:active {
+        background-color: var(--c-b4);
+      }
+      .previews {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows:    repeat(2, 1fr);
+        padding: 10px;
+        gap: 6px;
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 6px;
+          aspect-ratio: 1 / 1;
+        }
+      }
+      .overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        .center {
+          height: 100%;
+          display: grid;
+          align-content: center;
+          justify-items: center;
+          .block {
+            background: var(--c-b2a);
+            backdrop-filter: blur(var(--div-blur));
+            box-shadow: #0006 0px 10px 20px;
+            padding: 6px 16px;
+            overflow: hidden;
+            border-radius: 8px;
+            p {
+              color: var(--c-t0);
+              font-size: 24px;
+              padding: 0;
+              margin: 0;
+              text-align: center;
+            }
+            span {
+              color: var(--c-t0);
+              padding: 0;
+              text-align: center;
+              color: var(--c-t2a)
+            }
+          }
+        }
+      }
+    }
+  } 
 }
 
 .wall {
