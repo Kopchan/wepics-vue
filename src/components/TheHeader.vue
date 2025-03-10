@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
-  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon,
+  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon,
   ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon
 } from 'lucide-vue-next'
 
@@ -12,7 +12,7 @@ import { fetchWrapper, sleep } from '@/helpers';
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
 import { urls } from '@/api'
 import {
-  AuthPanel, UserPanel, SettingsPanel, 
+  AuthPanel, UserPanel, SettingsPanel, AlbumRenamePanel,
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
 } from '@/components/panels'
 
@@ -34,6 +34,7 @@ const customizCard = ref()
 const subAlbumsCard = ref()
 const albumShareCard = ref()
 const objCreateCard = ref()
+const albumRenameCard = ref()
 
 // Логика переключение попапа со списком дочерних альбомов
 const albumChildren = ref(null)
@@ -148,6 +149,12 @@ onMounted(() => {
           <RouterLink class="btn" :to="{ path: targetAlbum, query: $route.query }">
             {{ albumData?.name ?? '...' }}
           </RouterLink>
+          <button v-if="user.isAdmin"
+            class="btn btn--circle folder-select-btn" 
+            title="Rename current album"
+            @click="albumRenameCard.toggle">
+            <PenIcon size="20" />
+          </button>
           <button v-if="albumData?.children"
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
@@ -156,6 +163,11 @@ onMounted(() => {
           </button>
         </span>
       </div>
+      <!--    =  Панель переименования  =    -->
+      <OverlayPanel ref="albumRenameCard" class="popup popup--fixed">
+        <AlbumRenamePanel :hash="targetAlbum"/>
+      </OverlayPanel>
+      <!--    =  Панель выбора дочернего альбома  =    -->
       <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
         <SubAlbumsPanel :hash="albumChildren" :nextName="albumChildrenNextName"/>
       </OverlayPanel>
@@ -259,12 +271,16 @@ header {
   z-index: 100;
   height: var(--header-height);
   backdrop-filter: v-bind("isScrolledDown ? 'blur(var(--div-blur))' : 'none'");
+  -webkit-app-region: drag;
   .header_inner {
     overflow-x: auto;
     display: flex;
     align-items: center;
     height: 32px;
     padding: 8px;
+    left: env(titlebar-area-x, 0);
+    top: env(titlebar-area-y, 0);
+    width: calc(env(titlebar-area-width, 100%) - 16px);
     gap: 8px;
   }
   // Путь
@@ -303,6 +319,10 @@ header {
   }
   .error > *:first-child {
     color: red;
+  }
+  .btn,
+  .droplist  {
+    -webkit-app-region: none;
   }
 }
 </style>

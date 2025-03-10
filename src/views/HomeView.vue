@@ -120,7 +120,9 @@ const loadMore = async () => {
    
     const newImages = data.pictures
     newImages.forEach(element => {
-      element.ext = element.name.split('.').at(-1).toLowerCase()
+      const parts = element.name.split('.');
+      element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
+      element.name = parts.slice(0, -1).join('.');
       element.ratio = element.width / element.height
       element.thumbURL = element.ext != 'gif'
         ? urls.imageThumb(targetAlbum.value, element.hash, imgSign.value, orientation.value, size.value) 
@@ -216,6 +218,14 @@ const toggleReaction = (image, reaction, e) => {
   })
 }
 
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 watch(albumData, async () => {
   for (const [childName, childParams] of Object.entries(albumData.value?.children ?? {})) {
     try {
@@ -287,7 +297,6 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           v-for="img in images" 
           :key="img" 
           class="img"
-          @click="targetImage = img"
           :style="'--ratio:'+ img.ratio">
 
           <i></i>
@@ -308,24 +317,27 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
                 v-if="reactionParams.count > 0"
                 class="reaction"
                 :class="{setted: reactionParams.isYouSet}"
-                @click="toggleReaction(img, reactionParams, $event)">
+                @click.stop="toggleReaction(img, reactionParams, $event)">
                 {{ reaction }}
                 {{ reactionParams.count }}
               </div>
             </template>
           </div>
           
-          <div class="overlay">
-            <div>
-              <div class="top-group">
+          <div class="overlay"
+          @click="targetImage = img">
+            <div class="top-group">
+              <span class="name">{{ img.name }}</span>
+              <div class="badges">
                 <span class="badge">{{ img.ext }}</span>
-                <span class="name">{{ img.name }}</span>
-              </div>  
+                <span class="badge">{{ formatDate(img.date) }}</span>
+                <span class="badge">{{ img.width }}×{{ img.height }}</span>
+              </div>
             </div>
 
             <div class="bottom-group">
-              <input type="checkbox" :id="img.hash" @click.stop @change="checkboxChange" >
-              <label 
+              <input @click.stop type="checkbox" :id="img.hash" @change="checkboxChange" >
+              <label @click.stop
                 v-if="user.token"
                 class="btn btn--reaction"
                 :for="img.hash">
@@ -336,7 +348,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
                     :class="{'btn--inverse': img?.reactions?.[option]?.isYouSet}"
                     class="btn btn--circle option"
                     v-for="option in allowedReactions"
-                    @click="toggleReaction(img, option, $event)">
+                    @click.stop="toggleReaction(img, option, $event)">
                     {{ option }}
                   </label>
                 </div>
@@ -380,7 +392,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       :album="targetAlbum" 
       :image.sync="targetImage" 
       :sign="imgSign"
-      @targetImage="(target) => targetImage = target"/>
+      @targetImage="t => targetImage = t"/>
   </main>
 </template>
 
@@ -566,19 +578,28 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       justify-content: space-between;
       .top-group {
         display: flex;
-        gap: 6px;
+        //justify-content: end;
+        flex-wrap: wrap;
+        justify-content: space-between;
         filter:
           drop-shadow(0 0 10px #000) 
           drop-shadow(0 0 3px #000);
         .name {
+          justify-self: flex-start;
           text-overflow: ellipsis;
           white-space: nowrap;
           overflow: hidden;
           color: #fff;
         }
+        .badges {
+          display: flex;
+          gap: 6px;
+          align-items: flex-start; 
+        }
         .badge {
-          font-size: 12px;
-          padding: 2px 5px;
+          flex-grow: 0;
+          font-size: 10px;
+          padding: 2px 4px;
           background-color: #fffa;
           border-radius: var(--border-r);
           color: #000;

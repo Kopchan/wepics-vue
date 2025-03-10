@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
   .btn.close {
     position: fixed;
     right: 8px;
-    top: 8px;
+    top: calc(env(titlebar-area-height, 0px) + 8px);
     height: 64px;
     width: 64px;
     color: var(--white0);
