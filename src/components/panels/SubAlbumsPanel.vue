@@ -14,7 +14,11 @@ const props = defineProps({
 // Хеш тыкнутого альбома
 const { hash } = toRefs(props)
 // Данные по текущему открытому альбому
-const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
+
+const {
+  targetAlbum, albumData
+} = storeToRefs(useAlbumParamsStore())
+
 
 const nextName = ref(props.nextName)
 const subAlbumData = ref(null) // Данные по тыкнутому альбому
@@ -25,7 +29,10 @@ if (hash.value === targetAlbum.value) { // FIXME: проверять что пу
   isLoading.value = false
   subAlbumData.value = albumData.value
 }
-else fetchWrapper.get(urls.albumInfo(hash.value))
+else fetchWrapper.get(urls.albumInfo(hash.value, { 
+    images: 0,
+    sort: 'name',
+  }))
   // Иначе загрузить по хешу
   .then(data => {
     isLoading.value = false

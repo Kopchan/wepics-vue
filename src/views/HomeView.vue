@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
-import { SmilePlusIcon, DownloadIcon } from 'lucide-vue-next'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
 
 import { urls } from '@/api'
@@ -24,6 +24,8 @@ const cleanUpWall = () => {
   canLoadMore.value = false
   isLoading  .value = false
   images     .value = []
+  retries = 0
+  imgRetryCounts.value = {}
   currentPage = 1
   canLoadMore.value = true
 }
@@ -60,6 +62,7 @@ const getAllowedSize = (size) => {
   }
   return allowedSizes.at(-1)
 }
+const albumPreviewSize = computed(() => getAllowedSize(size.value / 2))
 //const refinedSize = computed(() => getAllowedSize(realSize.value))
 const imgSign = ref(null)
 
@@ -225,7 +228,7 @@ const formatDate = (dateString) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-
+/*
 watch(albumData, async () => {
   for (const [childName, childParams] of Object.entries(albumData.value?.children ?? {})) {
     try {
@@ -234,6 +237,8 @@ watch(albumData, async () => {
     catch {}
   }
 })
+*/
+/*
 const getPreviews = async (hash) => {
   const data = await fetchWrapper.get(
     urls.albumImages(hash, {
@@ -255,6 +260,7 @@ const getPreviews = async (hash) => {
   })
   return { sign: sign, images: images }
 }
+*/
 
 const targetImage = ref(null)
 watch(targetImage, () => scroll.value = !(targetImage.value != null))
@@ -273,19 +279,26 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             class="square">
             <div class="previews">
               <img 
-                v-for="img in childParams?.preview?.images" 
-                :src="img.thumbURL" 
+                v-for="img in childParams?.images" 
+                :src="urls.imageThumb(childParams.hash, img.hash, childParams.sign, 'h', albumPreviewSize)" 
                 alt="" 
                 loading="lazy"
-                :srcset="img.ext != 'gif' 
-                ? getThumbMultiURL(img, childParams.hash, childParams?.preview.sign) 
-                : ''
-              ">
+                @error="onErrorImgLoad">
             </div>
             <div class="overlay">
               <div class="center">
                 <div class="block">
-                  <p>{{ childName }}</p>
+                  <p class="name">{{ childName }}</p>
+                  <div class="inline" v-if="childParams.albums_count">
+                    <FoldersIcon size="16"/>
+                    <span>{{ childParams.albums_count }}</span>
+                  </div>
+                  <div class="inline" v-if="childParams.images_count">
+                    <ImagesIcon size="16"/>
+                    <span>{{ childParams.images_count }}</span>
+                  </div>
+                  <span class="text" v-if="!childParams.albums_count && !childParams.images_count">EMPTY</span>
+                  <span class="text" v-if="!childParams.last_indexation">NOT INDEXED</span>
                 </div>
               </div>
             </div>
@@ -304,6 +317,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             :src="img.thumbURL" 
             alt="" 
             loading="lazy"
+            @error="onErrorImgLoad"
             :srcset="img.ext != 'gif' 
             ? getThumbMultiURL(img) 
             : ''
@@ -481,18 +495,33 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             padding: 6px 16px;
             overflow: hidden;
             border-radius: 8px;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
             p {
               color: var(--c-t0);
               font-size: 24px;
               padding: 0;
+              min-width:0;
               margin: 0;
               text-align: center;
             }
-            span {
+            .text {
+              color: var(--c-t2a);
+              justify-self: end;
+              align-self: last baseline;
+              padding: 1px
+            }
+            .inline {
+              display: flex;
+              justify-items: center;
+              align-items: center;
+              gap: 2px;
               color: var(--c-t0);
-              padding: 0;
               text-align: center;
-              color: var(--c-t2a)
+              color: var(--c-t2a);
             }
           }
         }

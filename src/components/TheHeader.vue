@@ -56,7 +56,10 @@ const getAlbumData = async () => {
   isError.value = false
 
   await fetchWrapper.get(
-    urls.albumInfo(targetAlbum.value)
+    urls.albumInfo(targetAlbum.value, { 
+      sort: sort.value, 
+      isReverse: isReverse.value
+    })
   ).then(data => {
     albumData.value = data
   }).catch(() => {
