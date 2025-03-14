@@ -5,7 +5,7 @@ import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon,
-  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon
+  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon
 } from 'lucide-vue-next'
 
 import { fetchWrapper, sleep } from '@/helpers';
@@ -21,7 +21,7 @@ const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, sort, isReverse, albumData
+  targetAlbum, sort, isReverse, albumData, nested
 } = storeToRefs(useAlbumParamsStore())
 
 // Данные об текущем пользователе
@@ -207,6 +207,14 @@ onMounted(() => {
       <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
         <AlbumSharePanel :hash="targetAlbum"/>
       </OverlayPanel>
+      <!--    =  Панель поделится  =    -->
+      <button
+        class="btn btn--quad"
+        :class="{'btn--inverse': nested}"
+        title="Switch nested"
+        @click="nested = !nested">
+        <WorkflowIcon size="20"/>
+      </button>
       <!--    =  Сортировка =     -->
       <button
         class="btn btn--quad change-direction-btn"

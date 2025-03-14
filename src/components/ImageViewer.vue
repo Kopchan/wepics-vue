@@ -51,7 +51,7 @@ onBeforeUnmount(() => {
       @click.stop="isScope ^= 1" 
       alt="name"
       :height="isScope ? image.height / pxRatio : 'none'"
-      :src="urls.imageOrig(album, image.hash, sign)">
+      :src="urls.imageOrig(image?.album?.hash ?? album, image.hash, image?.album?.sign ?? sign)">
       <button class="btn close" @click="$emit('targetImage', null)">
         <XIcon size="32"/>
       </button>

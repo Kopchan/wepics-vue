@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon } from 'lucide-vue-next'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, LinkIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
 
 import { urls } from '@/api'
@@ -15,7 +15,7 @@ import { ImageViewer } from '@/components'
 
 // Параметры текущего альбома
 const  {
-  targetAlbum, albumData, limit, sort, isReverse, tags
+  targetAlbum, albumData, limit, sort, isReverse, tags, nested
 } = storeToRefs(useAlbumParamsStore())
   
 const route = useRoute()
@@ -114,6 +114,7 @@ const loadMore = async () => {
       tags: tags.value,
       sort: sort.value,
       isReverse: isReverse.value,
+      nested: nested.value,
     })
   ).then((data) => {
     if (!canLoadMore.value) return
@@ -128,8 +129,8 @@ const loadMore = async () => {
       element.name = parts.slice(0, -1).join('.');
       element.ratio = element.width / element.height
       element.thumbURL = element.ext != 'gif'
-        ? urls.imageThumb(targetAlbum.value, element.hash, imgSign.value, orientation.value, size.value) 
-        : urls.imageOrig (targetAlbum.value, element.hash, imgSign.value) 
+        ? urls.imageThumb(element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
+        : urls.imageOrig (element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value) 
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
@@ -181,8 +182,8 @@ const onErrorImgLoad = async (event) => {
   }
 }
 
-const downloadOriginal = (hash) =>
-  window.location.href = urls.imageDownload(targetAlbum.value, hash, imgSign.value)
+const downloadOriginal = (img) =>
+  window.location.href = urls.imageDownload(img.album?.hash ?? targetAlbum.value, img.hash, img.album?.sign ?? imgSign.value)
 
 // Получение разрешённых реакций
 const allowedReactions = ref(null)
@@ -271,7 +272,6 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
   <main>
     <div class="grid_outer">
       <section class="albums" v-if="albumData?.children">
-        <p>Albums</p>
         <div class="grid">
           <RouterLink 
             v-for="(childParams, childName) in albumData?.children" 
@@ -319,8 +319,8 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             loading="lazy"
             @error="onErrorImgLoad"
             :srcset="img.ext != 'gif' 
-            ? getThumbMultiURL(img) 
-            : ''
+            ? getThumbMultiURL(img, img?.album?.hash, img?.album?.sign) 
+            : undefined
             ">
 
           <div class="reactions">
@@ -343,9 +343,15 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             <div class="top-group">
               <span class="name">{{ img.name }}</span>
               <div class="badges">
-                <span class="badge">{{ img.ext }}</span>
+                <span class="badge up">{{ img.ext }}</span>
                 <span class="badge">{{ formatDate(img.date) }}</span>
                 <span class="badge">{{ img.width }}×{{ img.height }}</span>
+                <RouterLink 
+                  v-if="img.album?.name && img.album?.hash != targetAlbum" 
+                  class="badge wide" 
+                  :to="{ path: '/album/'+img.album?.hash, query: $route.query }" @click.stop>
+                  {{ img.album?.name }}
+                </RouterLink>
               </div>
             </div>
 
@@ -369,7 +375,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
                 <SmilePlusIcon size="20"/>
               </label>
 
-              <button class="btn btn--download" @click.stop="downloadOriginal(img.hash)">
+              <button class="btn btn--download" @click.stop="downloadOriginal(img)">
                 <span class="size">{{ humanFileSize(img.size) }}</span>
                 <DownloadIcon size="20"/>
               </button>
@@ -624,6 +630,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           display: flex;
           gap: 6px;
           align-items: flex-start; 
+          flex-wrap: wrap;
         }
         .badge {
           flex-grow: 0;
@@ -635,7 +642,13 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           display: flex;
           justify-items: center;
           align-items: center;
-          text-transform: uppercase
+        }
+        .up {
+          text-transform: uppercase;
+        }
+        .wide {
+          padding: 2px 8px;
+          font-weight: bold;
         }
       }
       .bottom-group {

@@ -19,14 +19,15 @@ export default {
 
   albumReindex  : (albumHash) => API_PATH + '/albums/' + albumHash + '/reindex',
   albumAccesses : (albumHash) => API_PATH + '/albums/' + albumHash + '/access',
-  albumImages   : (albumHash, {page, limit, sort , tags, isReverse}) => 
+  albumImages   : (albumHash, {page, limit, sort , tags, isReverse, nested}) => 
     API_PATH +
     '/albums/' + albumHash +
     '/images?page=' + page +
     '&limit=' +      limit +
     '&sort=' +        sort +
     (tags.length ? '&tags=' + tags.value.map(elem => encodeURIComponent(elem))?.join(',') : '') +
-    (isReverse ? '&reverse' : ''),
+    (isReverse ? '&reverse' : '') +
+    (nested ? '&nested' + (nested == 'force' ? '=force' : '') : ''),
 
   imageReaction : (albumHash, imageHash, reaction)                       => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/reactions?reaction=' + reaction,
   imageOrig     : (albumHash, imageHash, sign = null)                    => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/orig' +                        (sign ? '?sign='+ sign : ''),
