@@ -29,10 +29,7 @@ if (hash.value === targetAlbum.value) { // FIXME: проверять что пу
   isLoading.value = false
   subAlbumData.value = albumData.value
 }
-else fetchWrapper.get(urls.albumInfo(hash.value, { 
-    images: 0,
-    sort: 'name',
-  }))
+else fetchWrapper.get(urls.albumInfo(hash.value))
   // Иначе загрузить по хешу
   .then(data => {
     isLoading.value = false

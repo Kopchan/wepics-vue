@@ -30,10 +30,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const orientation  = createProp('orientation', 'h')
   const theme        = createProp('theme', 'auto')
   const ambient      = createProp('ambient', true)
+  const albumsLayout = createProp('albumsLayout', 'lines')
+  const lineWidth    = createProp('lineWidth', 720)
   const scroll = ref(true)
  
   return { 
-    settings, reset, size, isStrictSize, isRealSize, ambient,
-    lines, gap, extGap, radius, orientation, theme, scroll
+    settings, reset, size, isStrictSize, isRealSize, ambient, lineWidth,
+    lines, gap, extGap, radius, orientation, theme, scroll, albumsLayout,
   }
 })

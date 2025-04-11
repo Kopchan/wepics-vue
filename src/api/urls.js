@@ -11,15 +11,15 @@ export default {
 
   users: () => API_PATH + '/users',
 
-  albumInfo     : (albumHash, {sort = 'name', images = 4, isReverse = false}) => 
-    API_PATH + '/albums/' + albumHash +
-    '?images=' + images +
+  albumInfo     : (albumHash, {sort = null, images = 0, isReverse = false} = {}) => 
+    API_PATH + '/albums/' + albumHash + '?' + 
+    (images ? 'images=' + images : '') +
     (sort ? '&sort=' + sort : '') + 
     (isReverse ? '&reverse' : ''),
 
   albumReindex  : (albumHash) => API_PATH + '/albums/' + albumHash + '/reindex',
   albumAccesses : (albumHash) => API_PATH + '/albums/' + albumHash + '/access',
-  albumImages   : (albumHash, {page, limit, sort , tags, isReverse, nested}) => 
+  albumImages   : (albumHash, {page = 1, limit = 30, sort = 'name', tags = [], isReverse = false, nested = false} = {}) => 
     API_PATH +
     '/albums/' + albumHash +
     '/images?page=' + page +

@@ -1,10 +1,9 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { BtnRadios } from '@/components/ui'
 import { fetchWrapper } from '@/helpers'
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore } from '@/stores'
-import { urls } from '@/api';
+import { urls } from '@/api'
 
 // Получаем данные о текущем открытом альбоме
 const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())

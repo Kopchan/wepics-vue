@@ -8,7 +8,7 @@ import {
   ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon
 } from 'lucide-vue-next'
 
-import { fetchWrapper, sleep } from '@/helpers';
+import { fetchWrapper, sleep } from '@/helpers'
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
 import { urls } from '@/api'
 import {
@@ -21,7 +21,7 @@ const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, sort, isReverse, albumData, nested
+  targetAlbum, sort, isReverse, albumData, nested, limit
 } = storeToRefs(useAlbumParamsStore())
 
 // Данные об текущем пользователе
@@ -47,7 +47,7 @@ const toggleSubAlbumsCard = (e, hash, nextName) => {
 
 const isLoading = ref(null)
 const isError = ref(false)
-const { y: yScroll } = useWindowScroll();
+const { y: yScroll } = useWindowScroll()
 const isScrolledDown = computed(() => yScroll.value !== 0)
 
 // Запрос данных об альбоме
@@ -58,6 +58,7 @@ const getAlbumData = async () => {
   await fetchWrapper.get(
     urls.albumInfo(targetAlbum.value, { 
       sort: sort.value, 
+      images: Math.max(limit.value, 4),
       isReverse: isReverse.value
     })
   ).then(data => {
@@ -83,18 +84,18 @@ const reindexAlbum = () => {
 }
 
 function getNextFieldValue(obj, currentKey) {
-  const keys = Object.keys(obj?.parentsChain || {});
-  const currentIndex = keys.indexOf(currentKey);
+  const keys = Object.keys(obj?.parentsChain || {})
+  const currentIndex = keys.indexOf(currentKey)
 
   if (currentIndex === keys.length - 1) {
-    return obj.name;
+    return obj.name
   }
   if (currentIndex === -1) {
-    return;
+    return
   }
 
-  const nextKey = keys[currentIndex + 1];
-  return nextKey;
+  const nextKey = keys[currentIndex + 1]
+  return nextKey
 }
 
 // Заполнение данных об альбоме при изменении открытого альбома

@@ -1,14 +1,13 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
-import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, LinkIcon } from 'lucide-vue-next'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, ArrowRightIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
 
 import { urls } from '@/api'
-import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers';
+import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
 import { ImageViewer } from '@/components'
@@ -46,13 +45,13 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, isStrictSize, isRealSize, lines, gap, extGap, radius, orientation, scroll, ambient
+  size, gap, extGap, radius, orientation, scroll, ambient, albumsLayout, lineWidth
 } = storeToRefs(useSettingsStore())
 
 // Требуемые размеры карточек на представлении / скачиваемого изображения 
-const { pixelRatio } = useDevicePixelRatio()
-const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
-const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
+//const { pixelRatio } = useDevicePixelRatio()
+//const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
+//const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
 
 const allowedSizes = [144, 240, 360, 480, 720, 1080] // сортированный
 const getAllowedSize = (size) => {
@@ -78,25 +77,16 @@ const getThumbMultiURL = (img, albumHash = null, sign = null) => {
   }
   return srcsetItems.join(', ')
 }
-/*
-watchThrottled(
-  () => pixelRatio.value,
-  () => {
-    if (!isRealSize) {
-      console.log(`pixelRatio changed to ${pixelRatio.value}, change cssSize ${isRealSize ? 'true' : 'false'}`)
-      cssSize.value = Math.round(realSize.value / pixelRatio.value)
-      return
-    }
-    console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...' +`${isRealSize ? 'true' : 'false'}` )
-    realSize.value = Math.round(cssSize.value * pixelRatio.value)
-    allowedRealSize.value = getAllowedSize()
-    console.log(realSize.value +' and  '+ allowedRealSize.value)
-    images.value.forEach(element => {
-      element.thumbURL = getThumbURL(element.hash)
-    })
-  },
-  { throttle: 500 })
-*/
+
+// GIF как оригинал
+const getThumbUrlOnAlbum = (album, img) => {
+  const parts = img.name.split('.')
+  img.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
+  return img.ext != 'gif'
+    ? urls.imageThumb(album.hash, img.hash, album?.sign, 'h', albumPreviewSize.value) 
+    : urls.imageOrig (album.hash, img.hash, album?.sign) 
+}
+
 // Порционный запрос картинок
 let currentPage = 1
 let retries = 0
@@ -124,9 +114,9 @@ const loadMore = async () => {
    
     const newImages = data.pictures
     newImages.forEach(element => {
-      const parts = element.name.split('.');
+      const parts = element.name.split('.')
       element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
-      element.name = parts.slice(0, -1).join('.');
+      element.name = parts.slice(0, -1).join('.')
       element.ratio = element.width / element.height
       element.thumbURL = element.ext != 'gif'
         ? urls.imageThumb(element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
@@ -223,45 +213,12 @@ const toggleReaction = (image, reaction, e) => {
 }
 
 const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
-/*
-watch(albumData, async () => {
-  for (const [childName, childParams] of Object.entries(albumData.value?.children ?? {})) {
-    try {
-      albumData.value.children[childName].preview = await getPreviews(childParams.hash)
-    }
-    catch {}
-  }
-})
-*/
-/*
-const getPreviews = async (hash) => {
-  const data = await fetchWrapper.get(
-    urls.albumImages(hash, {
-      page: 1, 
-      limit: 4,
-      tags: tags.value,
-      sort: sort.value,
-      isReverse: isReverse.value,
-    })
-  )
-  const sign = data.sign
-  const images = data.pictures
-  images.forEach(element => {
-    element.ext = element.name.split('.').at(-1).toLowerCase()
-    element.ratio = element.width / element.height
-    element.thumbURL = element.ext != 'gif'
-    ? urls.imageThumb(hash, element.hash, sign, orientation.value, size.value) 
-    : urls.imageOrig (hash, element.hash, sign) 
-  })
-  return { sign: sign, images: images }
-}
-*/
 
 const targetImage = ref(null)
 watch(targetImage, () => scroll.value = !(targetImage.value != null))
@@ -272,17 +229,81 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
   <main>
     <div class="grid_outer">
       <section class="albums" v-if="albumData?.children">
-        <div class="grid">
+        <div class="lines" v-if="albumsLayout == 'lines'">
+          <div 
+            v-for="(childParams, childName) in albumData?.children" 
+            :key="childName"
+            class="line">
+            <RouterLink
+              class="hidden-link"
+              :key="childName"
+              :to="{ path: '/album/'+childParams.hash, query: $route.query }"/>
+            <div class="title">
+              <p class="name">{{ childName }}</p>
+              <div class="params">
+                <div class="inline" v-if="childParams.albums_count">
+                  <FoldersIcon size="16"/>
+                  <span>{{ childParams.albums_count }}</span>
+                </div>
+                <div class="inline" v-if="childParams.images_count">
+                  <ImagesIcon size="16"/>
+                  <span>{{ childParams.images_count }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="previews" v-if="childParams?.images?.length">
+              <div class="img-wrapper" 
+                v-for="img, key in childParams?.images"
+                :key="key"
+                @click="() => {
+                  img.album = childParams
+                  targetImage = img
+                }">
+                <img
+                  :style="`--ratio: ${img.height / img.width}`"
+                  :src="getThumbUrlOnAlbum(childParams, img)" 
+                  :width="img.width"
+                  :height="img.height"
+                  alt="" 
+                  loading="lazy"
+                  @error="onErrorImgLoad">
+                  
+              </div>
+              <RouterLink class="more" 
+                :to="{ path: '/album/'+childParams.hash, query: $route.query }"
+                v-if="childParams.images_count > childParams?.images?.length">
+                <p>Explore {{ childParams.images_count - childParams?.images?.length }} remaining images</p>
+                <ArrowRightIcon/>
+              </RouterLink>
+            </div>
+            <div class="messages" v-else>
+              <span class="text" v-if="!childParams.albums_count && !childParams.images_count && childParams.last_indexation">
+                Empty as of {{childParams.last_indexation}}
+              </span>
+              <span class="text" v-if="!childParams.last_indexation">
+                Not indexed, maybe has media
+              </span>
+              <span class="text" v-if="!childParams.images_count && childParams.albums_count">
+                Open to see sub-albums
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="grid" v-else-if="albumsLayout == 'grid'">
           <RouterLink 
             v-for="(childParams, childName) in albumData?.children" 
+            :key="childName"
             :to="{ path: '/album/'+childParams.hash, query: $route.query }"
             class="square">
             <div class="previews">
+              {{ console.log(childParams?.images) }}
               <img 
-                v-for="img in childParams?.images" 
-                :src="urls.imageThumb(childParams.hash, img.hash, childParams.sign, 'h', albumPreviewSize)" 
+                v-for="img in childParams?.images?.slice(0, 4)" 
+                :key="img"
+                :src="getThumbUrlOnAlbum(childParams, img)" 
                 alt="" 
                 loading="lazy"
+
                 @error="onErrorImgLoad">
             </div>
             <div class="overlay">
@@ -338,8 +359,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             </template>
           </div>
           
-          <div class="overlay"
-          @click="targetImage = img">
+          <div class="overlay" @click="targetImage = img">
             <div class="top-group">
               <span class="name">{{ img.name }}</span>
               <div class="badges">
@@ -418,11 +438,11 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
 <style lang="scss" scoped>
 .grid_outer {
-  padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap + "px") : 0') v-bind('gap + "px"');
+  padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap +"px") : 0') v-bind('gap +"px"');
   overflow-x: hidden;
   transition: 0.1s;
   position: relative;
-  min-height: calc(100vh - var(--header-height) - v-bind('gap + "px"') - 1px);
+  min-height: calc(100vh - var(--header-height) - v-bind('gap +"px"') - 1px);
   .grid {
     justify-content: center;
     margin: 0 auto;
@@ -436,6 +456,8 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
   display: flex;
   flex-direction: column-reverse;
 }
+
+
 .albums {
   p {
     width: unset;
@@ -443,15 +465,154 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
     font-size: 26px;
     font-weight: 300;
   }
+  .lines {
+    display: grid;
+    grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
+    gap: v-bind('gap +"px"');
+    padding-bottom: v-bind('gap * 2 +"px"');
+    width: 100%;
+    .hidden-link {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+    }
+    .line {
+      max-width: 100%;
+      background-color: var(--c-b2a);
+      border-radius: v-bind('radius +"px"');
+      text-decoration: none;
+      position: relative;
+      z-index: 2;
+      .title {
+        display: flex;
+        min-height: 40px;
+        gap: 10px;
+        padding: v-bind('gap / 2 +"px"') calc(v-bind('gap / 2 +"px"') + 10px);
+        padding-bottom: 0;
+        flex-wrap: wrap;
+        align-content: center;
+        justify-content: space-between;
+        p {
+          color: var(--c-t0);
+          font-size: 24px;
+          padding: 0;
+          min-width:0;
+          margin: 0;
+          text-align: center;
+        }
+        .params {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          align-content: center;
+        }
+        .inline {
+          display: flex;
+          justify-items: center;
+          align-items: center;
+          gap: 2px;
+          color: var(--c-t0);
+          text-align: center;
+          color: var(--c-t2a);
+        }
+      }
+      .messages {
+        padding: calc(v-bind('gap / 2 +"px"') + 10px);
+        .text {
+          color: var(--c-t2a);
+          //justify-self: end;
+          //align-self: last baseline;
+        }
+      }
+      &:hover:not(:has(.previews:hover)) {
+        background-color: var(--c-b4a);
+        z-index: 1;
+        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        .overlay .block {
+          background-color: transparent !important;
+          backdrop-filter: none !important;
+          box-shadow: unset !important;
+        }
+      }
+      &:active:not(:has(.previews:hover)) {
+        background-color: var(--c-b4);
+      }
+      .previews {
+        display: flex;
+        overflow-y: auto;
+        justify-items: center;
+        align-items: center;
+        gap:     v-bind('gap / 2 +"px"');
+        padding: v-bind('gap / 2 +"px"');
+        height:  v-bind('size / 2 +"px"');
+        z-index: 10;
+        position: relative;
+        .img-wrapper {
+          height: 100%;
+          width: auto;
+          position: relative;
+          &.blur:after {
+            position: absolute;
+            content: '';
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            backdrop-filter: blur(24px);
+            overflow: hidden;
+            border-radius: v-bind('radius +"px"');
+          }
+          &:active:after {
+            backdrop-filter: unset;
+          }
+        }
+        img {
+          height: 100%;
+          width: auto;
+          object-fit: cover;
+          border-radius: v-bind('radius +"px"');
+          &:hover {
+            //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+            // z-index: 1;
+
+            outline : 1px solid var(--c-t0a);
+            z-index: 9;
+          }
+        }
+        .more {
+          border-radius: v-bind('radius +"px"');
+          height: 100%;
+          aspect-ratio: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          text-decoration: none;
+          color: var(--c-t0);
+          background: var(--c-b2a);
+          &:hover {
+            background: var(--c-b2);
+          }
+          &:active {
+            background: var(--c-b4a);
+          }
+        }
+      }
+    }
+  } 
+
+  
   .grid {
     display: grid;
-    padding-bottom: v-bind('gap * 2 + "px"');
-    grid-template-columns: repeat(auto-fill, minmax(v-bind('size / 2 + "px"'), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(v-bind('size / 2 +"px"'), 1fr));
+    padding-bottom: v-bind('gap * 2 +"px"');
     gap: v-bind('gap + "px"');
     .square {
       background-color: var(--c-b2a);
       aspect-ratio: 1 / 1;
-      border-radius: v-bind('radius + "px"');
+      border-radius: v-bind('radius +"px"');
       position: relative;
       z-index: 3;
       &:hover {
@@ -536,6 +697,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
   } 
 }
 
+
 .wall {
   display: flex;
   flex-wrap: wrap;
@@ -550,7 +712,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
     width:     calc(var(--ratio) * var(--size) * 1px);
     flex-grow: calc(var(--ratio) * var(--size));
     &:hover {
-      border-radius: v-bind('radius * 2 + "px"');
+      border-radius: v-bind('radius * 2 +"px"');
       .reactions {
         opacity: 0;
       }
@@ -572,7 +734,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       top: 0;
       width: 100%;
       vertical-align: bottom;
-      border-radius: v-bind('radius + "px"');
+      border-radius: v-bind('radius +"px"');
     }
     .reactions {
       transition: opacity .2s;
@@ -597,7 +759,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
     }
     .overlay {
       z-index: 20;
-      border-radius: v-bind('radius + "px"');
+      border-radius: v-bind('radius +"px"');
       //display: none;
       display: flex;
       opacity: 0;
@@ -608,7 +770,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       left: 0;
       top: 0;
       border: 1px solid transparent;
-      padding: calc(v-bind('radius + "px"') / 4 + 6px);
+      padding: calc(v-bind('radius +"px"') / 4 + 6px);
       flex-direction: column;
       justify-content: space-between;
       .top-group {

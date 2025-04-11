@@ -6,7 +6,7 @@ import { BtnRadios } from '@/components/ui'
 // Стор с настроками кастомизации
 const settings = useSettingsStore()
 const {
-  size, isStrictSize, isRealSize, lines, gap, extGap, radius, orientation, theme, ambient
+  size, isStrictSize, isRealSize, lines, gap, extGap, radius, orientation, theme, ambient, albumsLayout, lineWidth
 } = storeToRefs(settings)
 </script>
 
@@ -23,7 +23,7 @@ const {
     <!-- Подсветка изображений (при наведении) -->
     <div class="label-group">
       <label>Ambient</label>
-      <label class="switch"><input type="checkbox" v-model.numbar="ambient"/><div></div></label>
+      <label class="switch"><input type="checkbox" v-model.number="ambient"/><div></div></label>
     </div>
 
     <!-- Выбор кол-во столбцов/строк -->
@@ -54,7 +54,7 @@ const {
     <!-- Переключение отступов по краям окна -->
     <div class="label-group">
       <label>External gap</label>
-      <label class="switch"><input type="checkbox" v-model.numbar="extGap"/><div></div></label>
+      <label class="switch"><input type="checkbox" v-model.number="extGap"/><div></div></label>
     </div>
 
     <!-- Выбор размера закругления -->
@@ -63,6 +63,21 @@ const {
       <input type="number" min="0" max="32" v-model.number="radius" class="text-box">
     </div>
     <input type="range" min="0" max="32" v-model.number="radius">
+
+    <!-- Выбор разметки подальбомов -->
+    <div class="label-group">
+      <label>Sub-albums</label>
+    </div>
+    <BtnRadios name="subalbums" :options="{hide: 'Hide', grid: 'Grid', lines: 'Lines'}" v-model="albumsLayout"/>
+
+    <!-- Выбор ширины столбцов линий -->
+    <template v-if="albumsLayout == 'lines'">
+      <div class="label-group">
+        <label>Line width</label>
+        <input type="number" min="0" max="3840" v-model.number="lineWidth" class="text-box">
+      </div>
+      <input type="range" min="0" max="3840" v-model.number="lineWidth">
+    </template>
 
     <button class="btn" @click="settings.reset">Reset</button>
   </div>
