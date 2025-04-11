@@ -6,7 +6,7 @@ import { BtnRadios } from '@/components/ui'
 // Стор с настроками кастомизации
 const settings = useSettingsStore()
 const {
-  size, isStrictSize, isRealSize, lines, gap, radius, orientation, theme
+  size, isStrictSize, isRealSize, lines, gap, extGap, radius, orientation, theme, ambient, albumsLayout, lineWidth
 } = storeToRefs(settings)
 </script>
 
@@ -19,6 +19,12 @@ const {
       <label>Theme</label>
     </div>
     <BtnRadios name="theme" :options="{auto: 'Auto', light: 'Light', dark: 'Dark'}" v-model="theme"/>
+
+    <!-- Подсветка изображений (при наведении) -->
+    <div class="label-group">
+      <label>Ambient</label>
+      <label class="switch"><input type="checkbox" v-model.number="ambient"/><div></div></label>
+    </div>
 
     <!-- Выбор кол-во столбцов/строк -->
     <div class="label-group">
@@ -33,8 +39,10 @@ const {
       <input type="number" min="144" max="1080" v-model.number="size" class="text-box" :disabled="lines && !isStrictSize">
     </div>
     <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="lines && !isStrictSize">
+    <!--
     <BtnRadios name="isRealSize" :options="['Relative', 'Absolute']" v-model="isRealSize" :disabled="lines && !isStrictSize"/>
     <BtnRadios name="isStrictSize" :options="['Fill', 'Strict']" v-model="isStrictSize"/>
+    -->
 
     <!-- Выбор размера отступов -->
     <div class="label-group">
@@ -43,12 +51,33 @@ const {
     </div>
     <input type="range" min="0" max="32" v-model.number="gap">
 
+    <!-- Переключение отступов по краям окна -->
+    <div class="label-group">
+      <label>External gap</label>
+      <label class="switch"><input type="checkbox" v-model.number="extGap"/><div></div></label>
+    </div>
+
     <!-- Выбор размера закругления -->
     <div class="label-group">
       <label>Radius</label>
       <input type="number" min="0" max="32" v-model.number="radius" class="text-box">
     </div>
     <input type="range" min="0" max="32" v-model.number="radius">
+
+    <!-- Выбор разметки подальбомов -->
+    <div class="label-group">
+      <label>Sub-albums</label>
+    </div>
+    <BtnRadios name="subalbums" :options="{hide: 'Hide', grid: 'Grid', lines: 'Lines'}" v-model="albumsLayout"/>
+
+    <!-- Выбор ширины столбцов линий -->
+    <template v-if="albumsLayout == 'lines'">
+      <div class="label-group">
+        <label>Line width</label>
+        <input type="number" min="0" max="3840" v-model.number="lineWidth" class="text-box">
+      </div>
+      <input type="range" min="0" max="3840" v-model.number="lineWidth">
+    </template>
 
     <button class="btn" @click="settings.reset">Reset</button>
   </div>
@@ -67,6 +96,13 @@ const {
   justify-content: space-between;
   align-items: center;
   margin-top: 12px;
+}
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  gap: 6px;
+
 }
 button {
   margin-top: 12px;

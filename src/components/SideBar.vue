@@ -2,6 +2,7 @@
 import { PinIcon, PinOffIcon } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia';
 import { useSidebarStore } from '@/stores';
+import { PROJECT_NAME } from '@/config';
 
 const { isOpened, isPinned } = storeToRefs(useSidebarStore())
 </script>
@@ -28,7 +29,7 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
       <footer>
         <div class="copyright">
           <img src="/favicon/icon.svg" alt="WEPICS" height="24" width="24">
-          <p>© 2024 Wepics</p>
+          <p>© 2024 {{ PROJECT_NAME }}</p>
         </div>
         <div class="links-place">
           <a target="_blank" href="https://github.com/kopchan/wepics-vue">Github</a>

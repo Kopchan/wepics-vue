@@ -1,13 +1,13 @@
 :root {
   // Белые тона
-  --white0: #fff; --white0a: #fff9;
+  --white0: #fff; --white0a: #fff9; --white0aa: #fff6;
   --white1: #d8d8d8; --white1a: #d8d8d898;
   --white2: #ddd; --white2a: #ddd9;
   --white4: #bbb; --white4a: #bbb9;
   --white7: #777; --white7a: #7779;
   
   // Тёмные тона
-  --black0: #000; --black0a: #0009;
+  --black0: #000; --black0a: #0009; --black0aa: #0006
   --black1: #111; --black1a: #1119;
   --black2: #222; --black2a: #2229;
   --black4: #444; --black4a: #4449;
@@ -15,7 +15,7 @@
 
   // Тёмная авто тема
   color-scheme: dark;
-  --c-b0: var(--black0); --c-b0a: var(--black0a);
+  --c-b0: var(--black0); --c-b0a: var(--black0a); --c-b0aa: var(--black0aa);
   --c-b1: var(--black1); --c-b1a: var(--black1a);
   --c-b2: var(--black2); --c-b2a: var(--black2a);
   --c-b4: var(--black4); --c-b4a: var(--black4a);
@@ -27,7 +27,7 @@
   // Светлая авто тема
   @media (prefers-color-scheme: light) {
     color-scheme: normal;
-    --c-b0: var(--white0); --c-b0a: var(--white0a);
+    --c-b0: var(--white0); --c-b0a: var(--white0a); --c-b0aa: var(--white0aa);
     --c-b1: var(--white1); --c-b1a: var(--white1a);
     --c-b2: var(--white2); --c-b2a: var(--white2a);
     --c-b4: var(--white4); --c-b4a: var(--white4a);
@@ -39,7 +39,7 @@
   // Тёмная ручная тема
   &.dark {
     color-scheme: dark;
-    --c-b0: var(--black0); --c-b0a: var(--black0a);
+    --c-b0: var(--black0); --c-b0a: var(--black0a); --c-b0aa: var(--black0aa);
     --c-b1: var(--black1); --c-b1a: var(--black1a);
     --c-b2: var(--black2); --c-b2a: var(--black2a);
     --c-b4: var(--black4); --c-b4a: var(--black4a);
@@ -51,7 +51,7 @@
   // Светлая ручная тема
   &.light {
     color-scheme: normal;
-    --c-b0: var(--white0); --c-b0a: var(--white0a);
+    --c-b0: var(--white0); --c-b0a: var(--white0a); --c-b0aa: var(--white0aa);
     --c-b1: var(--white1); --c-b1a: var(--white1a);
     --c-b2: var(--white2); --c-b2a: var(--white2a);
     --c-b4: var(--white4); --c-b4a: var(--white4a);

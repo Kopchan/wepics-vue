@@ -1,37 +1,30 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
-import { useDevicePixelRatio, useWindowSize, watchDebounced } from '@vueuse/core'
-import { SmilePlus, Download } from 'lucide-vue-next'
-import MasonryWall from '@yeger/vue-masonry-wall'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, ArrowRightIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
 
-import { API_PATH } from '@/config'
-import { fetchWrapper, sleep, debounceImmediate } from '@/helpers'
+import { urls } from '@/api'
+import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
+import { ImageViewer } from '@/components'
 
 // Параметры текущего альбома
 const  {
-  targetAlbum, limit, sort, isReverse, tags
+  targetAlbum, albumData, limit, sort, isReverse, tags, nested
 } = storeToRefs(useAlbumParamsStore())
-// Генерация URL для получения страницы ответа
-const getAlbumURL = (page) =>
-  '/albums/'  + targetAlbum.value +
-  '/images?page=' +    page       +
-  '&limit=' +         limit.value +
-  '&sort=' +           sort.value +
-  (tags.value.length ? '&tags=' + tags.value.map(elem => encodeURIComponent(elem))?.join(',') : '') +
-  (isReverse.value ? '&reverse' : '')
-
+  
 const route = useRoute()
 // Функция очистки всех картинок
 const cleanUpWall = () => {
   canLoadMore.value = false
   isLoading  .value = false
   images     .value = []
+  retries = 0
+  imgRetryCounts.value = {}
   currentPage = 1
   canLoadMore.value = true
 }
@@ -52,13 +45,13 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, isStrictSize, isRealSize, lines, gap, radius, orientation
+  size, gap, extGap, radius, orientation, scroll, ambient, albumsLayout, lineWidth
 } = storeToRefs(useSettingsStore())
 
 // Требуемые размеры карточек на представлении / скачиваемого изображения 
-const { pixelRatio } = useDevicePixelRatio()
-const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
-const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
+//const { pixelRatio } = useDevicePixelRatio()
+//const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
+//const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
 
 const allowedSizes = [144, 240, 360, 480, 720, 1080] // сортированный
 const getAllowedSize = (size) => {
@@ -68,49 +61,32 @@ const getAllowedSize = (size) => {
   }
   return allowedSizes.at(-1)
 }
-const refinedSize = computed(() => getAllowedSize(realSize.value))
+const albumPreviewSize = computed(() => getAllowedSize(size.value / 2))
+//const refinedSize = computed(() => getAllowedSize(realSize.value))
 const imgSign = ref(null)
-const getThumbURL = (hash) =>
-  `${API_PATH}/albums/` +
-  `${targetAlbum.value}/images/` +
-  `${hash}/thumb/` +
-  `${orientation.value}${refinedSize.value}` +
-  ( imgSign.value ? `?sign=${imgSign.value}` : '' )
 
 // Получение превью всех размеров, если устройство поддерживает srcset 
-const getThumbMultiURL = (hash) => {
+const getThumbMultiURL = (img, albumHash = null, sign = null) => {
   const srcsetItems = []
   for (const allowSize of allowedSizes) {
-    const url = 
-      `${API_PATH}/albums/` +
-      `${targetAlbum.value}/images/` +
-      `${hash}/thumb/` +
-      `${orientation.value}${allowSize}` +
-      ( imgSign.value ? `?sign=${imgSign.value}` : '' )
+    const urlW = urls.imageThumb(albumHash ?? targetAlbum.value, img.hash, sign ?? imgSign.value, 'w', allowSize)
+    srcsetItems.push(urlW +' '+ allowSize +'w')
 
-    srcsetItems.push(url +' '+ allowSize + orientation.value)
+    const urlH = urls.imageThumb(albumHash ?? targetAlbum.value, img.hash, sign ?? imgSign.value, 'h', allowSize)
+    srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio) +'w')
   }
   return srcsetItems.join(', ')
 }
-/*
-watchThrottled(
-  () => pixelRatio.value,
-  () => {
-    if (!isRealSize) {
-      console.log(`pixelRatio changed to ${pixelRatio.value}, change cssSize ${isRealSize ? 'true' : 'false'}`)
-      cssSize.value = Math.round(realSize.value / pixelRatio.value)
-      return
-    }
-    console.log('pixelRatio.value changed, change realSize from '+ realSize.value +' to...' +`${isRealSize ? 'true' : 'false'}` )
-    realSize.value = Math.round(cssSize.value * pixelRatio.value)
-    allowedRealSize.value = getAllowedSize()
-    console.log(realSize.value +' and  '+ allowedRealSize.value)
-    images.value.forEach(element => {
-      element.thumbURL = getThumbURL(element.hash)
-    })
-  },
-  { throttle: 500 })
-*/
+
+// GIF как оригинал
+const getThumbUrlOnAlbum = (album, img) => {
+  const parts = img.name.split('.')
+  img.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
+  return img.ext != 'gif'
+    ? urls.imageThumb(album.hash, img.hash, album?.sign, 'h', albumPreviewSize.value) 
+    : urls.imageOrig (album.hash, img.hash, album?.sign) 
+}
+
 // Порционный запрос картинок
 let currentPage = 1
 let retries = 0
@@ -122,7 +98,14 @@ const loadMore = async () => {
   isLoading.value = true
 
   await fetchWrapper.get(
-    getAlbumURL(currentPage)
+    urls.albumImages(targetAlbum.value, {
+      page: currentPage, 
+      limit: limit.value,
+      tags: tags.value,
+      sort: sort.value,
+      isReverse: isReverse.value,
+      nested: nested.value,
+    })
   ).then((data) => {
     if (!canLoadMore.value) return
     canLoadMore.value = !(data.total < currentPage * limit.value)
@@ -131,11 +114,19 @@ const loadMore = async () => {
    
     const newImages = data.pictures
     newImages.forEach(element => {
-      element.thumbURL = getThumbURL(element.hash)
+      const parts = element.name.split('.')
+      element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
+      element.name = parts.slice(0, -1).join('.')
+      element.ratio = element.width / element.height
+      element.thumbURL = element.ext != 'gif'
+        ? urls.imageThumb(element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
+        : urls.imageOrig (element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value) 
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
-    images.value = images.value.concat(data.pictures)
+    //images.value = images.value.concat(data.pictures)
+
+    images.value.push(...newImages)
 
     currentPage++
     isLoading.value = false
@@ -143,18 +134,25 @@ const loadMore = async () => {
     isLoading.value = false
     switch (error.status) {
     case 500:
+    case 504:
       retries++
-      if (retries > 5) canLoadMore.value = false
+      if (retries > 10000) canLoadMore.value = false
       await sleep(1000)
       return
     case 429: // TODO: Вывести уведомление о частых запросов
       alert(error.message)
       return
-    case 404: // TODO: Сделать красивую страницу
+    case 404:
+      //router.replaceView(PageNotExist)
+      canLoadMore.value = false
+      alert(error.message || 'Not Found')
+      return // TODO: Сделать красивую страницу
     case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
     default:
-      canLoadMore.value = false
-      alert(error.message)
+      retries++
+      if (retries > 10000) canLoadMore.value = false
+      await sleep(1000)
+      return
     }
   })
 }
@@ -174,57 +172,20 @@ const onErrorImgLoad = async (event) => {
   }
 }
 
-// Получение инфо о колонках
-const masonryWall = ref(null)
-const columnWidth = ref(cssSize.value)
-const windowWidth = useWindowSize().width
-
-onMounted(async () => {
-  await sleep(1000)
-  watchDebounced(
-    () => windowWidth.value,
-    () => {
-      const columnSize = masonryWall.value?.$el?.children[0]?.clientWidth
-      columnWidth.value = Math.round(columnSize) || cssSize.value
-    },
-    { deep: true, immediate: true, debounce: 500 }
-  )
-})
-
-// Человеческие размеры файлов
-const units = ['B', 'kB', 'MB', 'GB', 'TB']
-const humanFileSize = (bytes) => {
-  var i = bytes == 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024))
-  return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + units[i]
-}
-
-// Загрузчик оригинала картинки
-const { user } = storeToRefs(useAuthStore())
-const downloadOriginal = (hash, name = '') => {
-  fetch(`${API_PATH}/albums/${targetAlbum.value}/images/${hash}/orig`, {
-    [user.value.token ? 'headers' : null]: { 
-      Authorization: `Bearer ${user.value.token}` 
-    }
-  }).then(
-    resp => resp.blob()
-  ).then(blob => {
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = name
-    a.click()
-    window.URL.revokeObjectURL(url)
-  })
-}
+const downloadOriginal = (img) =>
+  window.location.href = urls.imageDownload(img.album?.hash ?? targetAlbum.value, img.hash, img.album?.sign ?? imgSign.value)
 
 // Получение разрешённых реакций
 const allowedReactions = ref(null)
-fetchWrapper.get('/reactions').then(data => 
+fetchWrapper.get(urls.reactions()).then(data => 
   allowedReactions.value = data.map(el => el.value)
 )
 
 const authCard = ref()
 const toggleAuthCard = (e) => authCard.value.toggle(e)
+
+// Загрузчик оригинала картинки
+const { user } = storeToRefs(useAuthStore())
 // Переключение реакции на картинке
 const toggleReaction = (image, reaction, e) => {
   if (!user.value.token) {
@@ -234,9 +195,7 @@ const toggleReaction = (image, reaction, e) => {
   const isYouSetted = image.reactions?.[reaction]?.isYouSet || false
 
   fetchWrapper[isYouSetted ? 'delete' : 'post'](
-    '/albums/' + targetAlbum.value + 
-    '/images/' + image.hash +
-    '/reactions?reaction=' + reaction
+    urls.imageReaction(targetAlbum.value, image.hash, reaction)
   ).then(() => {
     if (!image.reactions)
       image.reactions = {}
@@ -253,90 +212,198 @@ const toggleReaction = (image, reaction, e) => {
   })
 }
 
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const targetImage = ref(null)
+watch(targetImage, () => scroll.value = !(targetImage.value != null))
+
 </script>
 
 <template>
   <main>
     <div class="grid_outer">
-      <!-- DEBUG
-      <button @click="console.log({
-        tags,
-      })">
-        get values
-      </button>
-      -->
-      <MasonryWall
-        class="grid"
-        ref="masonryWall"
-        :items="images"
-        :column-width="cssSize"
-        :gap="gap"
-        :min-columns="lines"
-        :max-columns="lines"
-        :class="{strict: isStrictSize}">
-        <template #default="{item}">
-          <div class="grid-item">
-            <img
-              loading="lazy"
-              :src="item.thumbURL"
-              :srcset="getThumbMultiURL(item.hash)"
-              :sizes="columnWidth +'px'"
-              alt=""
-              :width="cssSize"
-              :height="Math.round(cssSize / item.width * item.height)"
-              @error="onErrorImgLoad">
-            <div class="overlay">
-              <div>
-                <div class="top-group">
-                  <span class="badge">{{ item.name.split('.').at(-1) }}</span>
-                  <span class="name">{{ item.name.replace(/\.[^/.]+$/, "") }}</span>
-                </div>  
-              </div>
-
-              <div class="bottom-group">
-                <input type="checkbox" :id="item.hash">
-                <label 
-                  v-if="user.token"
-                  class="btn btn--reaction"
-                  :for="item.hash">
-                    <div class="options">
-                    <label 
-                      :for="item.hash"
-                      :key="option"
-                      :class="{'btn--inverse': item?.reactions?.[option]?.isYouSet}"
-                      class="btn btn--circle option"
-                      v-for="option in allowedReactions"
-                      @click="toggleReaction(item, option, $event)">
-                      {{ option }}
-                    </label>
-                  </div>
-                  <SmilePlus size="20"/>
-                </label>
-
-                <button class="btn btn--download" @click="downloadOriginal(item.hash, item.name)">
-                  <span class="size">{{ humanFileSize(item.size) }}</span>
-                  <Download size="20"/>
-                </button>
-              </div>
-            </div>
-            <div class="reactions">
-              <template 
-                v-for="(reactionParams, reaction) in item.reactions" 
-                :key="reaction">
-                <div 
-                  v-if="reactionParams.count > 0"
-                  class="reaction"
-                  :class="{setted: reactionParams.isYouSet}"
-                  @click="toggleReaction(item, reactionParams, $event)">
-                  {{ reaction }}
-                  {{ reactionParams.count }}
+      <section class="albums" v-if="albumData?.children">
+        <div class="lines" v-if="albumsLayout == 'lines'">
+          <div 
+            v-for="(childParams, childName) in albumData?.children" 
+            :key="childName"
+            class="line">
+            <RouterLink
+              class="hidden-link"
+              :key="childName"
+              :to="{ path: '/album/'+childParams.hash, query: $route.query }"/>
+            <div class="title">
+              <p class="name">{{ childName }}</p>
+              <div class="params">
+                <div class="inline" v-if="childParams.albums_count">
+                  <FoldersIcon size="16"/>
+                  <span>{{ childParams.albums_count }}</span>
                 </div>
-              </template>
+                <div class="inline" v-if="childParams.images_count">
+                  <ImagesIcon size="16"/>
+                  <span>{{ childParams.images_count }}</span>
+                </div>
+              </div>
             </div>
-            <div class="download-line"></div>
+            <div class="previews" v-if="childParams?.images?.length">
+              <div class="img-wrapper" 
+                v-for="img, key in childParams?.images"
+                :key="key"
+                @click="() => {
+                  img.album = childParams
+                  targetImage = img
+                }">
+                <img
+                  :style="`--ratio: ${img.height / img.width}`"
+                  :src="getThumbUrlOnAlbum(childParams, img)" 
+                  :width="img.width"
+                  :height="img.height"
+                  alt="" 
+                  loading="lazy"
+                  @error="onErrorImgLoad">
+                  
+              </div>
+              <RouterLink class="more" 
+                :to="{ path: '/album/'+childParams.hash, query: $route.query }"
+                v-if="childParams.images_count > childParams?.images?.length">
+                <p>Explore {{ childParams.images_count - childParams?.images?.length }} remaining images</p>
+                <ArrowRightIcon/>
+              </RouterLink>
+            </div>
+            <div class="messages" v-else>
+              <span class="text" v-if="!childParams.albums_count && !childParams.images_count && childParams.last_indexation">
+                Empty as of {{childParams.last_indexation}}
+              </span>
+              <span class="text" v-if="!childParams.last_indexation">
+                Not indexed, maybe has media
+              </span>
+              <span class="text" v-if="!childParams.images_count && childParams.albums_count">
+                Open to see sub-albums
+              </span>
+            </div>
           </div>
-        </template>
-      </MasonryWall>
+        </div>
+        <div class="grid" v-else-if="albumsLayout == 'grid'">
+          <RouterLink 
+            v-for="(childParams, childName) in albumData?.children" 
+            :key="childName"
+            :to="{ path: '/album/'+childParams.hash, query: $route.query }"
+            class="square">
+            <div class="previews">
+              {{ console.log(childParams?.images) }}
+              <img 
+                v-for="img in childParams?.images?.slice(0, 4)" 
+                :key="img"
+                :src="getThumbUrlOnAlbum(childParams, img)" 
+                alt="" 
+                loading="lazy"
+
+                @error="onErrorImgLoad">
+            </div>
+            <div class="overlay">
+              <div class="center">
+                <div class="block">
+                  <p class="name">{{ childName }}</p>
+                  <div class="inline" v-if="childParams.albums_count">
+                    <FoldersIcon size="16"/>
+                    <span>{{ childParams.albums_count }}</span>
+                  </div>
+                  <div class="inline" v-if="childParams.images_count">
+                    <ImagesIcon size="16"/>
+                    <span>{{ childParams.images_count }}</span>
+                  </div>
+                  <span class="text" v-if="!childParams.albums_count && !childParams.images_count">EMPTY</span>
+                  <span class="text" v-if="!childParams.last_indexation">NOT INDEXED</span>
+                </div>
+              </div>
+            </div>
+          </RouterLink>
+        </div>
+      </section>
+      <section class="wall" :style="'--size:'+ size">
+        <div 
+          v-for="img in images" 
+          :key="img" 
+          class="img"
+          :style="'--ratio:'+ img.ratio">
+
+          <i></i>
+          <img 
+            :src="img.thumbURL" 
+            alt="" 
+            loading="lazy"
+            @error="onErrorImgLoad"
+            :srcset="img.ext != 'gif' 
+            ? getThumbMultiURL(img, img?.album?.hash, img?.album?.sign) 
+            : undefined
+            ">
+
+          <div class="reactions">
+            <template 
+              v-for="(reactionParams, reaction) in img.reactions" 
+              :key="reaction">
+              <div 
+                v-if="reactionParams.count > 0"
+                class="reaction"
+                :class="{setted: reactionParams.isYouSet}"
+                @click.stop="toggleReaction(img, reactionParams, $event)">
+                {{ reaction }}
+                {{ reactionParams.count }}
+              </div>
+            </template>
+          </div>
+          
+          <div class="overlay" @click="targetImage = img">
+            <div class="top-group">
+              <span class="name">{{ img.name }}</span>
+              <div class="badges">
+                <span class="badge up">{{ img.ext }}</span>
+                <span class="badge">{{ formatDate(img.date) }}</span>
+                <span class="badge">{{ img.width }}×{{ img.height }}</span>
+                <RouterLink 
+                  v-if="img.album?.name && img.album?.hash != targetAlbum" 
+                  class="badge wide" 
+                  :to="{ path: '/album/'+img.album?.hash, query: $route.query }" @click.stop>
+                  {{ img.album?.name }}
+                </RouterLink>
+              </div>
+            </div>
+
+            <div class="bottom-group">
+              <input @click.stop type="checkbox" :id="img.hash" @change="checkboxChange" >
+              <label @click.stop
+                v-if="user.token"
+                class="btn btn--reaction"
+                :for="img.hash">
+                  <div class="options">
+                  <label 
+                    :for="img.hash"
+                    :key="option"
+                    :class="{'btn--inverse': img?.reactions?.[option]?.isYouSet}"
+                    class="btn btn--circle option"
+                    v-for="option in allowedReactions"
+                    @click.stop="toggleReaction(img, option, $event)">
+                    {{ option }}
+                  </label>
+                </div>
+                <SmilePlusIcon size="20"/>
+              </label>
+
+              <button class="btn btn--download" @click.stop="downloadOriginal(img)">
+                <span class="size">{{ humanFileSize(img.size) }}</span>
+                <DownloadIcon size="20"/>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div class="message message--download"
         v-if="isLoading">
         <p>Loading...</p>
@@ -359,53 +426,315 @@ const toggleReaction = (image, reaction, e) => {
     <OverlayPanel ref="authCard" class="popup popup--fixed">
       <AuthPanel/>
     </OverlayPanel>
+
+    <ImageViewer 
+      v-if="targetImage" 
+      :album="targetAlbum" 
+      :image.sync="targetImage" 
+      :sign="imgSign"
+      @targetImage="t => targetImage = t"/>
   </main>
 </template>
 
 <style lang="scss" scoped>
-.grid {
-  justify-content: center;
-  margin: 0 auto;
-  &.strict:deep(.masonry-column) {
-    max-width: v-bind('cssSize + "px"');
+.grid_outer {
+  padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap +"px") : 0') v-bind('gap +"px"');
+  overflow-x: hidden;
+  transition: 0.1s;
+  position: relative;
+  min-height: calc(100vh - var(--header-height) - v-bind('gap +"px"') - 1px);
+  .grid {
+    justify-content: center;
+    margin: 0 auto;
   }
-  &_outer {
-    padding: calc(var(--header-height) + 1px) v-bind('gap + "px"') v-bind('gap + "px"');
-    overflow-x: hidden;
-    transition: 0.1s;
-    position: relative;
+}
+
+.inf-handler-position {
+  position: absolute;
+  bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+
+.albums {
+  p {
+    width: unset;
+    padding: 10px 5px;
+    font-size: 26px;
+    font-weight: 300;
   }
-  &-item {
-    border-radius: v-bind('radius + "px"');
-    position: relative;
-    &:hover {
-      background-color: var(--c-b2);
-      .info {
-        display: block;
+  .lines {
+    display: grid;
+    grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
+    gap: v-bind('gap +"px"');
+    padding-bottom: v-bind('gap * 2 +"px"');
+    width: 100%;
+    .hidden-link {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+    }
+    .line {
+      max-width: 100%;
+      background-color: var(--c-b2a);
+      border-radius: v-bind('radius +"px"');
+      text-decoration: none;
+      position: relative;
+      z-index: 2;
+      .title {
+        display: flex;
+        min-height: 40px;
+        gap: 10px;
+        padding: v-bind('gap / 2 +"px"') calc(v-bind('gap / 2 +"px"') + 10px);
+        padding-bottom: 0;
+        flex-wrap: wrap;
+        align-content: center;
+        justify-content: space-between;
+        p {
+          color: var(--c-t0);
+          font-size: 24px;
+          padding: 0;
+          min-width:0;
+          margin: 0;
+          text-align: center;
+        }
+        .params {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          align-content: center;
+        }
+        .inline {
+          display: flex;
+          justify-items: center;
+          align-items: center;
+          gap: 2px;
+          color: var(--c-t0);
+          text-align: center;
+          color: var(--c-t2a);
+        }
+      }
+      .messages {
+        padding: calc(v-bind('gap / 2 +"px"') + 10px);
+        .text {
+          color: var(--c-t2a);
+          //justify-self: end;
+          //align-self: last baseline;
+        }
+      }
+      &:hover:not(:has(.previews:hover)) {
+        background-color: var(--c-b4a);
+        z-index: 1;
+        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        .overlay .block {
+          background-color: transparent !important;
+          backdrop-filter: none !important;
+          box-shadow: unset !important;
+        }
+      }
+      &:active:not(:has(.previews:hover)) {
+        background-color: var(--c-b4);
+      }
+      .previews {
+        display: flex;
+        overflow-y: auto;
+        justify-items: center;
+        align-items: center;
+        gap:     v-bind('gap / 2 +"px"');
+        padding: v-bind('gap / 2 +"px"');
+        height:  v-bind('size / 2 +"px"');
+        z-index: 10;
+        position: relative;
+        .img-wrapper {
+          height: 100%;
+          width: auto;
+          position: relative;
+          &.blur:after {
+            position: absolute;
+            content: '';
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            backdrop-filter: blur(24px);
+            overflow: hidden;
+            border-radius: v-bind('radius +"px"');
+          }
+          &:active:after {
+            backdrop-filter: unset;
+          }
+        }
+        img {
+          height: 100%;
+          width: auto;
+          object-fit: cover;
+          border-radius: v-bind('radius +"px"');
+          &:hover {
+            //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+            // z-index: 1;
+
+            outline : 1px solid var(--c-t0a);
+            z-index: 9;
+          }
+        }
+        .more {
+          border-radius: v-bind('radius +"px"');
+          height: 100%;
+          aspect-ratio: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          text-decoration: none;
+          color: var(--c-t0);
+          background: var(--c-b2a);
+          &:hover {
+            background: var(--c-b2);
+          }
+          &:active {
+            background: var(--c-b4a);
+          }
+        }
+      }
+    }
+  } 
+
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(v-bind('size / 2 +"px"'), 1fr));
+    padding-bottom: v-bind('gap * 2 +"px"');
+    gap: v-bind('gap + "px"');
+    .square {
+      background-color: var(--c-b2a);
+      aspect-ratio: 1 / 1;
+      border-radius: v-bind('radius +"px"');
+      position: relative;
+      z-index: 3;
+      &:hover {
+        background-color: var(--c-b4a);
+        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        img {
+          z-index: 2;
+        }
+        .overlay .block {
+          background-color: transparent !important;
+          backdrop-filter: none !important;
+          box-shadow: unset !important;
+        }
+      }
+      &:active {
+        background-color: var(--c-b4);
+      }
+      .previews {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows:    repeat(2, 1fr);
+        padding: 10px;
+        gap: 6px;
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 6px;
+          aspect-ratio: 1 / 1;
+        }
       }
       .overlay {
-        //display: flex;
-        opacity: 1;
-        border: 1px solid var(--c-t0a);
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        .center {
+          height: 100%;
+          display: grid;
+          align-content: center;
+          justify-items: center;
+          .block {
+            background: var(--c-b2a);
+            backdrop-filter: blur(var(--div-blur));
+            box-shadow: #0006 0px 10px 20px;
+            padding: 6px 16px;
+            overflow: hidden;
+            border-radius: 8px;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            p {
+              color: var(--c-t0);
+              font-size: 24px;
+              padding: 0;
+              min-width:0;
+              margin: 0;
+              text-align: center;
+            }
+            .text {
+              color: var(--c-t2a);
+              justify-self: end;
+              align-self: last baseline;
+              padding: 1px
+            }
+            .inline {
+              display: flex;
+              justify-items: center;
+              align-items: center;
+              gap: 2px;
+              color: var(--c-t0);
+              text-align: center;
+              color: var(--c-t2a);
+            }
+          }
+        }
       }
+    }
+  } 
+}
+
+
+.wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v-bind('gap +"px"');
+  &:after {
+    content: '';
+    flex-grow: 1e4;
+    //min-width: 20%;
+  }
+  .img {
+    position: relative;
+    width:     calc(var(--ratio) * var(--size) * 1px);
+    flex-grow: calc(var(--ratio) * var(--size));
+    &:hover {
+      border-radius: v-bind('radius * 2 +"px"');
       .reactions {
         opacity: 0;
       }
+      .overlay {
+        opacity: 1;
+        border: 1px solid v-bind('ambient ? "transparent" : "var(--c-t0a)"');
+      }
+      img {
+        z-index: -1;
+        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+      }
+    }
+    i {
+      display: block;
+      padding-bottom: calc(1 / var(--ratio) * 100%)
     }
     img {
-      border-radius: v-bind('radius + "px"');
-      display: block;
+      position: absolute;
+      top: 0;
       width: 100%;
-      height: 100%;
-      object-fit: contain;
-      &:before { // TODO: Доделать блок незагруженной картинки
-        content: '';
-        background-color: var(--c-b2);
-        width: 100%;
-        height: 200px;
-        top: 0;
-        left: 0;
-      }
+      vertical-align: bottom;
+      border-radius: v-bind('radius +"px"');
     }
     .reactions {
       transition: opacity .2s;
@@ -430,7 +759,7 @@ const toggleReaction = (image, reaction, e) => {
     }
     .overlay {
       z-index: 20;
-      border-radius: v-bind('radius + "px"');
+      border-radius: v-bind('radius +"px"');
       //display: none;
       display: flex;
       opacity: 0;
@@ -441,31 +770,47 @@ const toggleReaction = (image, reaction, e) => {
       left: 0;
       top: 0;
       border: 1px solid transparent;
-      padding: calc(v-bind('radius + "px"') / 4 + 6px);
+      padding: calc(v-bind('radius +"px"') / 4 + 6px);
       flex-direction: column;
       justify-content: space-between;
       .top-group {
         display: flex;
-        gap: 6px;
+        //justify-content: end;
+        flex-wrap: wrap;
+        justify-content: space-between;
         filter:
           drop-shadow(0 0 10px #000) 
           drop-shadow(0 0 3px #000);
         .name {
+          justify-self: flex-start;
           text-overflow: ellipsis;
           white-space: nowrap;
           overflow: hidden;
           color: #fff;
         }
+        .badges {
+          display: flex;
+          gap: 6px;
+          align-items: flex-start; 
+          flex-wrap: wrap;
+        }
         .badge {
-          font-size: 12px;
-          padding: 2px 5px;
+          flex-grow: 0;
+          font-size: 10px;
+          padding: 2px 4px;
           background-color: #fffa;
           border-radius: var(--border-r);
           color: #000;
           display: flex;
           justify-items: center;
           align-items: center;
-          text-transform: uppercase
+        }
+        .up {
+          text-transform: uppercase;
+        }
+        .wide {
+          padding: 2px 8px;
+          font-weight: bold;
         }
       }
       .bottom-group {
@@ -569,16 +914,6 @@ const toggleReaction = (image, reaction, e) => {
         }
       }
     }
-    /*.download-line {
-      bottom: 0;
-      right: 0;
-      left: 0;
-      position: absolute;
-      background-color: #0906;
-      backdrop-filter: blur(var(--div-blur));
-      border-radius: 0 0 v-bind('radius + "px"') v-bind('radius + "px"');
-      height: 8px;
-    }*/
   }
 }
 .message {
@@ -604,12 +939,5 @@ const toggleReaction = (image, reaction, e) => {
     margin: 20px auto;
     background-color: var(--c-b2);
   }
-}
-.inf-handler-position {
-  position: absolute;
-  bottom: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column-reverse;
 }
 </style>

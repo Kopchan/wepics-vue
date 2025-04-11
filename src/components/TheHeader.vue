@@ -1,17 +1,18 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { debouncedWatch } from '@vueuse/core'
+import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
-  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon,
-  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon,
+  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon,
+  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon
 } from 'lucide-vue-next'
 
-import { fetchWrapper } from '@/helpers'
+import { fetchWrapper, sleep } from '@/helpers'
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
+import { urls } from '@/api'
 import {
-  AuthPanel, UserPanel, SettingsPanel, 
+  AuthPanel, UserPanel, SettingsPanel, AlbumRenamePanel,
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
 } from '@/components/panels'
 
@@ -20,7 +21,7 @@ const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, sort, isReverse, albumData
+  targetAlbum, sort, isReverse, albumData, nested, limit
 } = storeToRefs(useAlbumParamsStore())
 
 // Данные об текущем пользователе
@@ -33,26 +34,75 @@ const customizCard = ref()
 const subAlbumsCard = ref()
 const albumShareCard = ref()
 const objCreateCard = ref()
+const albumRenameCard = ref()
 
 // Логика переключение попапа со списком дочерних альбомов
 const albumChildren = ref(null)
-const toggleSubAlbumsCard = (e, hash) => {
+const albumChildrenNextName = ref(null)
+const toggleSubAlbumsCard = (e, hash, nextName) => {
   albumChildren.value = hash
+  albumChildrenNextName.value = nextName
   subAlbumsCard.value.toggle(e)
 }
 
-// Заполнение данных об альбоме
+const isLoading = ref(null)
+const isError = ref(false)
+const { y: yScroll } = useWindowScroll()
+const isScrolledDown = computed(() => yScroll.value !== 0)
+
+// Запрос данных об альбоме
+const getAlbumData = async () => {
+  isLoading.value = true
+  isError.value = false
+
+  await fetchWrapper.get(
+    urls.albumInfo(targetAlbum.value, { 
+      sort: sort.value, 
+      images: Math.max(limit.value, 4),
+      isReverse: isReverse.value
+    })
+  ).then(data => {
+    albumData.value = data
+  }).catch(() => {
+    isError.value = true
+  })
+
+  isLoading.value = false
+}
+
+// Запрос на переиндексацию
+const reindexAlbum = () => {
+  isLoading.value = true
+  fetchWrapper.get(
+    urls.albumReindex(targetAlbum.value)
+  ).then(async () => {
+    const temp = targetAlbum.value
+    targetAlbum.value = null // FIXME: успевает за это время загрузить root альбом
+    await sleep(10)
+    targetAlbum.value = temp
+  })
+}
+
+function getNextFieldValue(obj, currentKey) {
+  const keys = Object.keys(obj?.parentsChain || {})
+  const currentIndex = keys.indexOf(currentKey)
+
+  if (currentIndex === keys.length - 1) {
+    return obj.name
+  }
+  if (currentIndex === -1) {
+    return
+  }
+
+  const nextKey = keys[currentIndex + 1]
+  return nextKey
+}
+
+// Заполнение данных об альбоме при изменении открытого альбома
 onMounted(() => {
   debouncedWatch(
     () => targetAlbum.value,
-    () => {
-      fetchWrapper.get(
-        '/albums/' + targetAlbum.value
-      ).then(data => {
-        console.log({albumData: data})
-        albumData.value = data
-      })
-    },
+    () => getAlbumData(),
     { debounce: 250, immediate: true }
   )
 })
@@ -73,11 +123,11 @@ onMounted(() => {
       <!--    =  Навигационная цепочка  =    -->
       <div class="breadcrumb">
         <span class="section">
-          <a class="btn" @click="targetAlbum = undefined">Home</a>
-          <button 
+          <RouterLink class="btn" :to="{ path: '/', query: $route.query }">Home</RouterLink>
+          <button
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
-            @click="toggleSubAlbumsCard($event, 'root')">
+            @click="toggleSubAlbumsCard($event, 'root', getNextFieldValue(albumData, '/'))">
             <ChevronRightIcon size="20" />
           </button>
         </span>
@@ -86,13 +136,13 @@ onMounted(() => {
           :key="parent"
           class="section">
           <template v-if="parent !== '/'">
-            <a class="btn" @click="targetAlbum = parentParams.hash">
+            <RouterLink class="btn" :to="{ path: parentParams.hash, query: $route.query }">
               {{ parent }}
-            </a>
+            </RouterLink>
             <button 
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
-              @click="toggleSubAlbumsCard($event, parentParams.hash)">
+              @click="toggleSubAlbumsCard($event, parentParams.hash, getNextFieldValue(albumData, parent))">
               <ChevronRightIcon size="20" />
             </button>
           </template>
@@ -100,22 +150,42 @@ onMounted(() => {
         <span
           v-if="targetAlbum !== 'root'" 
           class="section">
-          <a class="btn">
+          <RouterLink class="btn" :to="{ path: targetAlbum, query: $route.query }">
             {{ albumData?.name ?? '...' }}
-          </a>
-          <button 
+          </RouterLink>
+          <button v-if="user.isAdmin"
+            class="btn btn--circle folder-select-btn" 
+            title="Rename current album"
+            @click="albumRenameCard.toggle">
+            <PenIcon size="20" />
+          </button>
+          <button v-if="albumData?.children"
             class="btn btn--circle folder-select-btn" 
             title="Show subfolders"
-            @click="toggleSubAlbumsCard($event, targetAlbum)">
+            @click="toggleSubAlbumsCard($event, targetAlbum, null)">
             <ChevronRightIcon size="20" />
           </button>
         </span>
       </div>
+      <!--    =  Панель переименования  =    -->
+      <OverlayPanel ref="albumRenameCard" class="popup popup--fixed">
+        <AlbumRenamePanel :hash="targetAlbum"/>
+      </OverlayPanel>
+      <!--    =  Панель выбора дочернего альбома  =    -->
       <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
-        <SubAlbumsPanel :hash="albumChildren"/>
+        <SubAlbumsPanel :hash="albumChildren" :nextName="albumChildrenNextName"/>
       </OverlayPanel>
       <!-- Сдвиг -->
       <div style="margin-left: auto"></div>
+      <!--    =  Кнопка переиндексации  =    -->
+      <button
+        class="btn btn--quad"
+        title="Reindex this album"
+        :disabled="isLoading"
+        :class="{spin: isLoading, error: isError}"
+        @click="reindexAlbum">
+        <RefreshCcwIcon size="20"/>
+      </button>
       <!--    =  Панель создания  =    -->
       <button
         class="btn btn--quad"
@@ -138,6 +208,14 @@ onMounted(() => {
       <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
         <AlbumSharePanel :hash="targetAlbum"/>
       </OverlayPanel>
+      <!--    =  Панель поделится  =    -->
+      <button
+        class="btn btn--quad"
+        :class="{'btn--inverse': nested}"
+        title="Switch nested"
+        @click="nested = !nested">
+        <WorkflowIcon size="20"/>
+      </button>
       <!--    =  Сортировка =     -->
       <button
         class="btn btn--quad change-direction-btn"
@@ -199,17 +277,22 @@ onMounted(() => {
 <style lang="scss" scoped>
 header {
   top: 0;
-  background: linear-gradient(180deg, var(--c-b0), var(--c-b0a));
+  background: linear-gradient(180deg, var(--c-b0), v-bind("isScrolledDown ? 'var(--c-b0a)' : 'transparent'"));
   position: fixed;
   width: 100%;
   z-index: 100;
   height: var(--header-height);
-  backdrop-filter: blur(var(--div-blur));
+  backdrop-filter: v-bind("isScrolledDown ? 'blur(var(--div-blur))' : 'none'");
+  -webkit-app-region: drag;
   .header_inner {
+    overflow-x: auto;
     display: flex;
     align-items: center;
     height: 32px;
     padding: 8px;
+    left: env(titlebar-area-x, 0);
+    top: env(titlebar-area-y, 0);
+    width: calc(env(titlebar-area-width, 100%) - 16px);
     gap: 8px;
   }
   // Путь
@@ -217,7 +300,7 @@ header {
     display: flex;
     height: 32px;
     align-items: center;
-    overflow: hidden;
+    //overflow: hidden;
     .section {
       display: flex;
       align-items: center;
@@ -237,6 +320,21 @@ header {
         color: var(--c-t0);
       }
     }
+  }
+  .spin > *:first-child {
+    animation: spin 4s linear infinite;
+  }
+  @keyframes spin { 
+    100% {
+      transform:rotate(360deg); 
+    } 
+  }
+  .error > *:first-child {
+    color: red;
+  }
+  .btn,
+  .droplist  {
+    -webkit-app-region: none;
   }
 }
 </style>

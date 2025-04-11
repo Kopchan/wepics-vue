@@ -1,23 +1,31 @@
 <template>
   <div class="outer">
     <div class="card">
-      <p>404</p>
+      <h2>404</h2>
+      <p>Page not found</p>
+      <a v-if="$router.options.history.state.position" class="btn" @click="$router.back()">Back</a>
       <RouterLink class="btn" to="/">To Home</RouterLink>
     </div>
   </div>
 </template>
 
-<style>
+<style scoped>
 .outer {
-  height: 100vh;
+  height: calc(100vh - 80px);
   display: flex;
   justify-content: center;
   align-items: center;
 }
 .card {
-  p {
+  h2 {
     text-align: center;
     font-size: 48px;
+    font-weight: unset;
+  }
+  p {
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-transform: uppercase;
   }
 }
 </style>
