@@ -57,6 +57,16 @@ body {
     border-radius: 50%;
     font-size: 20px;
   }
+  &--gray {
+    background-color: var(--c-b4a);
+    &:hover {
+      background-color: var(--c-b4);
+    }
+    &:active {
+      background-color: var(--c-t2a);
+      color: var(--c-b0);
+    }
+  }
   &--inverse {
     background-color: var(--c-t0);
     color: var(--c-b0);

@@ -1,20 +1,22 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, ArrowRightIcon } from 'lucide-vue-next'
 import OverlayPanel from 'primevue/overlaypanel'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
 import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
 import { ImageViewer } from '@/components'
+import AlbumsLines from '@/components/AlbumsLines.vue'
+import { getThumbMultiURL } from '@/helpers/thumb'
 
-// Параметры текущего альбома
+// Параметры в ссылке
 const  {
-  targetAlbum, albumData, limit, sort, isReverse, tags, nested
+  targetAlbum, targetImage, albumData, limit, sort, isReverse, tags, nested
 } = storeToRefs(useAlbumParamsStore())
   
 const route = useRoute()
@@ -45,47 +47,10 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, gap, extGap, radius, orientation, scroll, ambient, albumsLayout, lineWidth
+  size, gap, extGap, radius, orientation, scroll, ambient, albumsLayout, lineWidth, albumPreviewSize
 } = storeToRefs(useSettingsStore())
 
-// Требуемые размеры карточек на представлении / скачиваемого изображения 
-//const { pixelRatio } = useDevicePixelRatio()
-//const realSize = computed(() =>  isRealSize.value ? size.value : Math.round(size.value * pixelRatio.value) )
-//const  cssSize = computed(() => !isRealSize.value ? size.value : Math.round(size.value / pixelRatio.value) )
-
-const allowedSizes = [144, 240, 360, 480, 720, 1080] // сортированный
-const getAllowedSize = (size) => {
-  for (const allowedSize of allowedSizes) {
-    if (size <= allowedSize)
-      return allowedSize
-  }
-  return allowedSizes.at(-1)
-}
-const albumPreviewSize = computed(() => getAllowedSize(size.value / 2))
-//const refinedSize = computed(() => getAllowedSize(realSize.value))
 const imgSign = ref(null)
-
-// Получение превью всех размеров, если устройство поддерживает srcset 
-const getThumbMultiURL = (img, albumHash = null, sign = null) => {
-  const srcsetItems = []
-  for (const allowSize of allowedSizes) {
-    const urlW = urls.imageThumb(albumHash ?? targetAlbum.value, img.hash, sign ?? imgSign.value, 'w', allowSize)
-    srcsetItems.push(urlW +' '+ allowSize +'w')
-
-    const urlH = urls.imageThumb(albumHash ?? targetAlbum.value, img.hash, sign ?? imgSign.value, 'h', allowSize)
-    srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio) +'w')
-  }
-  return srcsetItems.join(', ')
-}
-
-// GIF как оригинал
-const getThumbUrlOnAlbum = (album, img) => {
-  const parts = img.name.split('.')
-  img.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
-  return img.ext != 'gif'
-    ? urls.imageThumb(album.hash, img.hash, album?.sign, 'h', albumPreviewSize.value) 
-    : urls.imageOrig (album.hash, img.hash, album?.sign) 
-}
 
 // Порционный запрос картинок
 let currentPage = 1
@@ -220,7 +185,6 @@ const formatDate = (dateString) => {
   return `${year}-${month}-${day}`
 }
 
-const targetImage = ref(null)
 watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
 </script>
@@ -229,66 +193,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
   <main>
     <div class="grid_outer">
       <section class="albums" v-if="albumData?.children">
-        <div class="lines" v-if="albumsLayout == 'lines'">
-          <div 
-            v-for="(childParams, childName) in albumData?.children" 
-            :key="childName"
-            class="line">
-            <RouterLink
-              class="hidden-link"
-              :key="childName"
-              :to="{ path: '/album/'+childParams.hash, query: $route.query }"/>
-            <div class="title">
-              <p class="name">{{ childName }}</p>
-              <div class="params">
-                <div class="inline" v-if="childParams.albums_count">
-                  <FoldersIcon size="16"/>
-                  <span>{{ childParams.albums_count }}</span>
-                </div>
-                <div class="inline" v-if="childParams.images_count">
-                  <ImagesIcon size="16"/>
-                  <span>{{ childParams.images_count }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="previews" v-if="childParams?.images?.length">
-              <div class="img-wrapper" 
-                v-for="img, key in childParams?.images"
-                :key="key"
-                @click="() => {
-                  img.album = childParams
-                  targetImage = img
-                }">
-                <img
-                  :style="`--ratio: ${img.height / img.width}`"
-                  :src="getThumbUrlOnAlbum(childParams, img)" 
-                  :width="img.width"
-                  :height="img.height"
-                  alt="" 
-                  loading="lazy"
-                  @error="onErrorImgLoad">
-                  
-              </div>
-              <RouterLink class="more" 
-                :to="{ path: '/album/'+childParams.hash, query: $route.query }"
-                v-if="childParams.images_count > childParams?.images?.length">
-                <p>Explore {{ childParams.images_count - childParams?.images?.length }} remaining images</p>
-                <ArrowRightIcon/>
-              </RouterLink>
-            </div>
-            <div class="messages" v-else>
-              <span class="text" v-if="!childParams.albums_count && !childParams.images_count && childParams.last_indexation">
-                Empty as of {{childParams.last_indexation}}
-              </span>
-              <span class="text" v-if="!childParams.last_indexation">
-                Not indexed, maybe has media
-              </span>
-              <span class="text" v-if="!childParams.images_count && childParams.albums_count">
-                Open to see sub-albums
-              </span>
-            </div>
-          </div>
-        </div>
+        <AlbumsLines :album="albumData" v-if="albumsLayout == 'lines'"/>
         <div class="grid" v-else-if="albumsLayout == 'grid'">
           <RouterLink 
             v-for="(childParams, childName) in albumData?.children" 
@@ -296,15 +201,14 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             :to="{ path: '/album/'+childParams.hash, query: $route.query }"
             class="square">
             <div class="previews">
-              {{ console.log(childParams?.images) }}
               <img 
                 v-for="img in childParams?.images?.slice(0, 4)" 
                 :key="img"
-                :src="getThumbUrlOnAlbum(childParams, img)" 
+                :src="getThumbUrlOnAlbum(childParams, img, albumPreviewSize)" 
                 alt="" 
                 loading="lazy"
-
-                @error="onErrorImgLoad">
+                @error="onErrorImgLoad"
+              >
             </div>
             <div class="overlay">
               <div class="center">
@@ -340,7 +244,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             loading="lazy"
             @error="onErrorImgLoad"
             :srcset="img.ext != 'gif' 
-            ? getThumbMultiURL(img, img?.album?.hash, img?.album?.sign) 
+            ? getThumbMultiURL(img?.album?.hash ?? targetAlbum, img, img?.album?.sign ?? imgSign) 
             : undefined
             ">
 
@@ -432,7 +336,8 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       :album="targetAlbum" 
       :image.sync="targetImage" 
       :sign="imgSign"
-      @targetImage="t => targetImage = t"/>
+      @targetImage="t => targetImage = t"
+    />
   </main>
 </template>
 
@@ -459,12 +364,6 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
 
 .albums {
-  p {
-    width: unset;
-    padding: 10px 5px;
-    font-size: 26px;
-    font-weight: 300;
-  }
   .lines {
     display: grid;
     grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
@@ -486,22 +385,31 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       text-decoration: none;
       position: relative;
       z-index: 2;
+      &.expanded {
+        grid-column: 1 / -1;
+        .rotate {
+          rotate: 180deg;
+        }
+      }
       .title {
         display: flex;
         min-height: 40px;
         gap: 10px;
-        padding: v-bind('gap / 2 +"px"') calc(v-bind('gap / 2 +"px"') + 10px);
+        padding: v-bind('gap / 2 +"px"');
         padding-bottom: 0;
         flex-wrap: wrap;
-        align-content: center;
+        align-items: center;
         justify-content: space-between;
-        p {
+        .name {
           color: var(--c-t0);
           font-size: 24px;
           padding: 0;
           min-width:0;
           margin: 0;
+          //align-self: flex-start;
           text-align: center;
+          font-weight: 200;
+          padding-left: 10px;
         }
         .params {
           display: flex;
@@ -514,20 +422,17 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           justify-items: center;
           align-items: center;
           gap: 2px;
-          color: var(--c-t0);
           text-align: center;
           color: var(--c-t2a);
         }
-      }
-      .messages {
-        padding: calc(v-bind('gap / 2 +"px"') + 10px);
-        .text {
-          color: var(--c-t2a);
-          //justify-self: end;
-          //align-self: last baseline;
+        .btn {
+          height: 40px;
+          width: 40px;
+          z-index: 10;
+          position: relative;
         }
       }
-      &:hover:not(:has(.previews:hover)) {
+      &:hover:not(:has(.previews:hover)):not(:has(.btn:hover)) {
         background-color: var(--c-b4a);
         z-index: 1;
         filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
@@ -537,7 +442,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           box-shadow: unset !important;
         }
       }
-      &:active:not(:has(.previews:hover)) {
+      &:active:not(:has(.previews:hover)):not(:has(.btn:hover)) {
         background-color: var(--c-b4);
       }
       .previews {
@@ -598,6 +503,14 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           &:active {
             background: var(--c-b4a);
           }
+        }
+      }
+      .messages {
+        padding: calc(v-bind('gap / 2 +"px"') + 10px);
+        .text {
+          color: var(--c-t2a);
+          //justify-self: end;
+          //align-self: last baseline;
         }
       }
     }

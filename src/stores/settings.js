@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { storageWrapper } from '@/helpers'
+import { getAllowedSize } from '@/helpers/thumb'
 
 export const useSettingsStore = defineStore('settings', () => {
   // Инфа об настройках в localStorage
@@ -34,8 +35,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const lineWidth    = createProp('lineWidth', 720)
   const scroll = ref(true)
  
+  const imagePreviewSize = computed(() => getAllowedSize(size.value))
+  const albumPreviewSize = computed(() => getAllowedSize(size.value / 2))
+
   return { 
     settings, reset, size, isStrictSize, isRealSize, ambient, lineWidth,
     lines, gap, extGap, radius, orientation, theme, scroll, albumsLayout,
+    albumPreviewSize, imagePreviewSize
   }
 })

@@ -21,7 +21,7 @@ const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, sort, isReverse, albumData, nested, limit
+  targetAlbum, sort, isReverse, albumData, tags, nested, limit
 } = storeToRefs(useAlbumParamsStore())
 
 // Данные об текущем пользователе
@@ -59,7 +59,9 @@ const getAlbumData = async () => {
     urls.albumInfo(targetAlbum.value, { 
       sort: sort.value, 
       images: Math.max(limit.value, 4),
-      isReverse: isReverse.value
+      isReverse: isReverse.value,
+      tags: tags.value, 
+      nested: nested.value,
     })
   ).then(data => {
     albumData.value = data

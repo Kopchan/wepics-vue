@@ -71,6 +71,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     }
   })
 
+  const targetImage = ref(null)
   const targetAlbum = createProp('albumHash', 'root', 'album')
   const limit       = createProp('limit', 30 )
   const sort        = createProp('sort', 'name')
@@ -96,5 +97,5 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     },
   )
  
-  return { targetAlbum, limit, sort, isReverse, tags, albumData, nested }
+  return { targetAlbum, targetImage, limit, sort, isReverse, tags, albumData, nested }
 })
