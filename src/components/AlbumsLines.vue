@@ -5,9 +5,10 @@ import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon } from 'lucide
 
 import { urls } from '@/api'
 import { fetchWrapper } from '@/helpers'
-import { useAlbumParamsStore, useSettingsStore } from '@/stores'
+import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import { getThumbUrlOnAlbum } from '@/helpers/thumb'
+import AgeRatingLabel from './AgeRatingLabel.vue'
 
 // Параметры компонента
 const props = defineProps({
@@ -28,6 +29,9 @@ const  {
 const {
   size, gap, radius, ambient, albumsLayout, lineWidth, albumPreviewSize
 } = storeToRefs(useSettingsStore())
+
+// Параметры сервера
+const { ageRatings } = storeToRefs(useServerSetupsStore())
 
 // Обработка нажатия на расширениея ребёнка
 const handleChildExpand = async (childParams) => {
@@ -53,6 +57,22 @@ const handleChildExpand = async (childParams) => {
   }
 }
 
+const isBlurCheck = (albumRating, imgRating) => {
+  if (!albumRating && !imgRating) 
+    return false
+
+  const rating = ageRatings.value?.find(r => 
+    r.id === (imgRating ?? albumRating)
+  )
+
+  const preset = rating?.preset
+
+  if (!preset)
+    return false
+
+  return preset !== 'show'
+}
+
 </script>
 
 <template>
@@ -72,6 +92,11 @@ const handleChildExpand = async (childParams) => {
       <div class="title">
         <h3 class="name">{{ childName }}</h3>
         <div class="params">
+          <AgeRatingLabel class="inline"
+            :id="childParams?.age_rating_id"
+            v-if="childParams?.age_rating_id"
+            @blur-change="bool => childParams.blur = bool"
+          />
           <div class="inline" v-if="childParams.albums_count">
             <FoldersIcon size="16"/>
             <span>{{ childParams.albums_count }}</span>
@@ -84,7 +109,7 @@ const handleChildExpand = async (childParams) => {
             v-if="childParams.albums_count || childParams.images_count || !childParams.last_indexation"
             :class="{'btn--inverse': childParams.vueExpanded}"
             @click.stop="handleChildExpand(childParams)">
-            <ChevronDownIcon size="24" :class="{}"/>
+            <ChevronDownIcon size="24"/>
           </button>
         </div>
       </div>
@@ -93,7 +118,7 @@ const handleChildExpand = async (childParams) => {
         :album="childParams?.data" 
         v-if="childParams?.vueExpanded && childParams?.albums_count"
       />
-      <div class="messanges loading" v-if="childParams?.vueLoading">
+      <div class="loading" v-if="childParams?.vueLoading">
         <p class="text">Loading...</p>
       </div>
 
@@ -101,6 +126,7 @@ const handleChildExpand = async (childParams) => {
         <div class="img-wrapper" 
           v-for="img, key in childParams?.images"
           :key="key"
+          :class="{blur: isBlurCheck(childParams?.age_rating_id, img?.age_rating_id)}"
           @click="() => {
             img.album = childParams
             targetImage = img
@@ -113,6 +139,17 @@ const handleChildExpand = async (childParams) => {
             loading="lazy"
             @error="onErrorImgLoad"
           >
+          <div class="overlay">
+            <div class="top"></div>
+            <div class="center">
+              <AgeRatingLabel class="rating"
+                :id="img?.age_rating_id"
+                v-if="img?.age_rating_id"
+                @blur-change="bool => img.blur = bool"
+              />
+            </div>
+            <div class="bottom"></div>
+          </div>
         </div>
         <RouterLink class="more" 
           :to="{ path: '/album/'+childParams.hash, query: $route.query }"
@@ -191,6 +228,9 @@ const handleChildExpand = async (childParams) => {
             margin-right: 10px;
           }
         }
+        .rating {
+          z-index: 10;
+        }
         .inline {
           display: flex;
           justify-items: center;
@@ -203,7 +243,6 @@ const handleChildExpand = async (childParams) => {
           height: 40px;
           width: 40px;
           z-index: 10;
-          position: relative;
           &.btn--inverse > * {
             rotate: 180deg;
           }
@@ -227,7 +266,12 @@ const handleChildExpand = async (childParams) => {
         width: unset;
       }
       .loading {
+        height: 40px;
         text-align: center;
+        position: absolute;
+        top: v-bind('gap / 2 +"px"');
+        left: 0;
+        right: 0;
         padding: calc(v-bind('gap / 2 +"px"') + 10px);
       }
       .previews {
@@ -244,19 +288,40 @@ const handleChildExpand = async (childParams) => {
           height: 100%;
           width: auto;
           position: relative;
-          &.blur:after {
+          &.blur .overlay {
+            backdrop-filter: blur(12px);
+            .rating {
+              display: unset;
+            }
+            &:active {
+              backdrop-filter: unset;
+              .rating {
+                display: none;
+              }
+            }
+          }
+          .overlay {
             position: absolute;
             content: '';
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            backdrop-filter: blur(24px);
+            display: flex;
+            justify-content: space-between;
+            flex-direction: column;
             overflow: hidden;
             border-radius: v-bind('radius +"px"');
+            filter:
+              drop-shadow(0 0 10px #000) 
+              drop-shadow(0 0 3px #000);
+            .center {
+              display: flex;
+              justify-content: center;
+            }
           }
-          &:active:after {
-            backdrop-filter: unset;
+          .rating {
+            display: none;
           }
         }
         img {

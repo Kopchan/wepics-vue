@@ -3,6 +3,8 @@ import { API_PATH } from "@/config"
 export default {
   root: () => API_PATH,
 
+  setups: () => API_PATH + '/setups',
+
   authSignUp: () => API_PATH + '/users/reg',
   authLogIn : () => API_PATH + '/users/login',
   authLogOut: () => API_PATH + '/users/logout',

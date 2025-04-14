@@ -12,7 +12,7 @@ import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
 import { ImageViewer } from '@/components'
 import AlbumsLines from '@/components/AlbumsLines.vue'
-import { getThumbMultiURL } from '@/helpers/thumb'
+import { getThumbMultiURL, getThumbUrlOnAlbum } from '@/helpers/thumb'
 
 // Параметры в ссылке
 const  {
@@ -140,11 +140,8 @@ const onErrorImgLoad = async (event) => {
 const downloadOriginal = (img) =>
   window.location.href = urls.imageDownload(img.album?.hash ?? targetAlbum.value, img.hash, img.album?.sign ?? imgSign.value)
 
-// Получение разрешённых реакций
-const allowedReactions = ref(null)
-fetchWrapper.get(urls.reactions()).then(data => 
-  allowedReactions.value = data.map(el => el.value)
-)
+// Получение разрешённых реакций 
+const { allowedReactions } = storeToRefs(useSettingsStore())
 
 const authCard = ref()
 const toggleAuthCard = (e) => authCard.value.toggle(e)
