@@ -57,7 +57,7 @@ const handleChildExpand = async (childParams) => {
   }
 }
 
-const isBlurCheck = (albumRating, imgRating) => {
+const ratingPreset = (albumRating, imgRating) => {
   if (!albumRating && !imgRating) 
     return false
 
@@ -68,9 +68,10 @@ const isBlurCheck = (albumRating, imgRating) => {
   const preset = rating?.preset
 
   if (!preset)
-    return false
+    return
 
-  return preset !== 'show'
+  if (preset === 'hide' || preset === 'blur')
+    return preset
 }
 
 </script>
@@ -126,7 +127,7 @@ const isBlurCheck = (albumRating, imgRating) => {
         <div class="img-wrapper" 
           v-for="img, key in childParams?.images"
           :key="key"
-          :class="{blur: isBlurCheck(childParams?.age_rating_id, img?.age_rating_id)}"
+          :class="ratingPreset(childParams?.age_rating_id, img?.age_rating_id)"
           @click="() => {
             img.album = childParams
             targetImage = img
@@ -284,12 +285,13 @@ const isBlurCheck = (albumRating, imgRating) => {
         height:  v-bind('size / 2 +"px"');
         z-index: 10;
         position: relative;
+        /* Если все .child, кроме последнего, скрыты, то скрываем родителя */
         .img-wrapper {
           height: 100%;
           width: auto;
           position: relative;
           &.blur .overlay {
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(v-bind('size / 60 +"px"'));
             .rating {
               display: unset;
             }
@@ -299,6 +301,9 @@ const isBlurCheck = (albumRating, imgRating) => {
                 display: none;
               }
             }
+          }
+          &.hide {
+            display: none;
           }
           .overlay {
             position: absolute;

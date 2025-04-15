@@ -14,7 +14,8 @@ const props = defineProps({
 const value = defineModel()
 
 // Параметры компонента в переменные
-const { name, options } = toRefs(props)
+const { name, options, disabled } = toRefs(props)
+
 // Установка по умолчанию
 value.value ??= Object.keys(options.value)[0]
 </script>
@@ -36,6 +37,10 @@ value.value ??= Object.keys(options.value)[0]
 </template>
 
 <style lang="scss" scoped>
+.btn {
+  height: unset;
+  white-space: pre-line;
+}
 .line {
   background-color: var(--c-b0a);
   padding: 6px;
@@ -46,7 +51,7 @@ value.value ??= Object.keys(options.value)[0]
   input[type="radio"] {
     display: none;
     & + label {
-      height: 24px;
+      min-height: 24px;
       flex: 1;
     }
     &:checked + label {

@@ -1,6 +1,6 @@
 <script setup>
 import { TheHeader, SideBar } from '@/components'
-import { useSettingsStore } from './stores'
+import { useServerSetupsStore, useSettingsStore } from './stores'
 import { storeToRefs } from 'pinia'
 import { onMounted, watch } from 'vue'
 import { SITE_NAME } from './config';
@@ -16,6 +16,8 @@ const getNodesFromString = (html) => {
   template.innerHTML = html
   return template.childNodes
 }
+
+useServerSetupsStore().preLoad()
 
 // Функция  установки темы
 const setupTheme = () => {

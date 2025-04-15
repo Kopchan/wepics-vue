@@ -1,4 +1,13 @@
 :root {
+  // Всякие параметры
+  --border-r:        6px;
+  --card-width:    400px;
+  --cards-gap:       8px;
+  --header-height:  48px;
+  --sidebar-width: 300px;
+  --div-blur:       24px;
+  --card-blur:      12px;
+
   // Белые тона
   --white0: #fff; --white0a: #fff9; --white0aa: #fff6;
   --white1: #d8d8d8; --white1a: #d8d8d898;
@@ -12,6 +21,11 @@
   --black2: #222; --black2a: #2229;
   --black4: #444; --black4a: #4449;
   --black7: #888; --black7a: #8889;
+
+  // Другие цвета
+  --green:  #398e4a;
+  --yellow: #ff990a;
+  --red:    #d93036;
 
   // Тёмная авто тема
   color-scheme: dark;
@@ -60,13 +74,4 @@
     --c-t2: var(--black2); --c-t2a: var(--black2a);
     --c-t7: var(--black7); --c-t7a: var(--black7a);
   }
-
-  // Всякие параметры
-  --border-r:        6px;
-  --card-width:    400px;
-  --cards-gap:       8px;
-  --header-height:  48px;
-  --sidebar-width: 300px;
-  --div-blur:       24px;
-  --card-blur:      12px;
 }

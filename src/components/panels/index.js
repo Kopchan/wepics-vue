@@ -5,8 +5,9 @@ import SubAlbumsPanel from './SubAlbumsPanel.vue'
 import AlbumSharePanel from './AlbumSharePanel.vue'
 import ObjCreatePanel from './ObjCreatePanel.vue'
 import AlbumRenamePanel from './AlbumRenamePanel.vue'
+import SetupsPanel from './SetupsPanel.vue'
 
 export {
   AuthPanel, UserPanel, SettingsPanel, AlbumRenamePanel,
-  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
+  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel
 }

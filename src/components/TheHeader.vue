@@ -5,7 +5,8 @@ import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon,
-  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon
+  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon,
+  ViewIcon
 } from 'lucide-vue-next'
 
 import { fetchWrapper, sleep } from '@/helpers'
@@ -13,7 +14,7 @@ import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
 import { urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, AlbumRenamePanel,
-  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel
+  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel
 } from '@/components/panels'
 
 // Попапы
@@ -32,6 +33,7 @@ const authCard = ref()
 const userCard = ref()
 const customizCard = ref()
 const subAlbumsCard = ref()
+const setupsCard = ref()
 const albumShareCard = ref()
 const objCreateCard = ref()
 const albumRenameCard = ref()
@@ -199,7 +201,18 @@ onMounted(() => {
       <OverlayPanel ref="objCreateCard" class="popup popup--fixed">
         <ObjCreatePanel :hash="targetAlbum"/>
       </OverlayPanel>
-      <!--    =  Панель поделится  =    -->
+      <!--    =  Панель предустановок  =    -->
+      <button
+        class="btn btn--quad"
+        title="Open setups panel"
+        v-if="user.isAdmin"
+        @click="setupsCard.toggle">
+        <ViewIcon size="20"/>
+      </button>
+      <OverlayPanel ref="setupsCard" class="popup popup--fixed">
+        <SetupsPanel :hash="targetAlbum"/>
+      </OverlayPanel>
+      <!--    =  Панель поделиться  =    -->
       <button
         class="btn btn--quad"
         title="Open share panel"
@@ -210,7 +223,7 @@ onMounted(() => {
       <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
         <AlbumSharePanel :hash="targetAlbum"/>
       </OverlayPanel>
-      <!--    =  Панель поделится  =    -->
+      <!--    =  Переключатель   =    -->
       <button
         class="btn btn--quad"
         :class="{'btn--inverse': nested}"

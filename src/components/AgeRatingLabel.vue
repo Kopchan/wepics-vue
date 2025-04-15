@@ -6,14 +6,19 @@ import { computed, watch } from 'vue'
 const props = defineProps({
   id: {
     type: Number,
-    required: true,
+    required: false,
+  },
+  rating: {
+    type: Object,
+    required: false,
   },
 })
 
-const emit = defineEmits(['blur-change'])
+//const emit = defineEmits(['blur-change'])
 
 const { ageRatings } = storeToRefs(useServerSetupsStore())
-const rating = computed(() => ageRatings.value?.find(r => r.id === props.id))
+
+const rating = props.rating ?? computed(() => ageRatings.value?.find(r => r.id === props.id))
 
 // Возвращаем blur наружу (для родителя)
 
@@ -31,8 +36,10 @@ const rating = computed(() => ageRatings.value?.find(r => r.id === props.id))
   </p>
 </template>
 
-<!-- <style lang="scss" scoped>
+<style lang="scss" scoped>
 .rating {
-
+  text-shadow: 1px 1px 0px black;
+  font-weight: 600;
+  font-size: 18px;
 }
-</style> -->
+</style>
