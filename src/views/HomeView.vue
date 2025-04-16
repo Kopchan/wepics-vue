@@ -7,12 +7,15 @@ import OverlayPanel from 'primevue/overlaypanel'
 import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
-import { fetchWrapper, sleep, debounceImmediate, humanFileSize } from '@/helpers'
-import { useAlbumParamsStore, useSettingsStore, useAuthStore } from '@/stores'
+import { useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
 import { AuthPanel } from '@/components/panels'
 import { ImageViewer } from '@/components'
 import AlbumsLines from '@/components/AlbumsLines.vue'
-import { getThumbMultiURL, getThumbUrlOnAlbum } from '@/helpers/thumb'
+import { 
+  fetchWrapper, sleep, debounceImmediate, humanFileSize, 
+  ratingPreset, getThumbMultiURL, getThumbUrlOnAlbum 
+} from '@/helpers'
+import AgeRatingLabel from '@/components/AgeRatingLabel.vue'
 
 // Параметры в ссылке
 const  {
@@ -47,7 +50,8 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, gap, extGap, radius, orientation, scroll, ambient, albumsLayout, lineWidth, albumPreviewSize
+  size, gap, extGap, radius, orientation, scroll, 
+  ambient, albumsLayout, lineWidth, albumPreviewSize
 } = storeToRefs(useSettingsStore())
 
 const imgSign = ref(null)
@@ -138,7 +142,11 @@ const onErrorImgLoad = async (event) => {
 }
 
 const downloadOriginal = (img) =>
-  window.location.href = urls.imageDownload(img.album?.hash ?? targetAlbum.value, img.hash, img.album?.sign ?? imgSign.value)
+  window.location.href = urls.imageDownload(
+    img.album?.hash ?? targetAlbum.value, 
+    img.hash, 
+    img.album?.sign ?? imgSign.value
+  )
 
 // Получение разрешённых реакций 
 const { allowedReactions } = storeToRefs(useSettingsStore())
@@ -181,6 +189,9 @@ const formatDate = (dateString) => {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
+
+// Параметры предустановок
+const { ageRatings } = storeToRefs(useServerSetupsStore())
 
 watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
@@ -228,10 +239,10 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
         </div>
       </section>
       <section class="wall" :style="'--size:'+ size">
-        <div 
+        <div class="img"
           v-for="img in images" 
+          :class="ratingPreset(ageRatings, img?.album?.ratingId ?? targetAlbum, img?.ratingId)"
           :key="img" 
-          class="img"
           :style="'--ratio:'+ img.ratio">
 
           <i></i>
@@ -302,6 +313,11 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
               </button>
             </div>
           </div>
+
+          <AgeRatingLabel class="rating"
+            :id="img?.ratingId ?? img?.album?.ratingId"
+            v-if="img?.ratingId ?? img?.album?.ratingId"
+          />
         </div>
       </section>
 
@@ -361,159 +377,6 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
 
 .albums {
-  .lines {
-    display: grid;
-    grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
-    gap: v-bind('gap +"px"');
-    padding-bottom: v-bind('gap * 2 +"px"');
-    width: 100%;
-    .hidden-link {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1;
-    }
-    .line {
-      max-width: 100%;
-      background-color: var(--c-b2a);
-      border-radius: v-bind('radius +"px"');
-      text-decoration: none;
-      position: relative;
-      z-index: 2;
-      &.expanded {
-        grid-column: 1 / -1;
-        .rotate {
-          rotate: 180deg;
-        }
-      }
-      .title {
-        display: flex;
-        min-height: 40px;
-        gap: 10px;
-        padding: v-bind('gap / 2 +"px"');
-        padding-bottom: 0;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        .name {
-          color: var(--c-t0);
-          font-size: 24px;
-          padding: 0;
-          min-width:0;
-          margin: 0;
-          //align-self: flex-start;
-          text-align: center;
-          font-weight: 200;
-          padding-left: 10px;
-        }
-        .params {
-          display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
-          align-content: center;
-        }
-        .inline {
-          display: flex;
-          justify-items: center;
-          align-items: center;
-          gap: 2px;
-          text-align: center;
-          color: var(--c-t2a);
-        }
-        .btn {
-          height: 40px;
-          width: 40px;
-          z-index: 10;
-          position: relative;
-        }
-      }
-      &:hover:not(:has(.previews:hover)):not(:has(.btn:hover)) {
-        background-color: var(--c-b4a);
-        z-index: 1;
-        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-        .overlay .block {
-          background-color: transparent !important;
-          backdrop-filter: none !important;
-          box-shadow: unset !important;
-        }
-      }
-      &:active:not(:has(.previews:hover)):not(:has(.btn:hover)) {
-        background-color: var(--c-b4);
-      }
-      .previews {
-        display: flex;
-        overflow-y: auto;
-        justify-items: center;
-        align-items: center;
-        gap:     v-bind('gap / 2 +"px"');
-        padding: v-bind('gap / 2 +"px"');
-        height:  v-bind('size / 2 +"px"');
-        z-index: 10;
-        position: relative;
-        .img-wrapper {
-          height: 100%;
-          width: auto;
-          position: relative;
-          &.blur:after {
-            position: absolute;
-            content: '';
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            backdrop-filter: blur(24px);
-            overflow: hidden;
-            border-radius: v-bind('radius +"px"');
-          }
-          &:active:after {
-            backdrop-filter: unset;
-          }
-        }
-        img {
-          height: 100%;
-          width: auto;
-          object-fit: cover;
-          border-radius: v-bind('radius +"px"');
-          &:hover {
-            //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-            // z-index: 1;
-
-            outline : 1px solid var(--c-t0a);
-            z-index: 9;
-          }
-        }
-        .more {
-          border-radius: v-bind('radius +"px"');
-          height: 100%;
-          aspect-ratio: 1;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          text-decoration: none;
-          color: var(--c-t0);
-          background: var(--c-b2a);
-          &:hover {
-            background: var(--c-b2);
-          }
-          &:active {
-            background: var(--c-b4a);
-          }
-        }
-      }
-      .messages {
-        padding: calc(v-bind('gap / 2 +"px"') + 10px);
-        .text {
-          color: var(--c-t2a);
-          //justify-self: end;
-          //align-self: last baseline;
-        }
-      }
-    }
-  } 
-
-  
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(v-bind('size / 2 +"px"'), 1fr));
@@ -823,6 +686,57 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           }
         }
       }
+    }
+    &.blur:after {
+      content: '';
+      backdrop-filter: blur(v-bind('size / 30 +"px"'));
+      border-radius: v-bind('radius +"px"');
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      top: 0;
+      .rating {
+        display: unset;
+      }
+      &:active {
+        backdrop-filter: unset;
+        .rating {
+          display: none;
+        }
+      }
+    }
+    .rating {
+      position: absolute;
+      z-index: 20;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      top: 0;
+      justify-content: center;
+      align-items: center;
+      display: none;
+      pointer-events: none;     
+      > * {
+        pointer-events: unset;  
+      }
+    }
+    &.blur {
+      .rating {
+        display: flex;
+      }
+      &:active {
+        &:after {
+          opacity: 0;
+          transition: opacity .5s ease-in;
+        }
+        .rating {
+          display: none;
+        }
+      }
+    }
+    &.hide {
+      display: none;
     }
   }
 }

@@ -1,13 +1,12 @@
 <script setup>
-import { ref, watch, computed, toRefs } from 'vue'
+import { toRefs } from 'vue'
 import { storeToRefs } from 'pinia'
 import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
-import { fetchWrapper } from '@/helpers'
+import { fetchWrapper, ratingPreset, getThumbUrlOnAlbum } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
-import { getThumbUrlOnAlbum } from '@/helpers/thumb'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 
 // Параметры компонента
@@ -30,7 +29,7 @@ const {
   size, gap, radius, ambient, albumsLayout, lineWidth, albumPreviewSize
 } = storeToRefs(useSettingsStore())
 
-// Параметры сервера
+// Параметры предустановок
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
 // Обработка нажатия на расширениея ребёнка
@@ -55,23 +54,6 @@ const handleChildExpand = async (childParams) => {
       console.error(err)
     })
   }
-}
-
-const ratingPreset = (albumRating, imgRating) => {
-  if (!albumRating && !imgRating) 
-    return false
-
-  const rating = ageRatings.value?.find(r => 
-    r.id === (imgRating ?? albumRating)
-  )
-
-  const preset = rating?.preset
-
-  if (!preset)
-    return
-
-  if (preset === 'hide' || preset === 'blur')
-    return preset
 }
 
 </script>
@@ -127,7 +109,7 @@ const ratingPreset = (albumRating, imgRating) => {
         <div class="img-wrapper" 
           v-for="img, key in childParams?.images"
           :key="key"
-          :class="ratingPreset(childParams?.age_rating_id, img?.age_rating_id)"
+          :class="ratingPreset(ageRatings, childParams?.age_rating_id, img?.age_rating_id)"
           @click="() => {
             img.album = childParams
             targetImage = img
@@ -146,7 +128,6 @@ const ratingPreset = (albumRating, imgRating) => {
               <AgeRatingLabel class="rating"
                 :id="img?.age_rating_id"
                 v-if="img?.age_rating_id"
-                @blur-change="bool => img.blur = bool"
               />
             </div>
             <div class="bottom"></div>
@@ -277,7 +258,8 @@ const ratingPreset = (albumRating, imgRating) => {
       }
       .previews {
         display: flex;
-        overflow-y: auto;
+        overflow-x: auto;
+        overflow-y: hidden;
         justify-items: center;
         align-items: center;
         gap:     v-bind('gap / 2 +"px"');
