@@ -11,11 +11,11 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     routeName = false,
     isArray = false,
   ) => computed({
-    get: () => { 
+    get: () => {
       // Получение параметра из адресной строки
       const prop = router.currentRoute.value[routeName ? 'params' : 'query'][name]
 
-      // Если переменная была с предустноновкой "это массив", 
+      // Если переменная была с предустановкой "это массив", 
       // то элементы массива считываются через запятую 
       if (isArray) 
         return prop?.split(',')?.map(elem => decodeURIComponent(elem)) ?? []
@@ -55,7 +55,10 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       
       // Обработка нового параметра
       let newQuery = {...query}
-      if (value === undefined || value === false || value.length === 0)
+      if  (value === undefined 
+        || value === false 
+        || value.length === 0 
+        || value === defaultValue)
         delete newQuery[name]
      
       else if (value === true)
@@ -71,13 +74,16 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     }
   })
 
-  const targetImage = ref(null)
-  const targetAlbum = createProp('albumHash', 'root', 'album')
-  const limit       = createProp('limit', 30 )
-  const sort        = createProp('sort', 'name')
-  const isReverse   = createProp('reverse', false)
-  const nested      = createProp('nested', false)
-  const tags        = createProp('tags', [], undefined, true)
+  const targetImage     = ref(null)
+  const targetAlbum     = createProp('album', 'root', 'openAlbum')
+  const limit           = createProp('limit', 30 )
+  const sort            = createProp('sort', 'name')
+  const isReverse       = createProp('reverse', false)
+  const sortAlbums      = createProp('asort', 'content')
+  const isReverseAlbums = createProp('areverse', false)
+  const nested          = createProp('nested', false)
+  const disrespect      = createProp('disrespect', false)
+  const tags            = createProp('tags', [], undefined, true)
   const albumData = ref({})
   /*
   const getAlbumData = () => {
@@ -97,5 +103,8 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     },
   )
  
-  return { targetAlbum, targetImage, limit, sort, isReverse, tags, albumData, nested }
+  return { 
+    targetAlbum, targetImage, limit, sort, isReverse, 
+    tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect 
+  }
 })

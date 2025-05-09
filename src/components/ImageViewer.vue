@@ -65,18 +65,20 @@ onBeforeUnmount(() => {
   overflow: auto;
   position: fixed;
   backdrop-filter: blur(12px);
-  background-color: var(--c-b0aa);
+  background: #000;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   img {
+    transition: border-radius .5s;
     // FIXME: широкие картинки нажимаются сверху и снизу (вместо закрытия), нету закругления
     margin: auto;
     object-fit: contain;
     filter: drop-shadow(0 0 4px black);
   }
   &:not(.scoped):not(.fill) {
+    background-color: var(--c-b0aa);
     img {
       border-radius: v-bind("radius + 'px'");
       max-width:  calc(100% - v-bind("gap*2 +'px'"));

@@ -1,8 +1,8 @@
 <script setup>
 import { PinIcon, PinOffIcon } from 'lucide-vue-next'
-import { storeToRefs } from 'pinia';
-import { useSidebarStore } from '@/stores';
-import { PROJECT_NAME } from '@/config';
+import { storeToRefs } from 'pinia'
+import { useSidebarStore } from '@/stores'
+import { PROJECT_NAME } from '@/config'
 
 const { isOpened, isPinned } = storeToRefs(useSidebarStore())
 </script>

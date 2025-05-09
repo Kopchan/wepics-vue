@@ -14,9 +14,23 @@ export const router = createRouter({
     },
     {
       path: '/album/:albumHash?',
-      name: 'album',
+      name: 'albumLegacy',
+      redirect: to => ({ 
+        name: 'openAlbum', 
+        params: { album: to.params.albumHash },
+        query: to.query,
+      })
+    },
+    {
+      path: '/:album?',
+      name: 'openAlbum',
       component: HomeView
     },
+    //{
+    //  path: '/:user/:album?',
+    //  name: 'userAlbum',
+    //  component: HomeView
+    //},
     {
       path: '/:catchAll(.*)',
       name: 'notFound',

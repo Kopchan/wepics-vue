@@ -8,12 +8,14 @@ import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon } from 'lucide-vue
 
 import { urls } from '@/api'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
-import { AuthPanel } from '@/components/panels'
+import { AuthPanel, AlbumEditPanel } from '@/components/panels'
 import { ImageViewer } from '@/components'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import { 
   fetchWrapper, sleep, debounceImmediate, humanFileSize, 
-  ratingPreset, getThumbMultiURL, getThumbUrlOnAlbum 
+  getThumbMultiURL, getThumbUrlOnAlbum, 
+  humanCount,
+  formatDate
 } from '@/helpers'
 import AgeRatingLabel from '@/components/AgeRatingLabel.vue'
 
@@ -25,6 +27,7 @@ const  {
 const route = useRoute()
 // Функция очистки всех картинок
 const cleanUpWall = () => {
+  //console.log('clean')
   canLoadMore.value = false
   isLoading  .value = false
   images     .value = []
@@ -37,8 +40,9 @@ const cleanUpWall = () => {
 watch(
   () => route,
   debounceImmediate(() => {
+    //console.log('imgs', route, isLoading.value)
     if (isLoading.value) watch(
-      () => isLoading.value, 
+      isLoading, 
       cleanUpWall, 
       { once: true }
     )
@@ -51,7 +55,7 @@ watch(
 // Косметические параметры и URL на превью
 const {
   size, gap, extGap, radius, orientation, scroll, 
-  ambient, albumsLayout, lineWidth, albumPreviewSize
+  ambient, albumsLayout, albumPreviewSize
 } = storeToRefs(useSettingsStore())
 
 const imgSign = ref(null)
@@ -63,6 +67,7 @@ const isLoading   = ref(null)
 const canLoadMore = ref(true)
 const images      = ref([])
 const loadMore = async () => {
+  //console.log('loadMore', targetAlbum.value)
   if (!canLoadMore.value || isLoading.value) return
   isLoading.value = true
 
@@ -76,6 +81,7 @@ const loadMore = async () => {
       nested: nested.value,
     })
   ).then((data) => {
+    albumData.value.nestedImagesCount = nested.value ? data.total : null
     if (!canLoadMore.value) return
     canLoadMore.value = !(data.total < currentPage * limit.value)
 
@@ -88,8 +94,8 @@ const loadMore = async () => {
       element.name = parts.slice(0, -1).join('.')
       element.ratio = element.width / element.height
       element.thumbURL = element.ext != 'gif'
-        ? urls.imageThumb(element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
-        : urls.imageOrig (element?.album?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value) 
+        ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
+        : urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value) 
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
@@ -143,7 +149,7 @@ const onErrorImgLoad = async (event) => {
 
 const downloadOriginal = (img) =>
   window.location.href = urls.imageDownload(
-    img.album?.hash ?? targetAlbum.value, 
+    img.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, 
     img.hash, 
     img.album?.sign ?? imgSign.value
   )
@@ -165,7 +171,7 @@ const toggleReaction = (image, reaction, e) => {
   const isYouSetted = image.reactions?.[reaction]?.isYouSet || false
 
   fetchWrapper[isYouSetted ? 'delete' : 'post'](
-    urls.imageReaction(targetAlbum.value, image.hash, reaction)
+    urls.imageReaction(albumData.value?.hash ?? targetAlbum.value, image.hash, reaction)
   ).then(() => {
     if (!image.reactions)
       image.reactions = {}
@@ -181,38 +187,68 @@ const toggleReaction = (image, reaction, e) => {
     }
   })
 }
-
-const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // Параметры предустановок
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
+const ratingPreset = (albumRating, imgRating) => {
+  if (!albumRating && !imgRating) 
+    return false
+
+  const rating = ageRatings.value?.find(r => 
+    r.id === (imgRating ?? albumRating)
+  )
+
+  const preset = rating?.preset
+
+  if (!preset)
+    return
+
+  if (preset === 'hide' || preset === 'blur')
+    return preset
+}
+
 watch(targetImage, () => scroll.value = !(targetImage.value != null))
+
+const editAlbumOverlay = ref(null)
+const editAlbum = ref(null)
+const showEditOverlay = (event, album) => {
+  //console.log(album, event)
+  editAlbum.value = album
+  editAlbumOverlay.value.toggle(event)
+}
 
 </script>
 
 <template>
+
   <main>
     <div class="grid_outer">
-      <section class="albums" v-if="albumData?.children">
-        <AlbumsLines :album="albumData" v-if="albumsLayout == 'lines'"/>
+      <section class="albums" v-if="albumData?.children?.length">
+
+        <OverlayPanel ref="editAlbumOverlay" class="popup">
+          <AlbumEditPanel :album="editAlbum"/>
+        </OverlayPanel>
+
+        <AlbumsLines 
+          v-if="albumsLayout == 'lines'"
+          :album="albumData" 
+          @edit-album="showEditOverlay"
+        />
+
         <div class="grid" v-else-if="albumsLayout == 'grid'">
-          <RouterLink 
-            v-for="(childParams, childName) in albumData?.children" 
-            :key="childName"
-            :to="{ path: '/album/'+childParams.hash, query: $route.query }"
-            class="square">
+          <RouterLink class="square"
+            v-for="(child, index) in albumData?.children" 
+            :key="index"
+            :to="{ 
+              name: 'openAlbum',
+              params: { album: child?.alias ?? child.hash }, 
+              query: $route.query 
+          }">
             <div class="previews">
               <img 
-                v-for="img in childParams?.images?.slice(0, 4)" 
+                v-for="img in child?.images?.slice(0, 4)" 
                 :key="img"
-                :src="getThumbUrlOnAlbum(childParams, img, albumPreviewSize)" 
+                :src="getThumbUrlOnAlbum(child, img, albumPreviewSize)" 
                 alt="" 
                 loading="lazy"
                 @error="onErrorImgLoad"
@@ -221,27 +257,28 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             <div class="overlay">
               <div class="center">
                 <div class="block">
-                  <p class="name">{{ childName }}</p>
-                  <div class="inline" v-if="childParams.albums_count">
+                  <p class="name">{{ child.index }}</p>
+                  <div class="inline" v-if="child.albumsCount">
                     <FoldersIcon size="16"/>
-                    <span>{{ childParams.albums_count }}</span>
+                    <span>{{ humanCount(child.albumsCount) }}</span>
                   </div>
-                  <div class="inline" v-if="childParams.images_count">
+                  <div class="inline" v-if="child.imagesCount">
                     <ImagesIcon size="16"/>
-                    <span>{{ childParams.images_count }}</span>
+                    <span>{{ humanCount(child.imagesCount) }}</span>
                   </div>
-                  <span class="text" v-if="!childParams.albums_count && !childParams.images_count">EMPTY</span>
-                  <span class="text" v-if="!childParams.last_indexation">NOT INDEXED</span>
+                  <span class="text" v-if="!child.albumsCount && !child.imagesCount">EMPTY</span>
+                  <span class="text" v-if="!child.indexedAt">NOT INDEXED</span>
                 </div>
               </div>
             </div>
           </RouterLink>
         </div>
+
       </section>
       <section class="wall" :style="'--size:'+ size">
         <div class="img"
           v-for="img in images" 
-          :class="ratingPreset(ageRatings, img?.album?.ratingId ?? targetAlbum, img?.ratingId)"
+          :class="ratingPreset(img?.album?.ratingId ?? albumData?.ratingId, img?.ratingId)"
           :key="img" 
           :style="'--ratio:'+ img.ratio">
 
@@ -252,9 +289,10 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
             loading="lazy"
             @error="onErrorImgLoad"
             :srcset="img.ext != 'gif' 
-            ? getThumbMultiURL(img?.album?.hash ?? targetAlbum, img, img?.album?.sign ?? imgSign) 
-            : undefined
-            ">
+            ? getThumbMultiURL(
+              img?.album?.hash ?? albumData?.hash ?? targetAlbum, 
+              img, img?.album?.sign ?? imgSign
+          ) : undefined ">
 
           <div class="reactions">
             <template 
@@ -276,13 +314,19 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
               <span class="name">{{ img.name }}</span>
               <div class="badges">
                 <span class="badge up">{{ img.ext }}</span>
-                <span class="badge">{{ formatDate(img.date) }}</span>
+                <span class="badge" :title="img.date">{{ formatDate(img.date) }}</span>
                 <span class="badge">{{ img.width }}×{{ img.height }}</span>
-                <RouterLink 
-                  v-if="img.album?.name && img.album?.hash != targetAlbum" 
-                  class="badge wide" 
-                  :to="{ path: '/album/'+img.album?.hash, query: $route.query }" @click.stop>
-                  {{ img.album?.name }}
+                <RouterLink class="badge wide"
+                  v-if="img.album?.name 
+                    && !(img.album?.alias && img.album.alias === targetAlbum) 
+                    && !(img.album?.hash  && img.album.hash  === targetAlbum)"
+                  @click.stop
+                  :to="{ 
+                    name: 'openAlbum',
+                    params: { album: img.album?.alias ?? img.album?.hash }, 
+                    query: $route.query 
+                }">
+                  {{ img.album.name }}
                 </RouterLink>
               </div>
             </div>
@@ -315,8 +359,8 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
           </div>
 
           <AgeRatingLabel class="rating"
-            :id="img?.ratingId ?? img?.album?.ratingId"
-            v-if="img?.ratingId ?? img?.album?.ratingId"
+            :ratingId="img?.ratingId ?? img?.album?.ratingId"
+            v-if="img?.ratingId ?? img?.album?.ratingId ?? albumData?.ratingId"
           />
         </div>
       </section>
@@ -346,7 +390,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
 
     <ImageViewer 
       v-if="targetImage" 
-      :album="targetAlbum" 
+      :album="albumData?.hash ?? targetAlbum" 
       :image.sync="targetImage" 
       :sign="imgSign"
       @targetImage="t => targetImage = t"
@@ -488,6 +532,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       border-radius: v-bind('radius * 2 +"px"');
       .reactions {
         opacity: 0;
+        z-index: -1;
       }
       .overlay {
         opacity: 1;
@@ -519,6 +564,7 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       bottom: 0;
       right: 0;
       left: 0;
+      z-index: 1;
       .reaction {
         background-color: var(--c-b0a);
         height: 24px;
@@ -687,34 +733,18 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
         }
       }
     }
-    &.blur:after {
-      content: '';
-      backdrop-filter: blur(v-bind('size / 30 +"px"'));
+    .rating {
+      position: absolute;
+      backdrop-filter: blur(v-bind('size / 30 +"px"')) saturate(.5);
       border-radius: v-bind('radius +"px"');
       position: absolute;
       bottom: 0;
       right: 0;
       left: 0;
       top: 0;
-      .rating {
-        display: unset;
-      }
-      &:active {
-        backdrop-filter: unset;
-        .rating {
-          display: none;
-        }
-      }
-    }
-    .rating {
-      position: absolute;
-      z-index: 20;
-      bottom: 0;
-      right: 0;
-      left: 0;
-      top: 0;
       justify-content: center;
       align-items: center;
+      //display: flex;
       display: none;
       pointer-events: none;     
       > * {
@@ -725,14 +755,9 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
       .rating {
         display: flex;
       }
-      &:active {
-        &:after {
-          opacity: 0;
-          transition: opacity .5s ease-in;
-        }
-        .rating {
-          display: none;
-        }
+      &:active .rating {
+        opacity: 0;
+        transition: opacity .5s ease-in;
       }
     }
     &.hide {
@@ -741,11 +766,12 @@ watch(targetImage, () => scroll.value = !(targetImage.value != null))
   }
 }
 .message {
-    margin: 0 auto;
-    width: 150px;
-    background-color: var(--c-b2);
-    border-radius: var(--border-r);
-    text-align: center;
+  margin: 0 auto;
+  width: 150px;
+  z-index: 100;
+  background-color: var(--c-b2);
+  border-radius: var(--border-r);
+  text-align: center;
   p {
     padding: 10px 0;
   }

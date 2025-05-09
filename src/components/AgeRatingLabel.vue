@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed, watch } from 'vue'
 
 const props = defineProps({
-  id: {
+  ratingId: {
     type: Number,
     required: false,
   },
@@ -18,7 +18,7 @@ const props = defineProps({
 
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
-const rating = props.rating ?? computed(() => ageRatings.value?.find(r => r.id === props.id))
+const rating = props.rating ?? computed(() => ageRatings.value?.find(r => r.id === props.ratingId))
 
 // Возвращаем blur наружу (для родителя)
 

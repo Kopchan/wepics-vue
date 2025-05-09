@@ -1,11 +1,11 @@
 <script setup>
 import { toRefs } from 'vue'
 import { storeToRefs } from 'pinia'
-import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon } from 'lucide-vue-next'
+import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, EyeOffIcon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
-import { fetchWrapper, ratingPreset, getThumbUrlOnAlbum } from '@/helpers'
-import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore } from '@/stores'
+import { fetchWrapper, formatDate, getThumbUrlOnAlbum, humanCount, humanFileSize } from '@/helpers'
+import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 
@@ -18,9 +18,15 @@ const props = defineProps({
 // Параметры компонента в переменные
 const { album } = toRefs(props)
 
+// Вызов события
+const emit = defineEmits(['edit-album'])
+
+// Данные об текущем пользователе
+const { user } = storeToRefs(useAuthStore())
+
 // Параметры в ссылке
 const  {
-  limit, sort, isReverse, tags, nested, targetImage
+  limit, sort, isReverse, tags, nested, targetImage, sortAlbums, disrespect, isReverseAlbums
 } = storeToRefs(useAlbumParamsStore())
 
 
@@ -32,27 +38,56 @@ const {
 // Параметры предустановок
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
-// Обработка нажатия на расширениея ребёнка
-const handleChildExpand = async (childParams) => {
-  childParams.vueExpanded = !childParams?.vueExpanded
-  if (childParams.vueExpanded && !childParams?.data) {
-    childParams.vueLoading = true
+const ratingPreset = (albumRating, imgRating) => {
+  if (!albumRating && !imgRating) 
+    return false
+
+  const rating = ageRatings.value?.find(r => 
+    r.id === (imgRating ?? albumRating)
+  )
+
+  const preset = rating?.preset
+
+  if (!preset)
+    return
+
+  if (preset === 'hide' || preset === 'blur')
+    return preset
+}
+
+// Обработка нажатия на расширения ребёнка
+const handleChildExpand = async (child) => {
+  child.vueExpanded = !child?.vueExpanded
+  if (child.vueExpanded && !child?.data) {
+    child.vueLoading = true
     await fetchWrapper.get(
-      urls.albumInfo(childParams.hash, { 
+      urls.albumInfo(child.hash, { 
         sort: sort.value, 
-        images: Math.max(limit.value, 4),
+        sortAlbums: sortAlbums.value, 
         isReverse: isReverse.value,
-        tags: tags.value, 
+        isReverseAlbums: isReverseAlbums.value,
+        disrespect: disrespect.value,
+        tags: tags.value,
+        images: Math.max(limit.value, 4),
         nested: nested.value,
       })
     ).then(data => {
-      childParams.vueLoading = false
-      childParams.data = data
+      child.vueLoading = false
+      child.data = data
+      child.data.contentSortField = sortAlbums.value === 'content' ? sort.value : null
     }).catch(err => {
-      childParams.vueLoading = false
-      childParams.vueLoadErr = err
+      child.vueLoading = false
+      child.vueLoadErr = err
       console.error(err)
     })
+  }
+}
+
+const formatContentSort = value => {
+  switch (album.value?.contentSortField) {
+  case 'date': return formatDate(value)
+  case 'size': return humanFileSize(value)
+  default:     return value
   }
 }
 
@@ -61,61 +96,88 @@ const handleChildExpand = async (childParams) => {
 <template>
   <div class="lines" v-if="albumsLayout == 'lines'">
     <div 
-      v-for="(childParams, childName) in album?.children" 
-      :key="childName"
+      v-for="(child, index) in album?.children" 
+      :key="index"
       class="line"
-      :class="{expanded: childParams?.vueExpanded}">
+      :class="{expanded: child?.vueExpanded}">
 
-      <RouterLink
-        class="hidden-link"
-        :key="childName"
-        :to="{ path: '/album/'+childParams.hash, query: $route.query }"
-      />
+      <RouterLink class="hidden-link" :to="{ 
+        name: 'openAlbum',
+        params: { album: child?.alias ?? child.hash }, 
+        query: $route.query 
+      }"/>
 
       <div class="title">
-        <h3 class="name">{{ childName }}</h3>
-        <div class="params">
+        <div class="left">
+          <div v-if="child.orderLevel" class="level">
+            <p>{{ child.orderLevel }}</p>
+          </div>
+          <div v-if="child.guestAllow != null" class="visibility">
+            <EyeIcon size="24" v-if="child.guestAllow"/>
+            <EyeOffIcon size="24" v-else/>
+          </div>
+          <h3 class="name">{{ child.name }}</h3>
+          <button v-if="user.isAdmin"
+            class="btn btn--circle edit-btn" 
+            title="Edit this album"
+            @click="emit('edit-album', $event, child)">
+            <PenIcon size="20" />
+          </button>
+        </div>
+        <div class="right">
+          <div class="inline" v-if="child?.contentSort">
+            <span class="badge" :title="child.contentSort">
+              {{ formatContentSort(child.contentSort) }}
+            </span>
+          </div>
           <AgeRatingLabel class="inline"
-            :id="childParams?.age_rating_id"
-            v-if="childParams?.age_rating_id"
-            @blur-change="bool => childParams.blur = bool"
+            :ratingId="child?.ratingId"
+            v-if="child?.ratingId"
           />
-          <div class="inline" v-if="childParams.albums_count">
-            <FoldersIcon size="16"/>
-            <span>{{ childParams.albums_count }}</span>
+          <div class="inline" v-if="child?.albumsCount">
+            <FoldersIcon size="18"/>
+            <span>{{ humanCount(child.albumsCount) }}</span>
           </div>
-          <div class="inline" v-if="childParams.images_count">
-            <ImagesIcon size="16"/>
-            <span>{{ childParams.images_count }}</span>
+          <div class="inline" v-if="child?.imagesCount">
+            <ImagesIcon size="18"/>
+            <span>{{ humanCount(child.imagesCount) }}</span>
           </div>
-          <button class="btn btn--quad btn--gray expand-btn"
-            v-if="childParams.albums_count || childParams.images_count || !childParams.last_indexation"
-            :class="{'btn--inverse': childParams.vueExpanded}"
-            @click.stop="handleChildExpand(childParams)">
+          <div class="inline" v-if="child?.size">
+            <SaveIcon size="18"/>
+            <span>{{ humanFileSize(child.size) }}</span>
+          </div>
+
+          <button class="btn btn--quad expand-btn"
+            v-if="child.albumsCount || child.imagesCount || !child.indexedAt"
+            :class="{'btn--inverse': child.vueExpanded}"
+            @click.stop="handleChildExpand(child)">
             <ChevronDownIcon size="24"/>
           </button>
         </div>
       </div>
 
       <AlbumsLines class="internal" 
-        :album="childParams?.data" 
-        v-if="childParams?.vueExpanded && childParams?.albums_count"
+        :album="child?.data" 
+        v-if="child?.vueExpanded && child?.albumsCount"
+        @edit-album="(event, album) => emit('edit-album', event, album)"
       />
-      <div class="loading" v-if="childParams?.vueLoading">
+      <!-- @edit-album="showEditOverlay" -->
+       
+      <div class="loading" v-if="child?.vueLoading">
         <p class="text">Loading...</p>
       </div>
 
-      <div class="previews" v-if="childParams?.images?.length">
+      <div class="previews" v-if="child?.images?.length">
         <div class="img-wrapper" 
-          v-for="img, key in childParams?.images"
+          v-for="img, key in child?.images"
           :key="key"
-          :class="ratingPreset(ageRatings, childParams?.age_rating_id, img?.age_rating_id)"
+          :class="ratingPreset(child?.ratingId, img?.ratingId)"
           @click="() => {
-            img.album = childParams
+            img.album = child
             targetImage = img
         }">
           <img
-            :src="getThumbUrlOnAlbum(childParams, img, albumPreviewSize)" 
+            :src="getThumbUrlOnAlbum(child, img, albumPreviewSize)" 
             :width="img.width"
             :height="img.height"
             alt="" 
@@ -126,29 +188,33 @@ const handleChildExpand = async (childParams) => {
             <div class="top"></div>
             <div class="center">
               <AgeRatingLabel class="rating"
-                :id="img?.age_rating_id"
-                v-if="img?.age_rating_id"
+                :ratingId="img?.ratingId"
+                v-if="img?.ratingId"
               />
             </div>
             <div class="bottom"></div>
           </div>
         </div>
         <RouterLink class="more" 
-          :to="{ path: '/album/'+childParams.hash, query: $route.query }"
-          v-if="childParams.images_count > childParams?.images?.length">
-          <p>Explore {{ childParams.images_count - childParams?.images?.length }} remaining images</p>
+          v-if="child.imagesCount > child?.images?.length"
+          :to="{ 
+            name: 'openAlbum',
+            params: { album: child?.alias ?? child.hash }, 
+            query: $route.query 
+        }">
+          <p>Explore {{ child.imagesCount - child?.images?.length }} remaining images</p>
           <ArrowRightIcon/>
         </RouterLink>
       </div>
 
-      <div class="messages" v-else-if="!childParams.vueExpanded">
-        <span class="text" v-if="!childParams.albums_count && !childParams.images_count && childParams.last_indexation">
-          Empty as of {{childParams.last_indexation}}
+      <div class="messages" v-else-if="!child.vueExpanded">
+        <span class="text" v-if="!child.albumsCount && !child.imagesCount && child.indexedAt">
+          Empty as of {{child.indexedAt}}
         </span>
-        <span class="text" v-if="!childParams.last_indexation">
+        <span class="text" v-if="!child.indexedAt">
           Not indexed, maybe has media
         </span>
-        <span class="text" v-if="!childParams.images_count && childParams.albums_count && !childParams.vueExpanded">
+        <span class="text" v-if="!child.imagesCount && child.albumsCount && !child.vueExpanded">
           Open or expand to see sub-albums
         </span>
       </div>
@@ -157,200 +223,248 @@ const handleChildExpand = async (childParams) => {
 </template>
 
 <style lang="scss" scoped>
-  .lines {
-    display: grid;
-    grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
-    gap: v-bind('gap +"px"');
-    padding-bottom: v-bind('gap * 2 +"px"');
-    width: 100%;
-    .hidden-link {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1;
+.lines {
+  display: grid;
+  grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
+  gap: v-bind('gap +"px"');
+  padding-bottom: v-bind('gap * 2 +"px"');
+  width: 100%;
+  .hidden-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+  }
+} 
+.line {
+  max-width: 100%;
+  background-color: var(--c-b2a);
+  border-radius: v-bind('radius +"px"');
+  text-decoration: none;
+  position: relative;
+  z-index: 2;
+  &.expanded {
+    grid-column: 1 / -1;
+  }
+  .title {
+    display: flex;
+    min-height: 40px;
+    gap: 10px;
+    padding: v-bind('gap / 2 +"px"');
+    padding-bottom: 0;
+    align-items: center;
+    justify-content: space-between;
+    .left {
+      min-width: 0;
+      display: flex;
+      align-items: center;
     }
-    .line {
-      max-width: 100%;
-      background-color: var(--c-b2a);
-      border-radius: v-bind('radius +"px"');
-      text-decoration: none;
+    .level {
+      color: var(--c-t7);
+      max-height: 24px;
+      min-width: 24px;
+      margin: 8px;
+      margin-right: 0;
+      height: 32px;
+      font-size: 12px;
+      font-weight: bold;
+      border: 2px solid var(--c-t7);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .visibility {
+      margin: 8px;
+      margin-right: 0;
+      color: var(--c-t7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .edit-btn {
+      color: var(--c-t7);
+      margin: 0 2px;
+      &:hover {
+        color: var(--c-t0);
+      }
+    }
+    .name {
+      color: var(--c-t0);
+      font-size: 24px;
+      padding: 0;
+      min-width:0;
+      margin: 0;
+      //align-self: flex-start;
+      font-weight: 200;
+      padding-left: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .right {
+      display: flex;
+      gap: 10px;
+      align-content: center;
+      .inline:last-child {
+        margin-right: 10px;
+      }
+    }
+    .rating {
+      z-index: 10;
+    }
+    .inline {
+      display: flex;
+      justify-items: center;
+      align-items: center;
+      gap: 2px;
+      text-align: center;
+      color: var(--c-t2a);
+    }
+    .btn {
+      height: 40px;
+      width: 40px;
+      z-index: 10;
+      &.btn--inverse > * {
+        rotate: 180deg;
+      }
+    }
+  }
+  &:hover:not(:has(.previews:hover)):not(:has(.btn:hover)):not(:has(.internal:hover)) {
+    background-color: var(--c-b4a);
+    z-index: 1;
+    filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+    .overlay .block {
+      background-color: transparent !important;
+      backdrop-filter: none !important;
+      box-shadow: unset !important;
+    }
+  }
+  &:active:not(:has(.previews:hover)):not(:has(.btn:hover)):not(:has(.internal:hover)) {
+    background-color: var(--c-b4);
+  }
+  .internal {
+    padding: v-bind('gap / 2 +"px"');
+    width: unset;
+  }
+  .loading {
+    height: 40px;
+    text-align: center;
+    position: absolute;
+    top: v-bind('gap / 2 +"px"');
+    left: 0;
+    right: 0;
+    padding: calc(v-bind('gap / 2 +"px"') + 10px);
+  }
+  .previews {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    justify-items: center;
+    align-items: center;
+    gap:     v-bind('gap / 2 +"px"');
+    padding: v-bind('gap / 2 +"px"');
+    height:  v-bind('size / 2 +"px"');
+    z-index: 10;
+    position: relative;
+    /* Если все .child, кроме последнего, скрыты, то скрываем родителя */
+    .img-wrapper {
+      height: 100%;
+      width: auto;
       position: relative;
-      z-index: 2;
-      &.expanded {
-        grid-column: 1 / -1;
-      }
-      .title {
-        display: flex;
-        min-height: 40px;
-        gap: 10px;
-        padding: v-bind('gap / 2 +"px"');
-        padding-bottom: 0;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        .name {
-          color: var(--c-t0);
-          font-size: 24px;
-          padding: 0;
-          min-width:0;
-          margin: 0;
-          //align-self: flex-start;
-          text-align: center;
-          font-weight: 200;
-          padding-left: 10px;
-        }
-        .params {
-          display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
-          align-content: center;
-          .inline:last-child {
-            margin-right: 10px;
-          }
-        }
+      &.blur .overlay {
+        backdrop-filter: blur(v-bind('size / 60 +"px"')) saturate(.5);
         .rating {
-          z-index: 10;
+          display: unset;
         }
-        .inline {
-          display: flex;
-          justify-items: center;
-          align-items: center;
-          gap: 2px;
-          text-align: center;
-          color: var(--c-t2a);
-        }
-        .btn {
-          height: 40px;
-          width: 40px;
-          z-index: 10;
-          &.btn--inverse > * {
-            rotate: 180deg;
-          }
-        }
-      }
-      &:hover:not(:has(.previews:hover)):not(:has(.btn:hover)):not(:has(.internal:hover)) {
-        background-color: var(--c-b4a);
-        z-index: 1;
-        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-        .overlay .block {
-          background-color: transparent !important;
-          backdrop-filter: none !important;
-          box-shadow: unset !important;
-        }
-      }
-      &:active:not(:has(.previews:hover)):not(:has(.btn:hover)):not(:has(.internal:hover)) {
-        background-color: var(--c-b4);
-      }
-      .internal {
-        padding: v-bind('gap / 2 +"px"');
-        width: unset;
-      }
-      .loading {
-        height: 40px;
-        text-align: center;
-        position: absolute;
-        top: v-bind('gap / 2 +"px"');
-        left: 0;
-        right: 0;
-        padding: calc(v-bind('gap / 2 +"px"') + 10px);
-      }
-      .previews {
-        display: flex;
-        overflow-x: auto;
-        overflow-y: hidden;
-        justify-items: center;
-        align-items: center;
-        gap:     v-bind('gap / 2 +"px"');
-        padding: v-bind('gap / 2 +"px"');
-        height:  v-bind('size / 2 +"px"');
-        z-index: 10;
-        position: relative;
-        /* Если все .child, кроме последнего, скрыты, то скрываем родителя */
-        .img-wrapper {
-          height: 100%;
-          width: auto;
-          position: relative;
-          &.blur .overlay {
-            backdrop-filter: blur(v-bind('size / 60 +"px"'));
-            .rating {
-              display: unset;
-            }
-            &:active {
-              backdrop-filter: unset;
-              .rating {
-                display: none;
-              }
-            }
-          }
-          &.hide {
-            display: none;
-          }
-          .overlay {
-            position: absolute;
-            content: '';
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            justify-content: space-between;
-            flex-direction: column;
-            overflow: hidden;
-            border-radius: v-bind('radius +"px"');
-            filter:
-              drop-shadow(0 0 10px #000) 
-              drop-shadow(0 0 3px #000);
-            .center {
-              display: flex;
-              justify-content: center;
-            }
-          }
+        &:active {
+          backdrop-filter: unset;
           .rating {
             display: none;
           }
         }
-        img {
-          height: 100%;
-          width: auto;
-          object-fit: cover;
-          border-radius: v-bind('radius +"px"');
-          &:hover {
-            //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-            // z-index: 1;
-
-            outline : 1px solid var(--c-t0a);
-            z-index: 9;
-          }
-        }
-        .more {
-          border-radius: v-bind('radius +"px"');
-          height: 100%;
-          aspect-ratio: 1;
+      }
+      &.hide {
+        display: none;
+      }
+      .overlay {
+        position: absolute;
+        content: '';
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: v-bind('radius +"px"');
+        filter:
+          drop-shadow(0 0 10px #000) 
+          drop-shadow(0 0 3px #000);
+        .center {
           display: flex;
           justify-content: center;
-          flex-direction: column;
-          align-items: center;
-          text-decoration: none;
-          color: var(--c-t0);
-          background: var(--c-b2a);
-          &:hover {
-            background: var(--c-b2);
-          }
-          &:active {
-            background: var(--c-b4a);
-          }
         }
       }
-      .messages {
-        padding: calc(v-bind('gap / 2 +"px"') + 10px);
-        .text {
-          color: var(--c-t2a);
-          //justify-self: end;
-          //align-self: last baseline;
-        }
+      .rating {
+        display: none;
       }
     }
-  } 
+    img {
+      height: 100%;
+      width: auto;
+      object-fit: cover;
+      border-radius: v-bind('radius +"px"');
+      &:hover {
+        //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        // z-index: 1;
+        outline : 1px solid var(--c-t0a);
+        z-index: 9;
+      }
+    }
+    .more {
+      border-radius: v-bind('radius +"px"');
+      height: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      color: var(--c-t0);
+      background: var(--c-b2a);
+      &:hover {
+        background: var(--c-b2);
+      }
+      &:active {
+        background: var(--c-b4a);
+      }
+    }
+  }
+  .messages {
+    padding: calc(v-bind('gap / 2 +"px"') + 10px);
+    .text {
+      color: var(--c-t2a);
+      //justify-self: end;
+      //align-self: last baseline;
+    }
+  }
+}
+.badge {
+  flex-grow: 0;
+  font-size: 10px;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px;
+  background-color: #fffa;
+  border-radius: var(--border-r);
+  color: #000;
+  display: flex;
+  justify-items: center;
+  align-items: center;
+}
 </style>

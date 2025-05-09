@@ -155,19 +155,6 @@ const handleReset = () => {
   flex-direction: column;
   gap: 8px;
 }
-.label-group {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  margin-top: 12px;
-  gap: 6px;
-
-}
 .list {
   display: flex;
   flex-direction: column;

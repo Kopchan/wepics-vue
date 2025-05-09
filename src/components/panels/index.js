@@ -4,10 +4,10 @@ import SettingsPanel from './SettingsPanel.vue'
 import SubAlbumsPanel from './SubAlbumsPanel.vue'
 import AlbumSharePanel from './AlbumSharePanel.vue'
 import ObjCreatePanel from './ObjCreatePanel.vue'
-import AlbumRenamePanel from './AlbumRenamePanel.vue'
+import AlbumEditPanel from './AlbumEditPanel.vue'
 import SetupsPanel from './SetupsPanel.vue'
 
 export {
-  AuthPanel, UserPanel, SettingsPanel, AlbumRenamePanel,
+  AuthPanel, UserPanel, SettingsPanel, AlbumEditPanel,
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel
 }

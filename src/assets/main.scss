@@ -104,6 +104,19 @@ body {
   &:active {
     background-color: var(--c-b4);
   }
+  &.field {
+    background-color: var(--c-b2a);
+    &:hover {
+      background-color: var(--c-b4a);
+    }
+    &:focus {
+      background-color: var(--c-b4);
+      outline: 1px solid var(--c-t0a);
+    }
+    &:disabled {
+      color: var(--c-t2a)
+    }
+  }
   option {
     color: var(--c-t0);
     background-color: var(--c-b0);
@@ -117,18 +130,21 @@ body {
 .text-box {
   border: none;
   -webkit-tap-highlight-color: transparent;
-  height: 24px;
+  font-size: 16px;
+  height: 32px;
   display: block;
   background-color: var(--c-b2a);
   border-radius: var(--border-r);
   padding: 0 8px;
   &[type="number"] {
-    width: 50px;
-    text-align: end;
-    display: inline;
-    background-color: transparent;
-    &::-webkit-inner-spin-button {
-    display: none;
+    &.small {
+      width: 50px;
+      text-align: end;
+      display: inline;
+      background-color: transparent;
+    }
+    &:not(:hover)::-webkit-inner-spin-button {
+      display: none;
     }
   }
   &:hover {
@@ -136,7 +152,7 @@ body {
   }
   &:focus {
     background-color: var(--c-b4);
-    outline: 1px solid var(--c-t0a);
+    outline: 2px solid var(--c-t0a);
   }
   &:disabled {
     color: var(--c-t2a)
@@ -243,4 +259,16 @@ input[type="range"] {
             transition: all 300ms;
   }
 }
-
+// Для форм
+.label-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  gap: 6px;
+}

@@ -29,14 +29,14 @@ const {
     <!-- Выбор кол-во столбцов/строк -->
     <div class="label-group">
       <label>{{ orientation == 'w' ? 'Columns' : 'Rows' }}</label>
-      <input type="number" min="0" max="12" v-model.number="lines" class="text-box">
+      <input type="number" min="0" max="12" v-model.number="lines" class="text-box small">
     </div>
     <input type="range" min="0" max="12" v-model.number="lines">
 
     <!-- Выбор размера карточек -->
     <div class="label-group">
       <label>{{ orientation == 'w' ? 'Width' : 'Height' }}</label>
-      <input type="number" min="144" max="1080" v-model.number="size" class="text-box" :disabled="lines && !isStrictSize">
+      <input type="number" min="144" max="1080" v-model.number="size" class="text-box small" :disabled="lines && !isStrictSize">
     </div>
     <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="lines && !isStrictSize">
     <!--
@@ -47,7 +47,7 @@ const {
     <!-- Выбор размера отступов -->
     <div class="label-group">
       <label>Gap</label>
-      <input type="number" min="0" max="32" v-model.number="gap" class="text-box">
+      <input type="number" min="0" max="32" v-model.number="gap" class="text-box small">
     </div>
     <input type="range" min="0" max="32" v-model.number="gap">
 
@@ -60,7 +60,7 @@ const {
     <!-- Выбор размера закругления -->
     <div class="label-group">
       <label>Radius</label>
-      <input type="number" min="0" max="32" v-model.number="radius" class="text-box">
+      <input type="number" min="0" max="32" v-model.number="radius" class="text-box small">
     </div>
     <input type="range" min="0" max="32" v-model.number="radius">
 
@@ -74,7 +74,7 @@ const {
     <template v-if="albumsLayout == 'lines'">
       <div class="label-group">
         <label>Line width</label>
-        <input type="number" min="0" max="3840" v-model.number="lineWidth" class="text-box">
+        <input type="number" min="0" max="3840" v-model.number="lineWidth" class="text-box small">
       </div>
       <input type="range" min="0" max="3840" v-model.number="lineWidth">
     </template>
@@ -90,19 +90,6 @@ const {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.label-group {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  margin-top: 12px;
-  gap: 6px;
-
 }
 button {
   margin-top: 12px;
