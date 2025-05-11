@@ -21,7 +21,7 @@ import AgeRatingLabel from '@/components/AgeRatingLabel.vue'
 
 // Параметры в ссылке
 const  {
-  targetAlbum, targetImage, albumData, limit, sort, isReverse, tags, nested
+  targetAlbum, targetImage, albumData, limit, sort, isReverse, tags, nested, sortType
 } = storeToRefs(useAlbumParamsStore())
   
 const route = useRoute()
@@ -77,7 +77,7 @@ const loadMore = async () => {
       limit: limit.value,
       tags: tags.value,
       sort: sort.value,
-      isReverse: isReverse.value,
+      isReverse: sortType.value.reverse !== isReverse.value,
       nested: nested.value,
     })
   ).then((data) => {
@@ -226,7 +226,7 @@ const showEditOverlay = (event, album) => {
       <section class="albums" v-if="albumData?.children?.length">
 
         <OverlayPanel ref="editAlbumOverlay" class="popup">
-          <AlbumEditPanel :album="editAlbum"/>
+          <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumOverlay"/>
         </OverlayPanel>
 
         <AlbumsLines 
@@ -257,7 +257,7 @@ const showEditOverlay = (event, album) => {
             <div class="overlay">
               <div class="center">
                 <div class="block">
-                  <p class="name">{{ child.index }}</p>
+                  <p class="name">{{ child.name }}</p>
                   <div class="inline" v-if="child.albumsCount">
                     <FoldersIcon size="16"/>
                     <span>{{ humanCount(child.albumsCount) }}</span>

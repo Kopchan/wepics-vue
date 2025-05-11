@@ -3,6 +3,8 @@ import { ref, toRefs } from 'vue'
 import { BtnRadios } from '@/components/ui'
 import { fetchWrapper } from '@/helpers'
 import { urls } from '@/api'
+import { useAlbumParamsStore } from '@/stores'
+import { storeToRefs } from 'pinia'
 
 // Параметры компонента
 const props = defineProps({
@@ -16,21 +18,27 @@ const isErrored = ref(false) // Статус "произошла ошибка"
 const mode = ref('album')   // Режим добавления
 const form = ref({})       // Данные для отправки
 
+// Данные по текущему открытому альбому
+const { albumData } = storeToRefs(useAlbumParamsStore())
+
 // Создание альбома
 const createAlbum = () => {
   fetchWrapper.post(urls.album(hash), form.value)
-    .then(data => {
-      albumData.value.children[form.value.name] = { hash: data.hash }
-    })
-    .catch(() => {
+    .catch(err => {
       isErrored.value = true
+      console.error(err)
+    })
+    .then(data => {
+      isErrored.value = false
+      albumData.value.children[form.value.name] = { hash: data.hash }
     })
 }
 // Отправка картинок
 const sendImages = () => {
   fetchWrapper.post(urls.album(hash), form.value)
-    .catch(() => {
+    .catch(err => {
       isErrored.value = true
+      console.error(err)
     })
 }
 </script>

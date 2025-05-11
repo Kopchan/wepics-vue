@@ -1,5 +1,2 @@
-import urls from './urls'
-
-export {
-  urls
-}
+export { urls } from './urls'
+export { imagesSort } from './sortTypes'

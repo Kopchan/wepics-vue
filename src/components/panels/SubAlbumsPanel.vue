@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 
 import { fetchWrapper } from '@/helpers'
 import { useAlbumParamsStore } from '@/stores'
-import { urls } from '@/api';
+import { urls } from '@/api'
 
 // Заданные данные компоненту
 const props = defineProps({
@@ -16,11 +16,9 @@ const props = defineProps({
 })
 // Хеш тыкнутого альбома
 const { hash } = toRefs(props)
-// Данные по текущему открытому альбому
 
-const {
-  targetAlbum, albumData
-} = storeToRefs(useAlbumParamsStore())
+// Данные по текущему открытому альбому
+const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
 
 
 const nextName = ref(props.nextName)

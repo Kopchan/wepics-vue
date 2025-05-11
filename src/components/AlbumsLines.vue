@@ -26,7 +26,7 @@ const { user } = storeToRefs(useAuthStore())
 
 // Параметры в ссылке
 const  {
-  limit, sort, isReverse, tags, nested, targetImage, sortAlbums, disrespect, isReverseAlbums
+  limit, sort, isReverse, tags, nested, targetImage, sortAlbums, disrespect, isReverseAlbums, sortType
 } = storeToRefs(useAlbumParamsStore())
 
 
@@ -64,7 +64,7 @@ const handleChildExpand = async (child) => {
       urls.albumInfo(child.hash, { 
         sort: sort.value, 
         sortAlbums: sortAlbums.value, 
-        isReverse: isReverse.value,
+        isReverse: sortType.value.reverse !== isReverse.value,
         isReverseAlbums: isReverseAlbums.value,
         disrespect: disrespect.value,
         tags: tags.value,

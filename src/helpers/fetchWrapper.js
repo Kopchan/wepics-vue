@@ -49,7 +49,9 @@ function handleResponse(response) {
 
       return Promise.reject({
         response,
+        data,
         status: response.status,
+        errors: data?.errors,
         message,
       })
     }

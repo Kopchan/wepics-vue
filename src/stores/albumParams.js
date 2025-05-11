@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { router } from '@/router'
 import { SITE_NAME } from '@/config'
+import { imagesSort } from '@/api'
 
 export const useAlbumParamsStore = defineStore('albumParams', () => {
   // Функция создания get-set переменной для параметра в адресной строке
@@ -74,17 +75,24 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     }
   })
 
-  const targetImage     = ref(null)
-  const targetAlbum     = createProp('album', 'root', 'openAlbum')
-  const limit           = createProp('limit', 30 )
-  const sort            = createProp('sort', 'name')
-  const isReverse       = createProp('reverse', false)
-  const sortAlbums      = createProp('asort', 'content')
-  const isReverseAlbums = createProp('areverse', false)
-  const nested          = createProp('nested', false)
-  const disrespect      = createProp('disrespect', false)
-  const tags            = createProp('tags', [], undefined, true)
+  const targetImage = ref(null)
   const albumData = ref({})
+
+  const targetAlbum     = createProp('album'    , 'root', true)
+  const imageTrueAlbum  = createProp('trueAlbum',  null , true)
+  const targetImage2    = createProp('image'    ,  null , true)
+
+  const fullscreen      = createProp('f'     , false)
+  const limit           = createProp('limit' , 30)
+  const tags            = createProp('tags'  , [], false, true)
+  const sort            = createProp('sort'  , 'date')
+  const isReverse       = createProp('r'     , false)
+  const sortAlbums      = createProp('asort' , 'content')
+  const isReverseAlbums = createProp('ar'    , false)
+  const nested          = createProp('nested', false)
+  const disrespect      = createProp('disord', false)
+
+  const sortType = computed(() => imagesSort.find(s => s.value === sort.value))
   /*
   const getAlbumData = () => {
     fetchWrapper.get(urls.albumInfo(router.currentRoute.value.params.albumHash ?? 'root'))
@@ -104,7 +112,8 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   )
  
   return { 
-    targetAlbum, targetImage, limit, sort, isReverse, 
-    tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect 
+    targetAlbum, limit, sort, isReverse, sortType,
+    tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect,
+    targetImage, targetImage2, imageTrueAlbum, fullscreen,
   }
 })

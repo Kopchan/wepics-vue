@@ -1,21 +1,25 @@
 <script setup>
-import { onMounted, ref, toRefs } from 'vue'
-import { fetchWrapper } from '@/helpers'
+import { computed, onMounted, ref, toRefs } from 'vue'
+import { fetchWrapper, sleep } from '@/helpers'
 import { storeToRefs } from 'pinia'
 import { useServerSetupsStore } from '@/stores'
 import { urls } from '@/api'
-import SelectorRadios2 from '../ui/SelectorRadios2.vue'
+import { SelectorRadios2 } from '@/components/ui'
+import { InputFormItem, SelectFormItem, RadioBtnsFormItem } from '@/components/form'
 
 // Параметры компонента
 const props = defineProps({
-  album: Object,
+  overlay: Object,
 })
 
 // Параметры компонента в переменные
-const { album } = toRefs(props)
+const { overlay } = toRefs(props)
+
+// v-model компонента
+const album = defineModel()
 
 const isFetching = ref(false) // Статус "данные отправляются"
-const isErrored = ref(false) // Статус "произошла ошибка"
+const error = ref(null) // Ошибка
 const form = ref({})        // Данные для отправки
 
 const inputBox = ref(null)
@@ -29,36 +33,59 @@ if (album.value?.path) {
 form.value.displayName = album.value?.name
 form.value.urlName     = album.value?.alias
 form.value.oldUrlNames = album.value?.oldAliases
-form.value.ageRatingId = album.value?.ratingId
+form.value.ageRatingId = album.value?.ratingId   ?? null
 form.value.orderLevel  = album.value?.orderLevel ?? 0
 form.value.guestAllow  = album.value?.guestAllow ?? null
 
 // Параметры предустановок
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
+const ratingOptions = computed(() => {
+  const options = {}
+  options['None'] = null
+
+  if (ageRatings.value?.length)
+    for (const rating of ageRatings.value)
+      options[`${rating.code} - ${rating.name}`] = rating.id
+  
+  return options
+})
+
+// Переключатель видимости для гостей
+const guestAllowOptions = [
+  { name: 'Inherit', value: null },
+  { name: 'Hide',    value: false},
+  { name: 'Visible', value: true},
+]
+
 // Переименование альбома
 const editAlbum = () => {
+  isFetching.value = true
+  error.value = null
+
   fetchWrapper.patch(urls.album(album.value.hash), form.value)
-    .catch(() => {
-      isErrored.value = true
-    })
     .then(data => {
-      album.value.name        = form.value.displayName
-      album.value.alias       = form.value.urlName
+      Object.assign(album.value, data)
       album.value.oldUrlNames = form.value.oldUrlNames
-      album.value.ratingId    = form.value.ageRatingId
-      album.value.orderLevel  = form.value.orderLevel
-      album.value.guestAllow  = form.value.guestAllow
       
       if (album.value?.path) {
         const parts = album.value.path?.split(/[\\/]/)
         parts[parts?.length - 2] = form.value?.pathName
         album.value.path = parts.join('/')
       }
+      isFetching.value = false
+      error.value = null
+      overlay.value?.hide()
+    })
+    .catch(err => {
+      isFetching.value = false
+      error.value = err
+      console.error(err)
     })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await sleep(10)
   if (inputBox.value) 
     inputBox.value.focus()
 })
@@ -68,54 +95,20 @@ onMounted(() => {
   <div class="outer">
     <h4>Edit</h4>
     <form @submit.prevent="editAlbum">
-      <div class="label-group">
-        <label>Display name</label>
-      </div>
-      <input class="text-box" v-model="form.displayName" placeholder="Album custom display name" ref="inputBox">
+      <InputFormItem     v-model="form" :error="error" name="displayName" label="Display name"              placeholder="Album custom display name"/>
+      <InputFormItem     v-model="form" :error="error" name="urlName"     label="URL name (alias)"          placeholder="Album url path name"/>
+      <InputFormItem     v-model="form" :error="error" name="pathName"    label="Enternal folder name"      placeholder="Album enternal folder path name"/>
+      <InputFormItem     v-model="form" :error="error" name="orderLevel"  label="Order level (ignore sort)" placeholder="Order level" type="number" :step="1"/>
+      <SelectFormItem    v-model="form" :error="error" name="ageRatingId" label="Age rating"  :options=    "ratingOptions"/>
+      <RadioBtnsFormItem v-model="form" :error="error" name="guestAllow"  label="Guest allow" :options="guestAllowOptions"/>
 
-      <div class="label-group">
-        <label>URL name (alias)</label>
-      </div>
-      <input class="text-box" v-model="form.urlName" placeholder="Album url path name">
-
-      <div class="label-group">
-        <label>Enternal folder name</label>
-      </div>
-      <input class="text-box" v-model="form.pathName" placeholder="Album enternal folder path name">
-
-      <div class="label-group">
-        <label>Order level (ignore sort)</label>
-      </div>
-      <input class="text-box" type="number" v-model="form.orderLevel" placeholder="Order level" step="1">
-      
-      <div class="label-group">
-        <label>Age rating</label>
-      </div>
-      <select class="droplist field" v-model="form.ageRatingId">
-        <option :value="null" :selected="!form.ageRatingId">None</option>
-        <option v-for="(rating, index) in ageRatings" 
-          :key="index" 
-          :value="rating.id"
-        >
-          {{ rating.code }} - {{ rating.name }}
-        </option>
-      </select>
-      
-      <div class="label-group">
-        <label>Guest allow</label>
-      </div>
-      <SelectorRadios2 
-        v-model="form.guestAllow"
-        :options="[
-          { name: 'Inherit', value: null },
-          { name: 'Hide',    value: false},
-          { name: 'Visible', value: true},
-      ]"/>
-
-      <button class="btn" :disable="isFetching">Save</button>
+      <button class="btn" :disable="isFetching">
+        {{ isFetching ? 'Saving...' : 'Save' }}
+      </button>
     </form>
-    <div v-if="isErrored">
-      <p>Something going wrong</p>
+    <div v-if="error" class="error">
+      <p v-if="error?.message">{{ error.message }}</p>
+      <p v-else>Something going wrong</p>
     </div>
   </div>
 </template>
@@ -130,16 +123,12 @@ onMounted(() => {
 h4 {
   text-align: center;
 }
-button {
+.btn {
   background-color: var(--c-b0a);
-}
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px
+  width: 100%;
 }
 .error {
-  background-color: #a004;
+  background-color: var(--red-bg);
   padding: 10px;
   border-radius: var(--border-r);
 }

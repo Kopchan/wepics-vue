@@ -7,12 +7,14 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon,
   ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon,
-  ViewIcon, FoldersIcon, ImagesIcon, SaveIcon
+  ViewIcon, FoldersIcon, ImagesIcon, SaveIcon,
+  ArrowDown10Icon,
+  ArrowUp10Icon
 } from 'lucide-vue-next'
 
-import { fetchWrapper, humanCount, humanFileSize, sleep } from '@/helpers'
+import { fetchWrapper, humanFileSize, sleep } from '@/helpers'
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
-import { urls } from '@/api'
+import { imagesSort, urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, AlbumEditPanel,
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel
@@ -24,7 +26,7 @@ const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, albumData, 
+  targetAlbum, albumData, sortType,
   sort, sortAlbums, isReverse, isReverseAlbums, disrespect,
   tags, nested, limit
 } = storeToRefs(useAlbumParamsStore())
@@ -46,7 +48,6 @@ const albumRenameCard = ref()
 const albumChildren = ref(null)
 const albumChildSelect = ref(null)
 const toggleSubAlbumsCard = (e, hash, selectedHash) => {
-  console.log('toggleSubAlbumsCard', selectedHash)
   albumChildren.value = hash
   albumChildSelect.value = selectedHash
   subAlbumsCard.value.toggle(e)
@@ -109,7 +110,7 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
     urls.albumInfo(newHash ?? targetAlbum.value, { 
       sort: sort.value, 
       sortAlbums: sortAlbums.value, 
-      isReverse: isReverse.value,
+      isReverse: sortType.value.reverse !== isReverse.value,
       isReverseAlbums: isReverseAlbums.value,
       disrespect: disrespect.value,
       tags: tags.value,
@@ -119,13 +120,15 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
   ).catch(err => {
     isError.value = true
     isLoading.value = false
-    console.log(err)
+    console.error(err)
   }).then(data => {
+    // Предотвращение обновление данных если ушли с альбома
     if  (targetAlbum.value && (
-      targetAlbum.value != data?.alias && 
+      targetAlbum.value?.toLowerCase() != data?.alias?.toLowerCase() && 
       targetAlbum.value != data?.hash
     )) return
 
+    // Переход по каноничному алиасу, если таковой есть
     if (data?.alias && targetAlbum.value != data?.alias) {
       router.replace({
         name: 'openAlbum',
@@ -134,6 +137,8 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
       })
     }
 
+    // Обновление данных с записью названия сортировки
+    // TODO: обновлять при изменении сортировки и других параметров в ссылке
     albumData.value = {
       ...albumData.value, 
       ...data, 
@@ -144,7 +149,7 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
   }).catch(err => {
     isError.value = true
     isLoading.value = false
-    console.log(err)
+    console.error(err)
   })
 }
 
@@ -192,6 +197,18 @@ onMounted(() => {
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
               @click="toggleSubAlbumsCard($event, 'root', albumData?.ancestors[1]?.hash)">
+              <ChevronRightIcon size="20" />
+            </button>
+          </span>
+          <span class="section" v-if="targetAlbum !== 'root' && (
+            !albumData?.ancestors?.length || 
+            albumData?.ancestors[0]?.hash != 'root'
+          )">
+            <a class="btn" disabled>...</a>
+            <button
+              class="btn btn--circle folder-select-btn" 
+              title="Show subfolders"
+              disabled>
               <ChevronRightIcon size="20" />
             </button>
           </span>
@@ -245,7 +262,7 @@ onMounted(() => {
         </div>
         <!--    =  Панель редактирования  =    -->
         <OverlayPanel ref="albumRenameCard" class="popup popup--fixed">
-          <AlbumEditPanel :album="albumData"/>
+          <AlbumEditPanel v-model="albumData" :overlay="albumRenameCard"/>
         </OverlayPanel>
         <!--    =  Панель выбора дочернего альбома  =    -->
         <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
@@ -253,6 +270,7 @@ onMounted(() => {
         </OverlayPanel>
       </div>
 
+        <!--    =  Информация по текущему альбому  =    -->
       <div class="center">
         <AgeRatingLabel class="inline"
           :ratingId="albumData?.ratingId"
@@ -289,7 +307,7 @@ onMounted(() => {
           title="Reindex this album"
           :disabled="isLoading"
           :class="{spin: isLoading, error: isError}"
-          @click="isError ? getAlbumData : reindexAlbum">
+          @click="isError ? getAlbumData() : reindexAlbum()">
           <RefreshCcwIcon size="20"/>
         </button>
         <!--    =  Панель создания  =    -->
@@ -342,19 +360,18 @@ onMounted(() => {
             <ArrowDownAZIcon size="20" v-else/>
           </template>
           <template v-else>
-            <ArrowUp01Icon size="20" v-if="isReverse"/>
-            <ArrowDown01Icon size="20" v-else/>
+            <ArrowUp10Icon size="20" v-if="isReverse"/>
+            <ArrowDown10Icon size="20" v-else/>
           </template>
         </button>
         <select class="droplist sort-droplist" title="Sort type" v-model="sort">
-          <option value="name">Name</option>
-          <option value="date">Date</option>
-          <option value="size">Size</option>
-          <option value="height">Height</option>
-          <option value="width">Width</option>
-          <option value="ratio">Ratio</option>
-          <option value="square">Square</option>
-          <option value="reacts">Reacts</option>
+          <option 
+            v-for="sortOption, index in imagesSort"
+            :key="index"
+            :value="sortOption.value"
+          >
+            {{ sortOption.name }}
+          </option>
         </select>
         <!--    =  Панель кастомизации =     -->
         <button

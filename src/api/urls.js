@@ -1,6 +1,6 @@
 import { API_PATH } from "@/config"
 
-export default {
+export const urls = {
   root: () => API_PATH,
 
   setups: () => API_PATH + '/setups',
@@ -55,3 +55,4 @@ export default {
 
 }
 
+export default urls
