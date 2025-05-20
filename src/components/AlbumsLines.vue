@@ -1,13 +1,14 @@
 <script setup>
 import { toRefs } from 'vue'
 import { storeToRefs } from 'pinia'
-import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, EyeOffIcon } from 'lucide-vue-next'
+import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, EyeOffIcon, VideoIcon, FileAudioIcon, FileVideo2Icon, FileImageIcon, ImageIcon, Music2Icon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
-import { fetchWrapper, formatDate, getThumbUrlOnAlbum, humanCount, humanFileSize } from '@/helpers'
+import { fetchWrapper, humanDate, getThumbUrlOnAlbum, humanCount, humanFileSize, routeNameViewer, routeViewerType, humanSI, humanDuration, reverseCheckInSortType } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import AgeRatingLabel from './AgeRatingLabel.vue'
+import { useRoute, useRouter } from 'vue-router'
 
 // Параметры компонента
 const props = defineProps({
@@ -26,9 +27,9 @@ const { user } = storeToRefs(useAuthStore())
 
 // Параметры в ссылке
 const  {
-  limit, sort, isReverse, tags, nested, targetImage, sortAlbums, disrespect, isReverseAlbums, sortType
+  limit, sort, isReverse, tags, nested, imageData, sortAlbums,
+  disrespect, isReverseAlbums, sortType, albumData, targetUser, targetAlbum,
 } = storeToRefs(useAlbumParamsStore())
-
 
 // Косметические параметры
 const {
@@ -64,7 +65,7 @@ const handleChildExpand = async (child) => {
       urls.albumInfo(child.hash, { 
         sort: sort.value, 
         sortAlbums: sortAlbums.value, 
-        isReverse: sortType.value.reverse !== isReverse.value,
+        isReverse: reverseCheckInSortType(sortType, isReverse, sort),
         isReverseAlbums: isReverseAlbums.value,
         disrespect: disrespect.value,
         tags: tags.value,
@@ -85,10 +86,32 @@ const handleChildExpand = async (child) => {
 
 const formatContentSort = value => {
   switch (album.value?.contentSortField) {
-  case 'date': return formatDate(value)
-  case 'size': return humanFileSize(value)
-  default:     return value
+  case 'date':      return humanDate(value)
+  case 'size':      return humanFileSize(value)
+  case 'duration':  return humanDuration(value / 1000)
+  case 'bitrate':   return humanSI(Math.floor(value)) + 'bps'
+  case 'framerate': return Math.floor(value) + ' fps'
+  default:          return value
   }
+}
+
+const router = useRouter()
+const route = useRoute()
+
+const openViewer = (image) => {
+  imageData.value = image
+
+  router.push({
+    name: routeNameViewer(!!targetUser.value, image),
+    query: route.query,
+    params: {
+      user: targetUser.value, 
+      type: routeViewerType(image?.type), 
+      album: albumData.value?.alias ?? targetAlbum.value,
+      trueAlbum: image?.album?.alias ?? image?.album?.hash,
+      image: image?.hash,
+    },
+  })
 }
 
 </script>
@@ -134,13 +157,21 @@ const formatContentSort = value => {
             :ratingId="child?.ratingId"
             v-if="child?.ratingId"
           />
+          <div class="inline" v-if="child?.audiosCount">
+            <Music2Icon size="18"/>
+            <span>{{ humanCount(child.audiosCount) }}</span>
+          </div>
+          <div class="inline" v-if="child?.videosCount">
+            <VideoIcon size="18"/>
+            <span>{{ humanCount(child.videosCount) }}</span>
+          </div>
+          <div class="inline" v-if="child?.imagesCount">
+            <ImageIcon size="18"/>
+            <span>{{ humanCount(child.imagesCount) }}</span>
+          </div>
           <div class="inline" v-if="child?.albumsCount">
             <FoldersIcon size="18"/>
             <span>{{ humanCount(child.albumsCount) }}</span>
-          </div>
-          <div class="inline" v-if="child?.imagesCount">
-            <ImagesIcon size="18"/>
-            <span>{{ humanCount(child.imagesCount) }}</span>
           </div>
           <div class="inline" v-if="child?.size">
             <SaveIcon size="18"/>
@@ -174,7 +205,7 @@ const formatContentSort = value => {
           :class="ratingPreset(child?.ratingId, img?.ratingId)"
           @click="() => {
             img.album = child
-            targetImage = img
+            openViewer(img)
         }">
           <img
             :src="getThumbUrlOnAlbum(child, img, albumPreviewSize)" 
@@ -375,7 +406,7 @@ const formatContentSort = value => {
       width: auto;
       position: relative;
       &.blur .overlay {
-        backdrop-filter: blur(v-bind('size / 60 +"px"')) saturate(.5);
+        backdrop-filter: blur(v-bind('size / 20 +"px"')) saturate(.5);
         .rating {
           display: unset;
         }

@@ -1,9 +1,9 @@
 <script setup>
 import { TheHeader, SideBar } from '@/components'
-import { useServerSetupsStore, useSettingsStore } from './stores'
+import { useServerSetupsStore, useSettingsStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import { onMounted, watch } from 'vue'
-import { SITE_NAME } from './config';
+import { SITE_NAME } from './config'
 
 document.title = SITE_NAME
 

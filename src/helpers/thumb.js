@@ -27,11 +27,9 @@ export const getThumbMultiURL = (albumHash, img, sign = null) => {
   return srcsetItems.join(', ')
 }
 
-// GIF как оригинал
+// Видео и анимированные картинки как оригинал
 export const getThumbUrlOnAlbum = (album, img, size) => {
-  const parts = img.name.split('.')
-  img.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
-  return img.ext != 'gif'
+  return img.type === 'image'
     ? urls.imageThumb(album.hash, img.hash, album?.sign, 'h', size) 
     : urls.imageOrig (album.hash, img.hash, album?.sign) 
 }

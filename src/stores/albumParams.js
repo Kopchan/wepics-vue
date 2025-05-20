@@ -1,11 +1,16 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { defineStore } from 'pinia'
-import { router } from '@/router'
+//import { router } from '@/router'
 import { SITE_NAME } from '@/config'
 import { imagesSort } from '@/api'
+import { useRoute, useRouter } from 'vue-router'
 
 export const useAlbumParamsStore = defineStore('albumParams', () => {
+  const route = useRoute()
+  const router = useRouter()
+
   // Функция создания get-set переменной для параметра в адресной строке
+  /*
   const createProp = (
     name,
     defaultValue = null,
@@ -14,7 +19,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   ) => computed({
     get: () => {
       // Получение параметра из адресной строки
-      const prop = router.currentRoute.value[routeName ? 'params' : 'query'][name]
+      const prop = route[routeName ? 'params' : 'query'][name]
 
       // Если переменная была с предустановкой "это массив", 
       // то элементы массива считываются через запятую 
@@ -30,32 +35,9 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       return prop ?? defaultValue
     },
     set: (value) => {
-      // Полученние query-параметров из адресной строки
-      const query = router.currentRoute.value.query
-
-      if (routeName) {
-        if (value === undefined || value === defaultValue) {
-          // Если получено значение "ничего" или равняющееся по умолчанию, 
-          // то перейти на главную страницу
-          router.push({
-            name: 'home',
-            query
-          })
-          return
-        }
-        
-        // Переход на новое заданное значение
-        const params = router.currentRoute.value.params
-        router.push({
-          name: routeName,
-          params: { ...params, [name]: value ?? defaultValue },
-          query
-        })
-        return
-      }
       
       // Обработка нового параметра
-      let newQuery = {...query}
+      let newQuery = {...route.query}
       if  (value === undefined 
         || value === false 
         || value.length === 0 
@@ -74,13 +56,64 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       router.replace({ query: newQuery })
     }
   })
+  */
+  const createProp = (
+    name,
+    defaultValue = null,
+    routeName = false,
+    isArray = false,
+  ) => {
+    const cached = ref(null)  // кеш
+  
+    watchEffect(() => {
+      const raw = route[routeName ? 'params' : 'query'][name]
+      cached.value = raw
+    })
+  
+    return computed({
+      get: () => {
+        const prop = cached.value
+  
+        if (isArray) {
+          if (!prop) return []
+          return prop.split(',').map(decodeURIComponent)
+        }
+  
+        if (prop === null) return true
+        return prop ?? defaultValue
+      },
+      set: (value) => {
+        const newQuery = { ...route.query }
+  
+        if (
+          value === undefined ||
+          value === false ||
+          (Array.isArray(value) && value.length === 0) ||
+          value === defaultValue
+        ) {
+          delete newQuery[name]
+        } else if (value === true) {
+          newQuery[name] = null
+        } else if (Array.isArray(value)) {
+          newQuery[name] = value.map(encodeURIComponent).join(',')
+        } else {
+          newQuery[name] = value
+        }
+  
+        router.replace({ query: newQuery })
+      }
+    })
+  }
+
+  const albumData = ref({})
+  const imageData = ref({})
 
   const targetImage = ref(null)
-  const albumData = ref({})
-
+  const targetUser      = createProp('user'     ,  null , true)
   const targetAlbum     = createProp('album'    , 'root', true)
   const imageTrueAlbum  = createProp('trueAlbum',  null , true)
   const targetImage2    = createProp('image'    ,  null , true)
+  const targetImageType = createProp('type'     ,  null , true)
 
   const fullscreen      = createProp('f'     , false)
   const limit           = createProp('limit' , 30)
@@ -92,28 +125,51 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const nested          = createProp('nested', false)
   const disrespect      = createProp('disord', false)
 
-  const sortType = computed(() => imagesSort.find(s => s.value === sort.value))
-  /*
-  const getAlbumData = () => {
-    fetchWrapper.get(urls.albumInfo(router.currentRoute.value.params.albumHash ?? 'root'))
-      .then(data => albumData.value = data)
-  }
-  setTimeout(getAlbumData(), 100)
+  const sortType  = computed(() => imagesSort.find(s => s.value === sort.value))
+  const fullImage = ref(false)
 
   watch(
-    () => targetAlbum.value, 
-    getAlbumData(),
-  )*/
-  watch(
-    () => albumData.value?.name, 
+    [
+      () => albumData.value?.name, 
+      () => imageData.value?.name, 
+    ],
     () => {
-      document.title = (albumData.value?.name ? albumData.value.name + ' • ' : '') + SITE_NAME
+      document.title = 
+        (imageData.value?.name ? (imageData.value.name + ' • ') : '') +
+        (
+          (imageData.value?.album?.name ?? albumData.value?.name)
+            ? ((imageData.value?.album?.name ?? albumData.value.name) + ' • ') 
+            : ''
+        ) +
+        SITE_NAME
     },
   )
  
   return { 
-    targetAlbum, limit, sort, isReverse, sortType,
+    targetAlbum, limit, sort, isReverse, sortType, targetUser, fullImage,
     tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect,
-    targetImage, targetImage2, imageTrueAlbum, fullscreen,
+    targetImage, imageData, targetImage2, imageTrueAlbum, fullscreen, targetImageType,
   }
 })
+
+/*
+const getAlbumData = () => {
+  fetchWrapper.get(urls.albumInfo(router.currentRoute.value.params.albumHash ?? 'root'))
+    .then(data => albumData.value = data)
+}
+setTimeout(getAlbumData(), 100)
+watch(
+  () => targetAlbum.value, 
+  getAlbumData(),
+)*/
+
+//if (routeName) {
+//  // Переход на новое заданное значение
+//  const params = router.currentRoute.value.params
+//  router.push({
+//    name: routeName,
+//    params: { ...params, [name]: value ?? defaultValue },
+//    query
+//  })
+//  return
+//}

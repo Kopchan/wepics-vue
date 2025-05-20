@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { BASE_URL } from '@/config'
+import PageNotExist from '@/views/PageNotExist.vue'
 
 export const router = createRouter({
   history: BASE_URL 
@@ -22,6 +23,14 @@ export const router = createRouter({
       })
     },
     {
+      path: '/root',
+      name: 'toHome',
+      redirect: to => ({ 
+        name: 'home', 
+        query: to.query,
+      })
+    },
+    {
       path: '/@:user',
       name: 'userRoot',
       component: HomeView
@@ -32,12 +41,12 @@ export const router = createRouter({
       component: HomeView
     },
     {
-      path: '/@:user/:album/i/:image',
+      path: '/@:user/:album/:type/:image',
       name: 'userAlbumImage',
       component: HomeView
     },
     {
-      path: '/@:user/:album/:trueAlbum/i/:image',
+      path: '/@:user/:album/:trueAlbum/:type/:image',
       name: 'userAlbumNestedImage',
       component: HomeView
     },
@@ -47,29 +56,19 @@ export const router = createRouter({
       component: HomeView
     },
     {
-      path: '/:album/i/:image',
+      path: '/:album/:type/:image',
       name: 'openAlbumImage',
       component: HomeView
     },
     {
-      path: '/:album/i/:image/full',
-      name: 'openAlbumImageFull',
-      component: HomeView
-    },
-    {
-      path: '/:album/:trueAlbum/i/:image',
+      path: '/:album/:trueAlbum/:type/:image',
       name: 'openAlbumNestedImage',
-      component: HomeView
-    },
-    {
-      path: '/:album/:trueAlbum/i/:image/full',
-      name: 'openAlbumNestedImageFull',
       component: HomeView
     },
     {
       path: '/:catchAll(.*)',
       name: 'notFound',
-      component: () => import('@/views/PageNotExist.vue')
+      component: PageNotExist
     },
   ]
 })

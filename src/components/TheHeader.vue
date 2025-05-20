@@ -9,10 +9,13 @@ import {
   ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon,
   ViewIcon, FoldersIcon, ImagesIcon, SaveIcon,
   ArrowDown10Icon,
-  ArrowUp10Icon
+  ArrowUp10Icon,
+  ImageIcon,
+  Music2Icon,
+  VideoIcon
 } from 'lucide-vue-next'
 
-import { fetchWrapper, humanFileSize, sleep } from '@/helpers'
+import { fetchWrapper, humanFileSize, reverseCheckInSortType, sleep } from '@/helpers'
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
 import { imagesSort, urls } from '@/api'
 import {
@@ -110,7 +113,7 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
     urls.albumInfo(newHash ?? targetAlbum.value, { 
       sort: sort.value, 
       sortAlbums: sortAlbums.value, 
-      isReverse: sortType.value.reverse !== isReverse.value,
+        isReverse: reverseCheckInSortType(sortType, isReverse, sort),
       isReverseAlbums: isReverseAlbums.value,
       disrespect: disrespect.value,
       tags: tags.value,
@@ -123,7 +126,7 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
     console.error(err)
   }).then(data => {
     // Предотвращение обновление данных если ушли с альбома
-    if  (targetAlbum.value && (
+    if (targetAlbum.value && (
       targetAlbum.value?.toLowerCase() != data?.alias?.toLowerCase() && 
       targetAlbum.value != data?.hash
     )) return
@@ -161,6 +164,7 @@ const reindexAlbum = () => {
   ).then(async () => {
     const temp = albumData.value?.hash ?? targetAlbum.value
     targetAlbum.value = null // FIXME: успевает за это время загрузить root альбом
+    // FIXME: targetAlbum больше нельзя задавать, делай через pinia actions, и вынеси наконец картинки туда
     await sleep(10)
     targetAlbum.value = temp
   })
@@ -201,7 +205,7 @@ onMounted(() => {
             </button>
           </span>
           <span class="section" v-if="targetAlbum !== 'root' && (
-            !albumData?.ancestors?.length || 
+            albumData?.ancestors?.length && 
             albumData?.ancestors[0]?.hash != 'root'
           )">
             <a class="btn" disabled>...</a>
@@ -276,12 +280,16 @@ onMounted(() => {
           :ratingId="albumData?.ratingId"
           v-if="albumData?.ratingId"
         />
-        <div class="inline" v-if="albumData?.albumsCount">
-          <FoldersIcon size="18"/>
-          <span>{{ albumData.albumsCount }}</span>
+        <div class="inline" v-if="albumData?.audiosCount">
+          <Music2Icon size="18"/>
+          <span>{{ albumData.audiosCount.toLocaleString() }}</span>
+        </div>
+        <div class="inline" v-if="albumData?.videosCount">
+          <VideoIcon size="18"/>
+          <span>{{ albumData.videosCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.imagesCount || albumData?.nestedImagesCount">
-          <ImagesIcon size="18"/>
+          <ImageIcon size="18"/>
           <span>
             <template v-if="albumData?.imagesCount">
               {{ albumData.imagesCount.toLocaleString() }}
@@ -293,6 +301,10 @@ onMounted(() => {
               ({{ albumData.nestedImagesCount.toLocaleString() }})
             </template>
           </span>
+        </div>
+        <div class="inline" v-if="albumData?.albumsCount">
+          <FoldersIcon size="18"/>
+          <span>{{ albumData.albumsCount }}</span>
         </div>
         <div class="inline" v-if="albumData?.size">
           <SaveIcon size="18"/>
@@ -346,7 +358,7 @@ onMounted(() => {
         <button
           class="btn btn--quad"
           :class="{'btn--inverse': nested}"
-          title="Switch nested"
+          title="Switch visibility images of nested albums"
           @click="nested = !nested">
           <WorkflowIcon size="20"/>
         </button>

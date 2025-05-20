@@ -1,10 +1,10 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import OverlayPanel from 'primevue/overlaypanel'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon } from 'lucide-vue-next'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, FileIcon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
@@ -15,16 +15,24 @@ import {
   fetchWrapper, sleep, debounceImmediate, humanFileSize, 
   getThumbMultiURL, getThumbUrlOnAlbum, 
   humanCount,
-  formatDate
+  humanDate,
+  routeNameViewer,
+  routeViewerType,
+  humanSI,
+  humanDuration,
+  reverseCheckInSortType,
+  toggleReaction
 } from '@/helpers'
 import AgeRatingLabel from '@/components/AgeRatingLabel.vue'
+import ImageViewer2 from '@/components/ImageViewer2.vue'
+import ReactionPanel from '@/components/panels/ReactionPanel.vue'
 
 // Параметры в ссылке
 const  {
-  targetAlbum, targetImage, albumData, limit, sort, isReverse, tags, nested, sortType
+  limit, sort, isReverse, tags, nested, sortType, fullImage,
+  targetUser, targetAlbum, targetImage2, albumData, imageData,
 } = storeToRefs(useAlbumParamsStore())
   
-const route = useRoute()
 // Функция очистки всех картинок
 const cleanUpWall = () => {
   //console.log('clean')
@@ -37,25 +45,34 @@ const cleanUpWall = () => {
   canLoadMore.value = true
 }
 // Наблюдение за изменением в роуте, если они есть, то перезагружаются картинки
+//const filteredRoute = computed(() => {
+//  const { album } = route.params
+//  const { sort, r,  } = route.query
+//
+//  // Можно исключить или включить нужные ключи
+//  return { ...rest }
+//})
 watch(
-  () => route,
-  debounceImmediate(() => {
-    //console.log('imgs', route, isLoading.value)
-    if (isLoading.value) watch(
-      isLoading, 
-      cleanUpWall, 
-      { once: true }
-    )
-    else 
-      cleanUpWall()
-  }, 500),
-  { deep: true }
+  [targetAlbum, limit, sort, isReverse, nested, tags],
+  () => {
+    //console.log(val1, val2)
+    debounceImmediate(() => {
+      //console.log('imgs', route, isLoading.value)
+      if (isLoading.value) watch(
+        isLoading, 
+        cleanUpWall, 
+        { once: true }
+      )
+      else 
+        cleanUpWall()
+    }, 500)()
+  },
 )
 
 // Косметические параметры и URL на превью
 const {
-  size, gap, extGap, radius, orientation, scroll, 
-  ambient, albumsLayout, albumPreviewSize
+  size, gap, extGap, radius, orientation, scroll,
+  ambient, albumsLayout, albumPreviewSize, 
 } = storeToRefs(useSettingsStore())
 
 const imgSign = ref(null)
@@ -77,7 +94,7 @@ const loadMore = async () => {
       limit: limit.value,
       tags: tags.value,
       sort: sort.value,
-      isReverse: sortType.value.reverse !== isReverse.value,
+      isReverse: reverseCheckInSortType(sortType, isReverse, sort),
       nested: nested.value,
     })
   ).then((data) => {
@@ -85,7 +102,7 @@ const loadMore = async () => {
     if (!canLoadMore.value) return
     canLoadMore.value = !(data.total < currentPage * limit.value)
 
-    imgSign.value = data.sign
+    albumData.value.sign = imgSign.value = data?.sign
    
     const newImages = data.pictures
     newImages.forEach(element => {
@@ -93,7 +110,7 @@ const loadMore = async () => {
       element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
       element.name = parts.slice(0, -1).join('.')
       element.ratio = element.width / element.height
-      element.thumbURL = element.ext != 'gif'
+      element.thumbURL = element.type === 'image'
         ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
         : urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value) 
     })
@@ -111,7 +128,7 @@ const loadMore = async () => {
     case 500:
     case 504:
       retries++
-      if (retries > 10000) canLoadMore.value = false
+      if (retries > 5) canLoadMore.value = false
       await sleep(1000)
       return
     case 429: // TODO: Вывести уведомление о частых запросов
@@ -125,7 +142,7 @@ const loadMore = async () => {
     case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
     default:
       retries++
-      if (retries > 10000) canLoadMore.value = false
+      if (retries > 5) canLoadMore.value = false
       await sleep(1000)
       return
     }
@@ -154,38 +171,33 @@ const downloadOriginal = (img) =>
     img.album?.sign ?? imgSign.value
   )
 
-// Получение разрешённых реакций 
-const { allowedReactions } = storeToRefs(useSettingsStore())
-
-const authCard = ref()
-const toggleAuthCard = (e) => authCard.value.toggle(e)
+// Попапы
+const imageForReact   = ref()
+const albumWhereReact = ref()
+const editAlbum       = ref()
+const authCard      = ref()
+const reactionCard  = ref()
+const editAlbumCard = ref()
+const showAuthCard     = (e) => authCard.value.toggle(e)
+const showReactionCard = (e, image) => {
+  imageForReact.value = image
+  albumWhereReact.value = albumData.value?.hash ?? targetAlbum
+  reactionCard.value.toggle(e)
+}
+const showAlbumEditCard = (e, album) => {
+  editAlbum.value = album
+  editAlbumCard.value.toggle(e)
+}
 
 // Загрузчик оригинала картинки
 const { user } = storeToRefs(useAuthStore())
 // Переключение реакции на картинке
-const toggleReaction = (image, reaction, e) => {
+const toggleReactionWrap = (image, reaction, e) => {
   if (!user.value.token) {
-    toggleAuthCard(e)
+    showAuthCard(e)
     return
   }
-  const isYouSetted = image.reactions?.[reaction]?.isYouSet || false
-
-  fetchWrapper[isYouSetted ? 'delete' : 'post'](
-    urls.imageReaction(albumData.value?.hash ?? targetAlbum.value, image.hash, reaction)
-  ).then(() => {
-    if (!image.reactions)
-      image.reactions = {}
-    
-    if (!image.reactions[reaction])
-      image.reactions[reaction] = {
-        isYouSet: !isYouSetted,
-        count: isYouSetted ? -1 : 1,
-      }
-    else {
-      image.reactions[reaction].isYouSet = !isYouSetted
-      image.reactions[reaction].count += isYouSetted ? -1 : 1
-    }
-  })
+  toggleReaction(albumData.value?.hash ?? targetAlbum.value, image, reaction)
 }
 // Параметры предустановок
 const { ageRatings } = storeToRefs(useServerSetupsStore())
@@ -207,14 +219,77 @@ const ratingPreset = (albumRating, imgRating) => {
     return preset
 }
 
-watch(targetImage, () => scroll.value = !(targetImage.value != null))
+const router = useRouter()
+const route = useRoute()
 
-const editAlbumOverlay = ref(null)
-const editAlbum = ref(null)
-const showEditOverlay = (event, album) => {
-  //console.log(album, event)
-  editAlbum.value = album
-  editAlbumOverlay.value.toggle(event)
+const openViewer = (image) => {
+  imageData.value = image
+
+  router.push({
+    name: routeNameViewer(!!targetUser.value, image),
+    query: route.query,
+    params: {
+      user: targetUser.value, 
+      type: routeViewerType(image?.type), 
+      album: albumData.value?.alias ?? targetAlbum.value,
+      trueAlbum: image?.album?.alias ?? image?.album?.hash,
+      image: image?.hash,
+    },
+  })
+}
+
+watch(
+  () => route?.name, 
+  () => {
+    fullImage.value = route.name?.endsWith("Image")
+    scroll.value = !fullImage.value
+  },
+  { immediate: true }
+)
+
+const downPos = ref(null)
+
+function handleMouseDown(event) {
+  if (event.button === 1) {
+    // Средняя кнопка мыши
+    downPos.value = { x: event.clientX, y: event.clientY }
+  }
+}
+
+function handleMouseUp(event, image) {
+  if (event.button === 1 && downPos.value) {
+    event.preventDefault()
+    const dx = Math.abs(event.clientX - downPos.value.x)
+    const dy = Math.abs(event.clientY - downPos.value.y)
+    const moveThreshold = 5
+
+    if (dx < moveThreshold && dy < moveThreshold) {
+      // Сформировать имя маршрута
+      const routeName = 
+          (targetUser.value ? 'user' : 'open') +
+          'Album' +
+          ((image?.album?.alias ?? image?.album?.hash) ? 'Nested' : '') +
+          'Image'
+
+      // Построить маршрут с помощью router.resolve
+      const routeLocation = router.resolve({
+        name: routeName,
+        query: route.query,
+        params: {
+          user: targetUser.value,
+          album: albumData.value?.alias ?? targetAlbum.value,
+          type: routeViewerType(image?.type), 
+          trueAlbum: image?.album?.alias ?? image?.album?.hash,
+          image: image?.hash,
+        },
+      })
+
+      // Открыть в новой вкладке
+      window.open(routeLocation.href, '_blank')
+    }
+
+    downPos.value = null
+  }
 }
 
 </script>
@@ -222,18 +297,34 @@ const showEditOverlay = (event, album) => {
 <template>
 
   <main>
+    <OverlayPanel ref="authCard" class="popup popup--fixed">
+      <AuthPanel/>
+    </OverlayPanel>
+    
+    <OverlayPanel ref="reactionCard" class="popup popup--nopad">
+      <ReactionPanel :albumHash="albumWhereReact" :image="imageForReact"/>
+    </OverlayPanel>
+
+    <ImageViewer2
+      v-if="fullImage" 
+      :album="albumData" 
+      :image="imageData"
+      :sign="imgSign"
+    />
+
     <div class="grid_outer">
       <section class="albums" v-if="albumData?.children?.length">
 
-        <OverlayPanel ref="editAlbumOverlay" class="popup">
-          <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumOverlay"/>
+        <OverlayPanel ref="editAlbumCard" class="popup">
+          <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumCard"/>
         </OverlayPanel>
 
         <AlbumsLines 
           v-if="albumsLayout == 'lines'"
           :album="albumData" 
-          @edit-album="showEditOverlay"
+          @edit-album="showAlbumEditCard"
         />
+      
 
         <div class="grid" v-else-if="albumsLayout == 'grid'">
           <RouterLink class="square"
@@ -244,10 +335,11 @@ const showEditOverlay = (event, album) => {
               params: { album: child?.alias ?? child.hash }, 
               query: $route.query 
           }">
-            <div class="previews">
+            <div :class="{previews: true, blur: true}">
               <img 
                 v-for="img in child?.images?.slice(0, 4)" 
                 :key="img"
+                :class="ratingPreset(child?.ratingId, img?.ratingId)"
                 :src="getThumbUrlOnAlbum(child, img, albumPreviewSize)" 
                 alt="" 
                 loading="lazy"
@@ -258,15 +350,15 @@ const showEditOverlay = (event, album) => {
               <div class="center">
                 <div class="block">
                   <p class="name">{{ child.name }}</p>
+                  <div class="inline" v-if="child.imagesCount">
+                    <FileIcon size="16"/>
+                    <span>{{ humanCount(child.mediasCount) }}</span>
+                  </div>
                   <div class="inline" v-if="child.albumsCount">
                     <FoldersIcon size="16"/>
                     <span>{{ humanCount(child.albumsCount) }}</span>
                   </div>
-                  <div class="inline" v-if="child.imagesCount">
-                    <ImagesIcon size="16"/>
-                    <span>{{ humanCount(child.imagesCount) }}</span>
-                  </div>
-                  <span class="text" v-if="!child.albumsCount && !child.imagesCount">EMPTY</span>
+                  <span class="text" v-if="!child.albumsCount && !child.mediasCount">EMPTY</span>
                   <span class="text" v-if="!child.indexedAt">NOT INDEXED</span>
                 </div>
               </div>
@@ -284,38 +376,37 @@ const showEditOverlay = (event, album) => {
 
           <i></i>
           <img 
+            v-if="img.type === 'image' || img.type === 'imageAnimated'"
             :src="img.thumbURL" 
             alt="" 
             loading="lazy"
             @error="onErrorImgLoad"
-            :srcset="img.ext != 'gif' 
+            :srcset="img.type != 'imageAnimated' 
             ? getThumbMultiURL(
               img?.album?.hash ?? albumData?.hash ?? targetAlbum, 
               img, img?.album?.sign ?? imgSign
           ) : undefined ">
+          <video
+            v-else
+            :src="img.thumbURL" 
+            muted
+            playsinline
+            loop
+            autoplay
+          ></video>
 
-          <div class="reactions">
-            <template 
-              v-for="(reactionParams, reaction) in img.reactions" 
-              :key="reaction">
-              <div 
-                v-if="reactionParams.count > 0"
-                class="reaction"
-                :class="{setted: reactionParams.isYouSet}"
-                @click.stop="toggleReaction(img, reactionParams, $event)">
-                {{ reaction }}
-                {{ reactionParams.count }}
-              </div>
-            </template>
-          </div>
-          
-          <div class="overlay" @click="targetImage = img">
+          <div class="overlay" 
+            @mousedown="handleMouseDown"
+            @mouseup="handleMouseUp($event, img)"
+            @click.left="openViewer(img)">
             <div class="top-group">
               <span class="name">{{ img.name }}</span>
               <div class="badges">
                 <span class="badge up">{{ img.ext }}</span>
-                <span class="badge" :title="img.date">{{ formatDate(img.date) }}</span>
+                <span class="badge" :title="img.date">{{ humanDate(img.date) }}</span>
                 <span class="badge">{{ img.width }}×{{ img.height }}</span>
+                <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'"  >{{ humanSI(img.bitrate) + 'bps'}}</span>
+                <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration) }}</span>
                 <RouterLink class="badge wide"
                   v-if="img.album?.name 
                     && !(img.album?.alias && img.album.alias === targetAlbum) 
@@ -332,25 +423,27 @@ const showEditOverlay = (event, album) => {
             </div>
 
             <div class="bottom-group">
-              <input @click.stop type="checkbox" :id="img.hash" @change="checkboxChange" >
-              <label @click.stop
-                v-if="user.token"
-                class="btn btn--reaction"
-                :for="img.hash">
-                  <div class="options">
-                  <label 
-                    :for="img.hash"
-                    :key="option"
-                    :class="{'btn--inverse': img?.reactions?.[option]?.isYouSet}"
-                    class="btn btn--circle option"
-                    v-for="option in allowedReactions"
-                    @click.stop="toggleReaction(img, option, $event)">
-                    {{ option }}
-                  </label>
+              <div class="reactions-place">
+                <button class="btn btn--reaction" 
+                  v-if="user?.token"
+                  @click.stop="showReactionCard($event, img)">
+                  <SmilePlusIcon size="20"/>
+                </button>
+                <div class="reactions">
+                  <template 
+                    v-for="(reactionParams, reaction) in img.reactions" 
+                    :key="reaction">
+                    <div 
+                      v-if="reactionParams.count > 0"
+                      class="reaction"
+                      :class="{setted: reactionParams.isYouSet}"
+                      @click.stop="toggleReactionWrap(img, reaction, $event)">
+                      {{ reaction }}
+                      {{ reactionParams.count }}
+                    </div>
+                  </template>
                 </div>
-                <SmilePlusIcon size="20"/>
-              </label>
-
+              </div>
               <button class="btn btn--download" @click.stop="downloadOriginal(img)">
                 <span class="size">{{ humanFileSize(img.size) }}</span>
                 <DownloadIcon size="20"/>
@@ -383,18 +476,6 @@ const showEditOverlay = (event, album) => {
         <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
       </div>
     </div>
-    
-    <OverlayPanel ref="authCard" class="popup popup--fixed">
-      <AuthPanel/>
-    </OverlayPanel>
-
-    <ImageViewer 
-      v-if="targetImage" 
-      :album="albumData?.hash ?? targetAlbum" 
-      :image.sync="targetImage" 
-      :sign="imgSign"
-      @targetImage="t => targetImage = t"
-    />
   </main>
 </template>
 
@@ -446,6 +527,9 @@ const showEditOverlay = (event, album) => {
       }
       &:active {
         background-color: var(--c-b4);
+        .blur {
+          filter: none !important;
+        }
       }
       .previews {
         display: grid;
@@ -453,12 +537,20 @@ const showEditOverlay = (event, album) => {
         grid-template-rows:    repeat(2, 1fr);
         padding: 10px;
         gap: 6px;
+        overflow: hidden;
+        border-radius: v-bind('radius +"px"');
         img {
           width: 100%;
           height: 100%;
           object-fit: cover;
           border-radius: 6px;
           aspect-ratio: 1 / 1;
+          .hide {
+            display: none;
+          }
+          &.blur {
+            filter: blur(v-bind('size / 30 +"px"')) saturate(.5);
+          }
         }
       }
       .overlay {
@@ -530,15 +622,24 @@ const showEditOverlay = (event, album) => {
     flex-grow: calc(var(--ratio) * var(--size));
     &:hover {
       border-radius: v-bind('radius * 2 +"px"');
-      .reactions {
-        opacity: 0;
-        z-index: -1;
+      //.reactions {
+      //  opacity: 0;
+      //  z-index: -1;
+      //}
+      .btn--reaction {
+        max-width: 32px !important;
+        opacity: 1 !important;
+      }
+      .btn--download {
+        max-width: 48px !important;
+        opacity: 1 !important;
       }
       .overlay {
-        opacity: 1;
+        --opacity: 1;
         border: 1px solid v-bind('ambient ? "transparent" : "var(--c-t0a)"');
       }
-      img {
+      img,
+      video {
         z-index: -1;
         filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
       }
@@ -547,43 +648,22 @@ const showEditOverlay = (event, album) => {
       display: block;
       padding-bottom: calc(1 / var(--ratio) * 100%)
     }
-    img {
+    img,
+    video {
       position: absolute;
       top: 0;
       width: 100%;
       vertical-align: bottom;
       border-radius: v-bind('radius +"px"');
     }
-    .reactions {
-      transition: opacity .2s;
-      position: absolute;
-      padding: 6px; 
-      display: flex;
-      flex-wrap: wrap-reverse;
-      gap: 6px;
-      bottom: 0;
-      right: 0;
-      left: 0;
-      z-index: 1;
-      .reaction {
-        background-color: var(--c-b0a);
-        height: 24px;
-        padding: 2px 8px;
-        border-radius: 24px;
-        &.setted {
-          background-color: var(--c-t0);
-          color: var(--c-b0);
-        }
-      }
-    }
     .overlay {
       z-index: 20;
       border-radius: v-bind('radius +"px"');
       //display: none;
       display: flex;
-      opacity: 0;
-      transition: opacity .2s, border .2s;
+      transition: opacity .2s, --opacity .2s, border .2s;
       position: absolute;
+      --opacity: 0;
       bottom: 0;
       right: 0;
       left: 0;
@@ -593,6 +673,8 @@ const showEditOverlay = (event, album) => {
       flex-direction: column;
       justify-content: space-between;
       .top-group {
+        transition: opacity .2s;
+        opacity: var(--opacity);
         display: flex;
         //justify-content: end;
         flex-wrap: wrap;
@@ -642,61 +724,63 @@ const showEditOverlay = (event, album) => {
           z-index: -1;
           opacity: 0;
         }
-        .btn--reaction {
-          transition: background 0s, color 0s;
-          backdrop-filter: none;
-          height: unset;
-          min-height: 32px;
-          min-width: 32px;
-          max-height: 100%;
-          padding: 0;
-          color: #fff;
-          flex-direction: column;
-          filter:
-            drop-shadow(0 0 10px #000) 
-            drop-shadow(0 0 3px #000);
-          .options {
-            transition: .5s;
-            display: flex;
-            flex-direction: column;
-            max-height: 0;
+        .reactions-place {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          align-items: center;
+          .btn--reaction {
+            transition: max-width .2s, opacity .2s, background 0s, color 0s;
+            backdrop-filter: none;
+            max-width: 0;
             opacity: 0;
-            gap: 8px;
-            overflow-x: auto;
-          }
-          .lucide {
-            min-height: 20px;
-            margin: 8px;
-          }
-          &:hover,
-          &:active {
-            transition: background .2s, color .2s;
-            background-color: var(--c-b0a);
-            color: var(--c-t0);
-            backdrop-filter: blur(var(--div-blur));
-            filter: none;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            color: #fff;
+            filter:
+              drop-shadow(0 0 10px #000) 
+              drop-shadow(0 0 3px #000);
+            &:hover,
+            &:active {
+              transition: max-width .2s, opacity .2s, background, .2s, color .2s;
+              background-color: var(--c-b0a);
+              color: var(--c-t0);
+              backdrop-filter: blur(var(--div-blur));
+              filter: none;
+              &:active {
+                background-color: var(--c-b0);
+                color: var(--c-t0);
+              }
+            }
             &:active {
               background-color: var(--c-b0);
               color: var(--c-t0);
             }
           }
-          &:active {
-            background-color: var(--c-b0);
-            color: var(--c-t0);
-          }
-        }
-        input[type='checkbox']:checked + .btn--reaction {
-          background-color: var(--c-b0a);
-          color: var(--c-t0);
-          backdrop-filter: blur(var(--div-blur));
-          filter: none;
-          .options {
-            max-height: 500px;
-            opacity: unset;
+          .reactions {
+            //transition: opacity .2s;
+            display: flex;
+            flex-wrap: wrap-reverse;
+            gap: 6px;
+            z-index: 1;
+            .reaction {
+              background-color: var(--c-b0a);
+              height: 24px;
+              cursor: pointer;
+              padding: 2px 8px;
+              border-radius: 24px;
+              &.setted {
+                background-color: var(--c-t0);
+                color: var(--c-b0);
+              }
+            }
           }
         }
         .btn--download {
-          transition: background 0s, color 0s;
+          max-width: 0;
+          opacity: var(--opacity);
+          transition: max-width .2s, opacity .2s, background 0s, color 0s;
           margin-left: auto;
           font-size: 14px;
           color: #fff;
@@ -707,15 +791,16 @@ const showEditOverlay = (event, album) => {
             drop-shadow(0 0 3px #000);
           .size {
             color: transparent;
-            transition: max-width .5s;
             max-width: 0;
             opacity: 0;
+            flex-grow: 0;
             overflow: hidden;
             text-wrap: nowrap;
           }
           &:hover,
           &:active {
-            transition: background .2s, color .2s;
+            max-width: 100px !important;
+            transition: max-width .2s, opacity .2s, background .2s, color .2s;
             background-color: var(--c-b0a);
             backdrop-filter: blur(var(--div-blur));
             color: var(--c-t0);
@@ -735,7 +820,7 @@ const showEditOverlay = (event, album) => {
     }
     .rating {
       position: absolute;
-      backdrop-filter: blur(v-bind('size / 30 +"px"')) saturate(.5);
+      backdrop-filter: blur(v-bind('size / 10 +"px"')) saturate(.5);
       border-radius: v-bind('radius +"px"');
       position: absolute;
       bottom: 0;

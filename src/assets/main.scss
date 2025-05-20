@@ -172,6 +172,9 @@ body {
     overflow-x: auto;
     max-height: calc(100vh - 80px);
   }
+  &--nopad {
+    padding: 0;
+  }
   &.p-overlaypanel-leave-active {
     display: none !important;
   }
