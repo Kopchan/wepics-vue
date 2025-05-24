@@ -5,17 +5,12 @@ import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon,
+  MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon, Hourglass,
   ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon,
-  ViewIcon, FoldersIcon, ImagesIcon, SaveIcon,
-  ArrowDown10Icon,
-  ArrowUp10Icon,
-  ImageIcon,
-  Music2Icon,
-  VideoIcon
+  ViewIcon, FoldersIcon, ImagesIcon, SaveIcon, ArrowDown10Icon, ArrowUp10Icon, ImageIcon, Music2Icon, VideoIcon
 } from 'lucide-vue-next'
 
-import { fetchWrapper, humanFileSize, reverseCheckInSortType, sleep } from '@/helpers'
+import { fetchWrapper, humanFileSize, reverseCheckInSortType, sleep, humanDuration } from '@/helpers'
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
 import { imagesSort, urls } from '@/api'
 import {
@@ -302,9 +297,27 @@ onMounted(() => {
             </template>
           </span>
         </div>
+        <div class="inline" v-if="albumData?.imagesCount">
+          <ImageIcon size="18"/>
+          <span>{{ albumData.imagesCount.toLocaleString() }}</span>
+        </div>
+        <div class="inline" v-if="albumData?.nestedImagesCount">
+          <span>
+            <template v-if="albumData?.nestedImagesCount && (albumData.nestedImagesCount > (albumData?.mediasCount ?? 0))">
+              (+{{ (albumData.nestedImagesCount - albumData.mediasCount).toLocaleString() }})
+            </template>
+            <template v-else>
+              ({{ albumData.nestedImagesCount.toLocaleString() }})
+            </template>
+          </span>
+        </div>
         <div class="inline" v-if="albumData?.albumsCount">
           <FoldersIcon size="18"/>
           <span>{{ albumData.albumsCount }}</span>
+        </div>
+        <div class="inline" v-if="albumData?.duration">
+          <Hourglass size="18"/>
+          <span>{{ humanDuration(albumData.duration) }}</span>
         </div>
         <div class="inline" v-if="albumData?.size">
           <SaveIcon size="18"/>

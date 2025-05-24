@@ -41,6 +41,9 @@ const router = useRouter()
 const route = useRoute()
 
 const close = () => {
+  if (image.value)
+    image.value.watchedTo = videoPlayer.value?.currentTime
+  
   image.value = null
 
   router.push({
@@ -57,10 +60,20 @@ const close = () => {
   })
 }
 
+const videoPlayer = ref()
+
+const onVideoLoaded = () => {
+  if (videoPlayer.value 
+    && image.value?.watchedTo 
+    && image.value.watchedTo > 10
+  ) videoPlayer.value.currentTime = image.value.watchedTo
+}
+
 useEventListener(window, 'keydown', (event) => {
   if (event.key === 'Escape') 
     close()
 })
+
 </script>
 
 <template>
@@ -73,7 +86,9 @@ useEventListener(window, 'keydown', (event) => {
       controls 
       loop
       autoplay
+      ref="videoPlayer"
       @click.stop
+      @loadedmetadata="onVideoLoaded"
       :alt="image?.name ?? 'fullscreen video'"
       :height="isScope ? image.height / pxRatio : 'none'"
       :src="urls.imageOrig(

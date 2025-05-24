@@ -1,7 +1,9 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { storageWrapper } from '@/helpers'
-import { getAllowedSize } from '@/helpers/thumb'
+import { useDevicePixelRatio } from '@vueuse/core'
+import { useServerSetupsStore } from './serverSetups'
+import { urls } from '@/api'
 
 export const useSettingsStore = defineStore('settings', () => {
   // Инфа об настройках в localStorage
@@ -34,13 +36,27 @@ export const useSettingsStore = defineStore('settings', () => {
   const albumsLayout = createProp('albumsLayout', 'lines')
   const lineWidth    = createProp('lineWidth', 720)
   const scroll = ref(true)
+
+  const { getAllowedSize, allowedPreviewSizes } = useServerSetupsStore()
+  const { pixelRatio } = useDevicePixelRatio()
+
+  const pixelSize = computed(() => {
+    const result = size.value * pixelRatio.value
+    console.log(`pixel base size: ${result} = ${size.value} * ${pixelRatio.value}`)
+    return result
+  })
  
-  const imagePreviewSize = computed(() => getAllowedSize(size.value))
-  const albumPreviewSize = computed(() => getAllowedSize(size.value / 2))
+  const imagePreviewSize = computed(() => getAllowedSize(pixelSize.value * 1.2))
+  const albumPreviewSize = computed(() => getAllowedSize(pixelSize.value / 2))
 
   return { 
-    settings, reset, size, isStrictSize, isRealSize, ambient, lineWidth,
-    lines, gap, extGap, radius, orientation, theme, scroll, albumsLayout,
-    albumPreviewSize, imagePreviewSize
+    settings, reset, scroll,
+    orientation, 
+    theme, 
+    size, isStrictSize, isRealSize, lines, 
+    albumPreviewSize, imagePreviewSize, pixelRatio, pixelSize,
+    ambient, 
+    gap, extGap, radius, 
+    albumsLayout, lineWidth,
   }
 })

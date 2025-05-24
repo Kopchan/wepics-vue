@@ -48,10 +48,15 @@ export const urls = {
     (isReverse ? '&reverse' : '') +
     (nested ? '&nested' + (nested == 'force' ? '=force' : '') : '')
   ,
-  imageReaction : (albumHash, imageHash, reaction)                       => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/reactions?reaction=' + reaction,
-  imageOrig     : (albumHash, imageHash, sign = null)                    => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/orig' +                        (sign ? '?sign='+ sign : ''),
-  imageDownload : (albumHash, imageHash, sign = null)                    => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/download' +                    (sign ? '?sign='+ sign : ''),
-  imageThumb    : (albumHash, imageHash, sign = null, orientation, size) => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/thumb/' + orientation + size + (sign ? '?sign='+ sign : ''),
+  imageReaction : (albumHash, imageHash, reaction)    => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/reactions?reaction=' + reaction,
+  imageOrig     : (albumHash, imageHash, sign = null) => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/orig'     + (sign ? '?sign='+ sign : ''),
+  imageDownload : (albumHash, imageHash, sign = null) => API_PATH + '/albums/' + albumHash + '/images/' + imageHash + '/download' + (sign ? '?sign='+ sign : ''),
+  imageThumb    : (albumHash, imageHash, sign = null, orientation = 'h', size = 480, animated = false) => API_PATH 
+  + '/albums/' + albumHash 
+  + '/images/' + imageHash 
+  + '/thumb/' 
+  + orientation + size + (animated ? 'a' : '') 
+  + (sign ? '?sign='+ sign : ''),
 
 }
 

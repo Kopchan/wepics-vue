@@ -115,7 +115,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const targetImage2    = createProp('image'    ,  null , true)
   const targetImageType = createProp('type'     ,  null , true)
 
-  const fullscreen      = createProp('f'     , false)
+  //const fullscreen      = createProp('f'     , false)
   const limit           = createProp('limit' , 30)
   const tags            = createProp('tags'  , [], false, true)
   const sort            = createProp('sort'  , 'date')
@@ -148,7 +148,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   return { 
     targetAlbum, limit, sort, isReverse, sortType, targetUser, fullImage,
     tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect,
-    targetImage, imageData, targetImage2, imageTrueAlbum, fullscreen, targetImageType,
+    targetImage, imageData, targetImage2, imageTrueAlbum, targetImageType,
   }
 })
 

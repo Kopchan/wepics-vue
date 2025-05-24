@@ -1,14 +1,22 @@
 <script setup>
-import { toRefs } from 'vue'
+import { ref, toRefs } from 'vue'
 import { storeToRefs } from 'pinia'
-import { FoldersIcon, ImagesIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, EyeOffIcon, VideoIcon, FileAudioIcon, FileVideo2Icon, FileImageIcon, ImageIcon, Music2Icon } from 'lucide-vue-next'
+import { 
+  FoldersIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, 
+  EyeOffIcon, VideoIcon, ImageIcon, Music2Icon, Hourglass
+} from 'lucide-vue-next'
 
 import { urls } from '@/api'
-import { fetchWrapper, humanDate, getThumbUrlOnAlbum, humanCount, humanFileSize, routeNameViewer, routeViewerType, humanSI, humanDuration, reverseCheckInSortType } from '@/helpers'
+import { 
+  fetchWrapper, humanDate, humanCount, humanFileSize, routeNameViewer,
+  routeViewerType, humanSI, humanDuration, reverseCheckInSortType, 
+  sleep
+} from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 import { useRoute, useRouter } from 'vue-router'
+import vIntersectVideo from '@/directives/vIntersectVideo'
 
 // Параметры компонента
 const props = defineProps({
@@ -97,8 +105,14 @@ const formatContentSort = value => {
 
 const router = useRouter()
 const route = useRoute()
+const videoRefs = ref([])
 
 const openViewer = (image) => {
+  const watchedToNow = videoRefs.value[image.hash]?.currentTime
+
+  if (!image?.watchedTo || image.watchedTo < watchedToNow)
+    image.watchedTo = watchedToNow
+
   imageData.value = image
 
   router.push({
@@ -112,6 +126,21 @@ const openViewer = (image) => {
       image: image?.hash,
     },
   })
+}
+
+// Перезагрузка превьюшек с ошибками
+const maxImgRetries = 4
+const imgRetryCounts = ref({})
+const onErrorImgLoad = async (event) => {
+  // FIXME: не всегда срабатывает (второй раз?)
+  const src = event.target.attributes.src.value
+  imgRetryCounts.value[src] ||= 0
+ 
+  if (imgRetryCounts.value[src] <= maxImgRetries) {
+    await sleep(1000)
+    imgRetryCounts.value[src]++
+    event.src = event.src + ''
+  }
 }
 
 </script>
@@ -173,13 +202,17 @@ const openViewer = (image) => {
             <FoldersIcon size="18"/>
             <span>{{ humanCount(child.albumsCount) }}</span>
           </div>
+          <div class="inline" v-if="child?.duration">
+            <Hourglass size="18"/>
+            <span>{{ humanDuration(child.duration) }}</span>
+          </div>
           <div class="inline" v-if="child?.size">
             <SaveIcon size="18"/>
             <span>{{ humanFileSize(child.size) }}</span>
           </div>
 
           <button class="btn btn--quad expand-btn"
-            v-if="child.albumsCount || child.imagesCount || !child.indexedAt"
+            v-if="child.albumsCount || child.mediasCount || !child.indexedAt"
             :class="{'btn--inverse': child.vueExpanded}"
             @click.stop="handleChildExpand(child)">
             <ChevronDownIcon size="24"/>
@@ -208,13 +241,25 @@ const openViewer = (image) => {
             openViewer(img)
         }">
           <img
-            :src="getThumbUrlOnAlbum(child, img, albumPreviewSize)" 
+            :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)" 
             :width="img.width"
             :height="img.height"
-            alt="" 
+            :alt="img.name" 
             loading="lazy"
             @error="onErrorImgLoad"
           >
+          <video
+            v-if="img.type === 'video' || img.type === 'imageAnimated'"
+            :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize, true)" 
+            loading="lazy"
+            muted
+            playsinline
+            loop
+            preload="none"
+            v-intersect-video
+            :ref="el => videoRefs[img.hash] = el"
+            @error="onErrorImgLoad"
+          ></video>
           <div class="overlay">
             <div class="top"></div>
             <div class="center">
@@ -420,6 +465,11 @@ const openViewer = (image) => {
       &.hide {
         display: none;
       }
+      &:hover {
+        .overlay {
+          outline: 1px solid var(--c-t0a);
+        }
+      }
       .overlay {
         position: absolute;
         content: '';
@@ -432,6 +482,7 @@ const openViewer = (image) => {
         flex-direction: column;
         overflow: hidden;
         border-radius: v-bind('radius +"px"');
+        z-index: 20;
         filter:
           drop-shadow(0 0 10px #000) 
           drop-shadow(0 0 3px #000);
@@ -452,8 +503,22 @@ const openViewer = (image) => {
       &:hover {
         //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
         // z-index: 1;
-        outline : 1px solid var(--c-t0a);
         z-index: 9;
+      }
+    }
+    video {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 100%;
+      object-fit: cover;
+      border-radius: v-bind('radius +"px"');
+      z-index: 1;
+      &:hover {
+        //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        // z-index: 1;
+        z-index: 10;
       }
     }
     .more {

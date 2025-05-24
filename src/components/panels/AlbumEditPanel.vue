@@ -97,7 +97,7 @@ onMounted(async () => {
     <form @submit.prevent="editAlbum">
       <InputFormItem     v-model="form" :error="error" name="displayName" label="Display name"              placeholder="Album custom display name"/>
       <InputFormItem     v-model="form" :error="error" name="urlName"     label="URL name (alias)"          placeholder="Album url path name"/>
-      <InputFormItem     v-model="form" :error="error" name="pathName"    label="Enternal folder name"      placeholder="Album enternal folder path name"/>
+      <InputFormItem     v-model="form" :error="error" name="pathName"    label="Internal folder name"      placeholder="Album internal folder path name"/>
       <InputFormItem     v-model="form" :error="error" name="orderLevel"  label="Order level (ignore sort)" placeholder="Order level" type="number" :step="1"/>
       <SelectFormItem    v-model="form" :error="error" name="ageRatingId" label="Age rating"  :options=    "ratingOptions"/>
       <RadioBtnsFormItem v-model="form" :error="error" name="guestAllow"  label="Guest allow" :options="guestAllowOptions"/>

@@ -4,16 +4,18 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import OverlayPanel from 'primevue/overlaypanel'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, ImagesIcon, FileIcon } from 'lucide-vue-next'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, FileIcon } from 'lucide-vue-next'
 
 import { urls } from '@/api'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
 import { AuthPanel, AlbumEditPanel } from '@/components/panels'
-import { ImageViewer } from '@/components'
-import AlbumsLines from '@/components/AlbumsLines.vue'
+import AlbumsLines     from '@/components/AlbumsLines.vue'
+import AgeRatingLabel  from '@/components/AgeRatingLabel.vue'
+import ImageViewer2    from '@/components/ImageViewer2.vue'
+import ReactionPanel   from '@/components/panels/ReactionPanel.vue'
+import vIntersectVideo from '@/directives/vIntersectVideo'
 import { 
   fetchWrapper, sleep, debounceImmediate, humanFileSize, 
-  getThumbMultiURL, getThumbUrlOnAlbum, 
   humanCount,
   humanDate,
   routeNameViewer,
@@ -23,9 +25,6 @@ import {
   reverseCheckInSortType,
   toggleReaction
 } from '@/helpers'
-import AgeRatingLabel from '@/components/AgeRatingLabel.vue'
-import ImageViewer2 from '@/components/ImageViewer2.vue'
-import ReactionPanel from '@/components/panels/ReactionPanel.vue'
 
 // Параметры в ссылке
 const  {
@@ -72,7 +71,7 @@ watch(
 // Косметические параметры и URL на превью
 const {
   size, gap, extGap, radius, orientation, scroll,
-  ambient, albumsLayout, albumPreviewSize, 
+  ambient, albumsLayout, albumPreviewSize, imagePreviewSize,
 } = storeToRefs(useSettingsStore())
 
 const imgSign = ref(null)
@@ -110,9 +109,9 @@ const loadMore = async () => {
       element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
       element.name = parts.slice(0, -1).join('.')
       element.ratio = element.width / element.height
-      element.thumbURL = element.type === 'image'
-        ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value, orientation.value, size.value) 
-        : urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, element.hash, element?.album?.sign ?? imgSign.value) 
+      element.thumbURL     = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value) 
+      element.thumbURLanim = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value, true) 
+      element.thumbURLorig = urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value) 
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
@@ -200,7 +199,7 @@ const toggleReactionWrap = (image, reaction, e) => {
   toggleReaction(albumData.value?.hash ?? targetAlbum.value, image, reaction)
 }
 // Параметры предустановок
-const { ageRatings } = storeToRefs(useServerSetupsStore())
+const { ageRatings, allowedPreviewSizes } = storeToRefs(useServerSetupsStore())
 
 const ratingPreset = (albumRating, imgRating) => {
   if (!albumRating && !imgRating) 
@@ -219,10 +218,27 @@ const ratingPreset = (albumRating, imgRating) => {
     return preset
 }
 
+const getThumbMultiURL = (albumHash, img, sign = null) => {
+  const srcsetItems = []
+  for (const allowSize of allowedPreviewSizes.value) {
+    const urlW = urls.imageThumb(albumHash, img.hash, sign, 'w', allowSize)
+    srcsetItems.push(urlW +' '+ allowSize +'w')
+    const urlH = urls.imageThumb(albumHash, img.hash, sign, 'h', allowSize)
+    srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio) +'w')
+  }
+  return srcsetItems.join(', ')
+}
+
 const router = useRouter()
 const route = useRoute()
+const videoRefs = ref([])
 
 const openViewer = (image) => {
+  const watchedToNow = videoRefs.value[image.hash]?.currentTime
+
+  if (!image?.watchedTo || image.watchedTo < watchedToNow)
+    image.watchedTo = watchedToNow
+
   imageData.value = image
 
   router.push({
@@ -246,51 +262,6 @@ watch(
   },
   { immediate: true }
 )
-
-const downPos = ref(null)
-
-function handleMouseDown(event) {
-  if (event.button === 1) {
-    // Средняя кнопка мыши
-    downPos.value = { x: event.clientX, y: event.clientY }
-  }
-}
-
-function handleMouseUp(event, image) {
-  if (event.button === 1 && downPos.value) {
-    event.preventDefault()
-    const dx = Math.abs(event.clientX - downPos.value.x)
-    const dy = Math.abs(event.clientY - downPos.value.y)
-    const moveThreshold = 5
-
-    if (dx < moveThreshold && dy < moveThreshold) {
-      // Сформировать имя маршрута
-      const routeName = 
-          (targetUser.value ? 'user' : 'open') +
-          'Album' +
-          ((image?.album?.alias ?? image?.album?.hash) ? 'Nested' : '') +
-          'Image'
-
-      // Построить маршрут с помощью router.resolve
-      const routeLocation = router.resolve({
-        name: routeName,
-        query: route.query,
-        params: {
-          user: targetUser.value,
-          album: albumData.value?.alias ?? targetAlbum.value,
-          type: routeViewerType(image?.type), 
-          trueAlbum: image?.album?.alias ?? image?.album?.hash,
-          image: image?.hash,
-        },
-      })
-
-      // Открыть в новой вкладке
-      window.open(routeLocation.href, '_blank')
-    }
-
-    downPos.value = null
-  }
-}
 
 </script>
 
@@ -340,8 +311,8 @@ function handleMouseUp(event, image) {
                 v-for="img in child?.images?.slice(0, 4)" 
                 :key="img"
                 :class="ratingPreset(child?.ratingId, img?.ratingId)"
-                :src="getThumbUrlOnAlbum(child, img, albumPreviewSize)" 
-                alt="" 
+                :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)" 
+                :alt="img.name"
                 loading="lazy"
                 @error="onErrorImgLoad"
               >
@@ -376,29 +347,32 @@ function handleMouseUp(event, image) {
 
           <i></i>
           <img 
-            v-if="img.type === 'image' || img.type === 'imageAnimated'"
+            v-if="img.type === 'image'"
             :src="img.thumbURL" 
-            alt="" 
             loading="lazy"
+            alt="" 
             @error="onErrorImgLoad"
-            :srcset="img.type != 'imageAnimated' 
-            ? getThumbMultiURL(
+            :srcset="getThumbMultiURL(
               img?.album?.hash ?? albumData?.hash ?? targetAlbum, 
-              img, img?.album?.sign ?? imgSign
-          ) : undefined ">
+              img, 
+              img?.album?.sign ?? imgSign
+          )">
           <video
             v-else
-            :src="img.thumbURL" 
+            :src="img.thumbURLanim" 
+            :poster="img.thumbURL"
+            loading="lazy"
             muted
             playsinline
             loop
-            autoplay
+            preload="none"
+            v-intersect-video
+            :ref="el => videoRefs[img.hash] = el"
+            @error="onErrorImgLoad"
           ></video>
 
           <div class="overlay" 
-            @mousedown="handleMouseDown"
-            @mouseup="handleMouseUp($event, img)"
-            @click.left="openViewer(img)">
+            @click="openViewer(img)">
             <div class="top-group">
               <span class="name">{{ img.name }}</span>
               <div class="badges">

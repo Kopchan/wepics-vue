@@ -69,13 +69,56 @@ export const humanDate = (dateString) => {
 }
 
 
+export const humanDurationLegacy = (seconds) => {
+  console.log(seconds)
+  const ms    = Math.floor(seconds * 1000 % 1000)
+  seconds     = Math.floor(seconds)
+  const hrs   = Math.floor(seconds / 3600)
+  const mins  = Math.floor((seconds % 3600) / 60)
+  const secs  = seconds % 60
+
+  const pad = (num, size = 2) => String(num).padStart(size, '0')
+
+  return (hrs  > 0 ? (pad(hrs) +'h:') : '') 
+       + (mins > 0 ? (pad(mins) +'m:') : '')
+       + ((hrs < 1 && secs !== 0) ? (pad(secs) +'s') : '')
+       + ((mins < 1 && ms !== 0) ? ('.'+ pad(ms, 3) +'ms') : '')
+}
 export const humanDuration = (seconds) => {
-  seconds    = Math.floor(seconds)
-  const hrs  = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
+  const totalSeconds = Number(seconds)
+  const ms = Math.round((totalSeconds % 1) * 1000)
+  const absSeconds = Math.floor(Math.abs(totalSeconds))
 
-  const pad = num => String(num).padStart(2, '0')
+  const days = Math.floor(absSeconds / 86400)
+  const hours = Math.floor((absSeconds % 86400) / 3600)
+  const minutes = Math.floor((absSeconds % 3600) / 60)
+  const secs = absSeconds % 60
 
-  return `${ hrs > 0 ? (pad(hrs) +':') : '' }${pad(mins)}:${pad(secs)}`
+  // Форматируем части с ведущими нулями (кроме дней)
+  const formatPart = (value, suffix) => {
+    if (value <= 0 && suffix !== 'ms') return ''
+    const paddedValue = suffix === 'd' ? value : value.toString().padStart(2, '0')
+    return paddedValue + suffix
+  }
+
+  // Собираем все значимые части (без нулевых)
+  const parts = [
+    formatPart(days, 'd'),
+    formatPart(hours, 'h'),
+    formatPart(minutes, 'm'),
+    formatPart(secs, 's'),
+  ].filter(Boolean)
+
+  // Добавляем миллисекунды, если время < 1 минуты и они есть
+  if (ms > 0 && minutes < 1) {
+    parts.push(ms.toString().padStart(3, '0') + 'ms')
+  }
+
+  // Берём только две самые значимые части
+  const significantParts = parts.slice(0, 2)
+
+  // Определяем разделитель
+  const separator = significantParts[1]?.endsWith('ms') ? '.' : ':'
+
+  return significantParts.join(separator) || '0s'
 }
