@@ -41,6 +41,11 @@ const props = defineProps({
     required: false,
     default: null,
   },
+  noCenter: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
 })
 // v-model компонента
 const value = defineModel()
@@ -51,7 +56,10 @@ const { name: selectorName, options, disabled, squared, background, point } = to
 </script>
 
 <template>
-  <div class="line">
+  <div :class="{
+    'line': true,
+    'no-center': noCenter
+  }">
     <template v-for="(option, index) in options" :key="index">
       <input
         type="radio"
@@ -89,6 +97,7 @@ const { name: selectorName, options, disabled, squared, background, point } = to
   background-color: v-bind('background ? "var(--c-b0a)" : "transparent"');
   padding: 6px;
   display: flex;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: v-bind('squared ? "0" : "6px"');
   border-radius: var(--border-r);
@@ -97,6 +106,9 @@ const { name: selectorName, options, disabled, squared, background, point } = to
   input[type="radio"] {
     display: none;
     & + label {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
       min-height: 24px;
       min-width: unset;
       height: v-bind('squared ? "30px" : "none"');
@@ -120,6 +132,9 @@ const { name: selectorName, options, disabled, squared, background, point } = to
       cursor: not-allowed;
       color: var(--c-b2);
     }
+  }
+  &.no-center label {
+    justify-content: flex-start !important;
   }
 }
 </style>

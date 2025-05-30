@@ -137,15 +137,15 @@ body {
   border-radius: var(--border-r);
   padding: 0 8px;
   &[type="number"] {
-    &.small {
-      width: 50px;
-      text-align: end;
-      display: inline;
-      background-color: transparent;
-    }
     &:not(:hover)::-webkit-inner-spin-button {
       display: none;
     }
+  }
+  &.small {
+    width: 50px;
+    text-align: end;
+    display: inline;
+    background-color: transparent;
   }
   &:hover {
     background-color: var(--c-b4a);

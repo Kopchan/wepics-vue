@@ -1,23 +1,24 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { debouncedWatch, useWindowScroll } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import { useRoute, useRouter } from 'vue-router'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon, Hourglass,
-  ArrowDownAZIcon, ArrowUpAZIcon, ArrowDown01Icon, ArrowUp01Icon, Share2Icon, RefreshCcwIcon, WorkflowIcon,
-  ViewIcon, FoldersIcon, ImagesIcon, SaveIcon, ArrowDown10Icon, ArrowUp10Icon, ImageIcon, Music2Icon, VideoIcon
+  ArrowDownAZIcon, ArrowUpAZIcon, Share2Icon, RefreshCcwIcon, ViewIcon, FoldersIcon, SaveIcon, 
+  ArrowDown10Icon, ArrowUp10Icon, ImageIcon, Music2Icon, VideoIcon, FilesIcon
 } from 'lucide-vue-next'
 
 import { fetchWrapper, humanFileSize, reverseCheckInSortType, sleep, humanDuration } from '@/helpers'
 import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
-import { imagesSort, urls } from '@/api'
+import { imagesSortTypes, urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, AlbumEditPanel,
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel
 } from '@/components/panels'
 import AgeRatingLabel from './AgeRatingLabel.vue'
+import SortFilterPanel from './panels/SortFilterPanel.vue'
 
 // Попапы
 const { isOpened } = storeToRefs(useSidebarStore())
@@ -25,21 +26,22 @@ const { isOpened } = storeToRefs(useSidebarStore())
 // Данные об текущем открытом альбоме
 const {
   targetAlbum, albumData, sortType,
-  sort, sortAlbums, isReverse, isReverseAlbums, disrespect,
-  tags, nested, limit
+  sort, sortAlbums, trueReverse, trueReverseAlbums, disrespect,
+  tags, nested, limit, randomSeed, isReverse,
 } = storeToRefs(useAlbumParamsStore())
 
 // Данные об текущем пользователе
 const { user } = storeToRefs(useAuthStore())
 
 // Попапы
-const authCard = ref()
-const userCard = ref()
-const customizCard = ref()
-const subAlbumsCard = ref()
-const setupsCard = ref()
-const albumShareCard = ref()
-const objCreateCard = ref()
+const authCard        = ref()
+const userCard        = ref()
+const customizCard    = ref()
+const subAlbumsCard   = ref()
+const setupsCard      = ref()
+const albumShareCard  = ref()
+const sortFilterCard  = ref()
+const objCreateCard   = ref()
 const albumRenameCard = ref()
 
 // Логика переключение попапа со списком дочерних альбомов
@@ -108,12 +110,13 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
     urls.albumInfo(newHash ?? targetAlbum.value, { 
       sort: sort.value, 
       sortAlbums: sortAlbums.value, 
-        isReverse: reverseCheckInSortType(sortType, isReverse, sort),
-      isReverseAlbums: isReverseAlbums.value,
+      isReverse: trueReverse.value,
+      isReverseAlbums: trueReverseAlbums.value,
       disrespect: disrespect.value,
       tags: tags.value,
       images: Math.max(limit.value, 4),
       nested: nested.value,
+      seed: sortAlbums.value === 'random' ? randomSeed.value : null,
     })
   ).catch(err => {
     isError.value = true
@@ -168,8 +171,11 @@ const reindexAlbum = () => {
 // Заполнение данных об альбоме при изменении открытого альбома
 onMounted(() => {
   debouncedWatch(
-    targetAlbum,
-    getAlbumData,
+    [targetAlbum, limit, sort, sortAlbums, trueReverse, trueReverseAlbums, disrespect, tags, randomSeed ],
+    (newValues, oldValues) => {
+      console.log(newValues[0], '<-', oldValues[0])
+      getAlbumData(newValues[0], oldValues[0])
+    },
     { debounce: 250, immediate: true }
   )
 })
@@ -283,33 +289,16 @@ onMounted(() => {
           <VideoIcon size="18"/>
           <span>{{ albumData.videosCount.toLocaleString() }}</span>
         </div>
-        <div class="inline" v-if="albumData?.imagesCount || albumData?.nestedImagesCount">
-          <ImageIcon size="18"/>
-          <span>
-            <template v-if="albumData?.imagesCount">
-              {{ albumData.imagesCount.toLocaleString() }}
-              <template v-if="albumData?.nestedImagesCount && albumData.nestedImagesCount > albumData.imagesCount">
-                (+{{ (albumData.nestedImagesCount - albumData.imagesCount).toLocaleString() }})
-              </template>
-            </template>
-            <template v-else>
-              ({{ albumData.nestedImagesCount.toLocaleString() }})
-            </template>
-          </span>
-        </div>
         <div class="inline" v-if="albumData?.imagesCount">
           <ImageIcon size="18"/>
           <span>{{ albumData.imagesCount.toLocaleString() }}</span>
         </div>
-        <div class="inline" v-if="albumData?.nestedImagesCount">
-          <span>
-            <template v-if="albumData?.nestedImagesCount && (albumData.nestedImagesCount > (albumData?.mediasCount ?? 0))">
-              (+{{ (albumData.nestedImagesCount - albumData.mediasCount).toLocaleString() }})
-            </template>
-            <template v-else>
-              ({{ albumData.nestedImagesCount.toLocaleString() }})
-            </template>
-          </span>
+        <div class="inline" v-if="albumData?.nestedImagesCount && (albumData.nestedImagesCount > (albumData?.mediasCount ?? 0))">
+          <template v-if="!albumData?.mediasCount || albumData.mediasCount == 0">
+            <FilesIcon size="18"/>
+            <span title="nested media count">({{ (albumData.nestedImagesCount).toLocaleString() }})</span>
+          </template>
+          <span v-else title="+ nested media">(+{{ (albumData.nestedImagesCount - albumData.mediasCount).toLocaleString() }})</span>
         </div>
         <div class="inline" v-if="albumData?.albumsCount">
           <FoldersIcon size="18"/>
@@ -367,19 +356,14 @@ onMounted(() => {
         <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
           <AlbumSharePanel :hash="albumData.value?.hash ?? targetAlbum"/>
         </OverlayPanel>
-        <!--    =  Переключатель   =    -->
+        <!--    =  Сортировка 2 =     -->
         <button
-          class="btn btn--quad"
-          :class="{'btn--inverse': nested}"
-          title="Switch visibility images of nested albums"
-          @click="nested = !nested">
-          <WorkflowIcon size="20"/>
-        </button>
-        <!--    =  Сортировка =     -->
-        <button
-          class="btn btn--quad change-direction-btn"
-          title="Change sort direction"
-          @click="isReverse = !isReverse">
+          class="btn btn--fixed"
+          title="Open sort and filter panel"
+          @click="sortFilterCard.toggle"
+        >
+          <component :is="sortType?.icon" /> 
+          {{ sortType?.name ?? sort }}
           <template v-if="sort == 'name'">
             <ArrowUpAZIcon size="20" v-if="isReverse"/>
             <ArrowDownAZIcon size="20" v-else/>
@@ -389,15 +373,9 @@ onMounted(() => {
             <ArrowDown10Icon size="20" v-else/>
           </template>
         </button>
-        <select class="droplist sort-droplist" title="Sort type" v-model="sort">
-          <option 
-            v-for="sortOption, index in imagesSort"
-            :key="index"
-            :value="sortOption.value"
-          >
-            {{ sortOption.name }}
-          </option>
-        </select>
+        <OverlayPanel ref="sortFilterCard" class="popup popup--fixed">
+          <SortFilterPanel/>
+        </OverlayPanel>
         <!--    =  Панель кастомизации =     -->
         <button
           class="btn btn--quad"
@@ -520,4 +498,46 @@ header {
     -webkit-app-region: none;
   }
 }
+.btn--fixed {
+  width: 150px;
+  justify-content: flex-start;
+  justify-content: space-between;
+  & > *:last-child {
+    justify-self: flex-end;
+  }
+}
 </style>
+
+
+<!--
+<button
+  class="btn btn--quad"
+  :class="{'btn--inverse': nested}"
+  title="Switch visibility images of nested albums"
+  @click="nested = !nested">
+  <WorkflowIcon size="20"/>
+</button>
+
+<button
+  class="btn btn--quad change-direction-btn"
+  title="Change sort direction"
+  @click="isReverse = !isReverse">
+  <template v-if="sort == 'name'">
+    <ArrowUpAZIcon size="20" v-if="isReverse"/>
+    <ArrowDownAZIcon size="20" v-else/>
+  </template>
+  <template v-else>
+    <ArrowUp10Icon size="20" v-if="isReverse"/>
+    <ArrowDown10Icon size="20" v-else/>
+  </template>
+</button>
+<select class="droplist sort-droplist" title="Sort type" v-model="sort">
+  <option 
+    v-for="sortOption, index in imagesSort"
+    :key="index"
+    :value="sortOption.value"
+  >
+    {{ sortOption.name }}
+  </option>
+</select>
+-->

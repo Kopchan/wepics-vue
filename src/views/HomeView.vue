@@ -28,8 +28,8 @@ import {
 
 // Параметры в ссылке
 const  {
-  limit, sort, isReverse, tags, nested, sortType, fullImage,
-  targetUser, targetAlbum, targetImage2, albumData, imageData,
+  limit, sort, trueReverse, tags, nested, fullImage,
+  targetUser, targetAlbum, albumData, imageData, randomSeed,
 } = storeToRefs(useAlbumParamsStore())
   
 // Функция очистки всех картинок
@@ -52,7 +52,7 @@ const cleanUpWall = () => {
 //  return { ...rest }
 //})
 watch(
-  [targetAlbum, limit, sort, isReverse, nested, tags],
+  [targetAlbum, limit, sort, trueReverse, nested, tags, randomSeed],
   () => {
     //console.log(val1, val2)
     debounceImmediate(() => {
@@ -93,8 +93,9 @@ const loadMore = async () => {
       limit: limit.value,
       tags: tags.value,
       sort: sort.value,
-      isReverse: reverseCheckInSortType(sortType, isReverse, sort),
+      isReverse: trueReverse.value,
       nested: nested.value,
+      seed: sort.value === 'random' ? randomSeed.value : null,
     })
   ).then((data) => {
     albumData.value.nestedImagesCount = nested.value ? data.total : null
@@ -109,9 +110,12 @@ const loadMore = async () => {
       element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
       element.name = parts.slice(0, -1).join('.')
       element.ratio = element.width / element.height
+      element.thumbURLorig = urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value)
       element.thumbURL     = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value) 
-      element.thumbURLanim = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value, true) 
-      element.thumbURLorig = urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value) 
+      element.thumbURLanim = element.bitrate > 8_000_000 
+        ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value, true)
+        : element.thumbURLorig
+
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall

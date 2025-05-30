@@ -1,5 +1,5 @@
 <script setup>
-import { ref, toRefs, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { XIcon } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
@@ -43,7 +43,7 @@ const route = useRoute()
 const close = () => {
   if (image.value)
     image.value.watchedTo = videoPlayer.value?.currentTime
-  
+
   image.value = null
 
   router.push({
@@ -95,6 +95,13 @@ useEventListener(window, 'keydown', (event) => {
         image?.album?.hash ?? trueAlbumHash ?? albumHash, 
         image?.hash        ?? imageHash, 
         image?.album?.sign ?? album?.sign
+      )"
+      :poster="urls.imageThumb(
+        image?.album?.hash ?? trueAlbumHash ?? albumHash, 
+        image?.hash        ?? imageHash, 
+        image?.album?.sign ?? album?.sign,
+        'h', 
+        1080
     )"></video>
     <img
       class="content"

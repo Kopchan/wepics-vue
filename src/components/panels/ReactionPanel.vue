@@ -1,8 +1,8 @@
 <script setup>
-import { ref, toRefs } from 'vue'
+import { ref } from 'vue'
 import { toggleReaction } from '@/helpers'
 import { storeToRefs } from 'pinia'
-import { useServerSetupsStore, useSettingsStore } from '@/stores'
+import { useServerSetupsStore } from '@/stores'
 // Параметры компонента
 /*const props =*/ defineProps({
   albumHash: String,

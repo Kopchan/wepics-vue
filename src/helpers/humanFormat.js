@@ -1,5 +1,3 @@
-
-
 export const humanNumber = (number, units) => {
   const pow = Math.min(
     Math.floor((number > 0 ? Math.log(number) : 0) / Math.log(1000)),
@@ -84,6 +82,8 @@ export const humanDurationLegacy = (seconds) => {
        + ((hrs < 1 && secs !== 0) ? (pad(secs) +'s') : '')
        + ((mins < 1 && ms !== 0) ? ('.'+ pad(ms, 3) +'ms') : '')
 }
+
+
 export const humanDuration = (seconds) => {
   const totalSeconds = Number(seconds)
   const ms = Math.round((totalSeconds % 1) * 1000)
