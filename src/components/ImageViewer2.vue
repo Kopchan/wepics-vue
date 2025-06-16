@@ -108,7 +108,7 @@ useEventListener(window, 'keydown', (event) => {
       v-else
       @click.stop="isScope ^= 1" 
       :alt="image?.name ?? 'fullscreen image'"
-      :height="isScope ? image.height / pxRatio : 'none'"
+      :height="isScope ? image?.height / pxRatio : 'none'"
       :src="urls.imageOrig(
         image?.album?.hash ?? trueAlbumHash ?? albumHash, 
         image?.hash        ?? imageHash, 

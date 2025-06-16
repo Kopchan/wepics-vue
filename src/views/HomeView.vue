@@ -22,13 +22,12 @@ import {
   routeViewerType,
   humanSI,
   humanDuration,
-  reverseCheckInSortType,
   toggleReaction
 } from '@/helpers'
 
 // Параметры в ссылке
 const  {
-  limit, sort, trueReverse, tags, nested, fullImage,
+  limit, sort, trueReverse, tags, nested, fullImage, ratings, types,
   targetUser, targetAlbum, albumData, imageData, randomSeed,
 } = storeToRefs(useAlbumParamsStore())
   
@@ -96,6 +95,8 @@ const loadMore = async () => {
       isReverse: trueReverse.value,
       nested: nested.value,
       seed: sort.value === 'random' ? randomSeed.value : null,
+      ratings: ratings.value,
+      types: types.value,
     })
   ).then((data) => {
     albumData.value.nestedImagesCount = nested.value ? data.total : null
@@ -112,7 +113,7 @@ const loadMore = async () => {
       element.ratio = element.width / element.height
       element.thumbURLorig = urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value)
       element.thumbURL     = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value) 
-      element.thumbURLanim = element.bitrate > 8_000_000 
+      element.thumbURLanim = element.bitrate > 8_000_000 || element?.type != 'video'
         ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value, true)
         : element.thumbURLorig
 
@@ -464,6 +465,7 @@ watch(
   transition: 0.1s;
   position: relative;
   min-height: calc(100vh - var(--header-height) - v-bind('gap +"px"') - 1px);
+  overflow: hidden;
   .grid {
     justify-content: center;
     margin: 0 auto;

@@ -46,6 +46,16 @@ const props = defineProps({
     required: false,
     default: false,
   },
+  grid: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  columnWidth: {
+    type: Number,
+    required: false,
+    default: 100,
+  },
 })
 // v-model компонента
 const value = defineModel()
@@ -81,7 +91,7 @@ const { name: selectorName, options, disabled, squared, background, point } = to
           '--selectColorFg': option?.color ? 'white' : null,
         }"
       >
-        <component :is="option?.icon" /> 
+        <component :is="option?.icon" size="20"/> 
         {{ squared ? null : option.name ?? option.value }}
       </label>
     </template>
@@ -96,7 +106,8 @@ const { name: selectorName, options, disabled, squared, background, point } = to
 .line {
   background-color: v-bind('background ? "var(--c-b0a)" : "transparent"');
   padding: 6px;
-  display: flex;
+  display: v-bind('grid ? "grid" : "flex"');
+  grid-template-columns: repeat(auto-fill, minmax(v-bind('columnWidth +"px"'), 1fr));
   justify-content: space-between;
   flex-wrap: wrap;
   gap: v-bind('squared ? "0" : "6px"');
@@ -109,6 +120,7 @@ const { name: selectorName, options, disabled, squared, background, point } = to
       display: flex;
       justify-content: center;
       gap: 6px;
+      padding: 0 4px;
       min-height: 24px;
       min-width: unset;
       height: v-bind('squared ? "30px" : "none"');

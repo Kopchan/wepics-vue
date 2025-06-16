@@ -69,16 +69,17 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const targetImage2    = createProp('image'    ,  null , true)
   const targetImageType = createProp('type'     ,  null , true)
 
-  //const fullscreen      = createProp('f'     , false)
-  const limit           = createProp('limit' , 30)
-  const tags            = createProp('tags'  , [], false, true)
-  const sort            = createProp('sort'  , 'date')
-  const isReverse       = createProp('r'     , false)
-  const sortAlbums      = createProp('asort' , 'content')
-  const isReverseAlbums = createProp('ar'    , false)
-  const nested          = createProp('nested', false)
-  const disrespect      = createProp('disord', false)
-  const randomSeed      = createProp('seed'  , null)
+  const limit           = createProp('limit'  , 30)
+  const sort            = createProp('sort'   , 'date')
+  const isReverse       = createProp('r'      , false)
+  const sortAlbums      = createProp('asort'  , 'content')
+  const isReverseAlbums = createProp('ar'     , false)
+  const nested          = createProp('nested' , false)
+  const disrespect      = createProp('disord' , false)
+  const randomSeed      = createProp('seed'   , null)
+  const tags            = createProp('tags'   , [], false, true)
+  const ratings         = createProp('ratings', [], false, true)
+  const types           = createProp('type'   , [], false, true)
 
   const sortType          = computed(() => imagesSortTypes.find(s => s.value === sort.value))
   const trueReverse       = computed(() => sortType.value.reverse !== isReverse.value)
@@ -117,7 +118,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
  
   return { 
     targetAlbum, limit, sort, isReverse, sortType, targetUser, fullImage,
-    tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect, randomSeed,
+    tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect, randomSeed, types, ratings,
     targetImage, imageData, targetImage2, imageTrueAlbum, targetImageType, trueReverse, trueReverseAlbums,
   }
 })

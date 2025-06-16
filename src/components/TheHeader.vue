@@ -362,7 +362,7 @@ onMounted(() => {
           title="Open sort and filter panel"
           @click="sortFilterCard.toggle"
         >
-          <component :is="sortType?.icon" /> 
+          <component :is="sortType?.icon" size="20"/> 
           {{ sortType?.name ?? sort }}
           <template v-if="sort == 'name'">
             <ArrowUpAZIcon size="20" v-if="isReverse"/>

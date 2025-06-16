@@ -53,7 +53,13 @@ const  {
       </button>
     </div>
     
-    <SelectorRadios2 :options="imagesSortTypes" v-model="sort" name="mediasSort" noCenter/>
+    <SelectorRadios2 
+      :options="imagesSortTypes" 
+      v-model="sort" 
+      name="mediasSort" 
+      noCenter
+      grid
+    />
 
     <div class="label-group">
       <label>Show nested media</label>
@@ -83,7 +89,13 @@ const  {
       </button>
     </div>
     
-    <SelectorRadios2 :options="albumsSortTypes" v-model="sortAlbums" name="albumSort" noCenter/>
+    <SelectorRadios2 
+      :options="albumsSortTypes" 
+      v-model="sortAlbums" 
+      name="albumSort" 
+      noCenter
+      grid
+    />
 
     <div class="label-group">
       <label>Ignore custom order</label>
