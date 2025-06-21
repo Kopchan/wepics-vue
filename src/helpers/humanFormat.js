@@ -29,7 +29,7 @@ export const numberWithSpaces = (num) => {
 }
 
 
-export const bytesUnits = [' B', ' KiB', ' MiB', ' GiB', ' TiB', ' PiB']
+export const bytesUnits = [' B', ' KB', ' MB', ' GB', ' TB', ' PB']
 
 export const humanFileSizeLegacy = (bytes) => {
   var i = bytes == 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024))

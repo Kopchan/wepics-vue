@@ -26,23 +26,12 @@ const {
       <label class="switch"><input type="checkbox" v-model.number="ambient"/><div></div></label>
     </div>
 
-    <!-- Выбор кол-во столбцов/строк -->
-    <div class="label-group">
-      <label>{{ orientation == 'w' ? 'Columns' : 'Rows' }}</label>
-      <input type="number" min="0" max="12" v-model.number="lines" class="text-box small">
-    </div>
-    <input type="range" min="0" max="12" v-model.number="lines">
-
     <!-- Выбор размера карточек -->
     <div class="label-group">
       <label>{{ orientation == 'w' ? 'Width' : 'Height' }}</label>
       <input type="number" min="144" max="1080" v-model.number="size" class="text-box small" :disabled="lines && !isStrictSize">
     </div>
     <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="lines && !isStrictSize">
-    <!--
-    <BtnRadios name="isRealSize" :options="['Relative', 'Absolute']" v-model="isRealSize" :disabled="lines && !isStrictSize"/>
-    <BtnRadios name="isStrictSize" :options="['Fill', 'Strict']" v-model="isStrictSize"/>
-    -->
 
     <!-- Выбор размера отступов -->
     <div class="label-group">

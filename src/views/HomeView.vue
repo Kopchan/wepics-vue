@@ -25,13 +25,13 @@ import {
   toggleReaction
 } from '@/helpers'
 
-// Параметры в ссылке
+// Параметры в адресной строке
 const  {
   limit, sort, trueReverse, tags, nested, fullImage, ratings, types,
   targetUser, targetAlbum, albumData, imageData, randomSeed,
 } = storeToRefs(useAlbumParamsStore())
   
-// Функция очистки всех картинок
+// Функция очистки всех медиа
 const cleanUpWall = () => {
   //console.log('clean')
   canLoadMore.value = false
@@ -42,14 +42,8 @@ const cleanUpWall = () => {
   currentPage = 1
   canLoadMore.value = true
 }
-// Наблюдение за изменением в роуте, если они есть, то перезагружаются картинки
-//const filteredRoute = computed(() => {
-//  const { album } = route.params
-//  const { sort, r,  } = route.query
-//
-//  // Можно исключить или включить нужные ключи
-//  return { ...rest }
-//})
+
+// Наблюдение за параметрами в адресной строке, при изменении — перезапрашиваем медиа
 watch(
   [targetAlbum, limit, sort, trueReverse, nested, tags, randomSeed],
   () => {
@@ -82,7 +76,6 @@ const isLoading   = ref(null)
 const canLoadMore = ref(true)
 const images      = ref([])
 const loadMore = async () => {
-  //console.log('loadMore', targetAlbum.value)
   if (!canLoadMore.value || isLoading.value) return
   isLoading.value = true
 
@@ -138,12 +131,11 @@ const loadMore = async () => {
     case 429: // TODO: Вывести уведомление о частых запросов
       alert(error.message)
       return
-    case 404:
-      //router.replaceView(PageNotExist)
+    case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
+    case 404: // TODO: Сделать красивую страницу
       canLoadMore.value = false
       alert(error.message || 'Not Found')
-      return // TODO: Сделать красивую страницу
-    case 403: // TODO: Вывести окно входа (с инфой о заблокированном альбоме)
+      return
     default:
       retries++
       if (retries > 5) canLoadMore.value = false
@@ -175,7 +167,7 @@ const downloadOriginal = (img) =>
     img.album?.sign ?? imgSign.value
   )
 
-// Попапы
+// Всплывающие окна
 const imageForReact   = ref()
 const albumWhereReact = ref()
 const editAlbum       = ref()
@@ -193,8 +185,9 @@ const showAlbumEditCard = (e, album) => {
   editAlbumCard.value.toggle(e)
 }
 
-// Загрузчик оригинала картинки
+// Текущий пользователь
 const { user } = storeToRefs(useAuthStore())
+
 // Переключение реакции на картинке
 const toggleReactionWrap = (image, reaction, e) => {
   if (!user.value.token) {
@@ -203,9 +196,11 @@ const toggleReactionWrap = (image, reaction, e) => {
   }
   toggleReaction(albumData.value?.hash ?? targetAlbum.value, image, reaction)
 }
+
 // Параметры предустановок
 const { ageRatings, allowedPreviewSizes } = storeToRefs(useServerSetupsStore())
 
+// Установка класса (blur/hide), если есть определённый рейтинг   
 const ratingPreset = (albumRating, imgRating) => {
   if (!albumRating && !imgRating) 
     return false
@@ -223,6 +218,7 @@ const ratingPreset = (albumRating, imgRating) => {
     return preset
 }
 
+// Генерация ссылок на несколько разных разрешений
 const getThumbMultiURL = (albumHash, img, sign = null) => {
   const srcsetItems = []
   for (const allowSize of allowedPreviewSizes.value) {
@@ -234,10 +230,11 @@ const getThumbMultiURL = (albumHash, img, sign = null) => {
   return srcsetItems.join(', ')
 }
 
-const router = useRouter()
-const route = useRoute()
-const videoRefs = ref([])
+const router = useRouter() // Маршуртизатор
+const route = useRoute()   // Маршрут
+const videoRefs = ref([])  // Ссылки-переменные на <video> 
 
+// Открытие просмоторщика
 const openViewer = (image) => {
   const watchedToNow = videoRefs.value[image.hash]?.currentTime
 
@@ -259,6 +256,7 @@ const openViewer = (image) => {
   })
 }
 
+// Отключение скролла при открытом просмоторщике
 watch(
   () => route?.name, 
   () => {
@@ -267,7 +265,6 @@ watch(
   },
   { immediate: true }
 )
-
 </script>
 
 <template>

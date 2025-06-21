@@ -9,12 +9,12 @@ export const router = createRouter({
     : createWebHashHistory(import.meta.env.VITE_BASE_URL),
   routes: [
     {
-      path: '/',
+      path: '/', // Главная
       name: 'home',
       component: HomeView
     },
     {
-      path: '/album/:albumHash?',
+      path: '/album/:albumHash?', // Поддержка старого маршрута
       name: 'albumLegacy',
       redirect: to => ({ 
         name: 'openAlbum', 
@@ -23,7 +23,7 @@ export const router = createRouter({
       })
     },
     {
-      path: '/root',
+      path: '/root', // Корневой серверный альбом отображается на главной 
       name: 'toHome',
       redirect: to => ({ 
         name: 'home', 
@@ -31,7 +31,7 @@ export const router = createRouter({
       })
     },
     {
-      path: '/@:user',
+      path: '/@:user', // Корневой альбом пользователя 
       name: 'userRoot',
       component: HomeView
     },
@@ -51,22 +51,22 @@ export const router = createRouter({
       component: HomeView
     },
     {
-      path: '/:album?',
+      path: '/:album',
       name: 'openAlbum',
       component: HomeView
     },
     {
-      path: '/:album/:type/:image',
+      path: '/:album/:type/:image', // Просмотр медиа 
       name: 'openAlbumImage',
       component: HomeView
     },
     {
-      path: '/:album/:trueAlbum/:type/:image',
+      path: '/:album/:trueAlbum/:type/:image', // Просмотр медиа во вложенном альбоме
       name: 'openAlbumNestedImage',
       component: HomeView
     },
     {
-      path: '/:catchAll(.*)',
+      path: '/:catchAll(.*)', // Неизвестный путь
       name: 'notFound',
       component: PageNotExist
     },

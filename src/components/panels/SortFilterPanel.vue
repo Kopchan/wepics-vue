@@ -1,28 +1,20 @@
 <script setup>
-import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAlbumParamsStore, useServerSetupsStore } from '@/stores'
+import { useAlbumParamsStore } from '@/stores'
 import { imagesSortTypes, albumsSortTypes } from '@/api'
 import { SelectorRadios2 } from '@/components/ui'
 import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from 'lucide-vue-next'
 
-
 // Параметры в ссылке
 const  {
-  limit, 
   sort, 
   sortAlbums,
   isReverse, 
   isReverseAlbums, 
-  tags, 
   nested, 
   disrespect,
   randomSeed,
 } = storeToRefs(useAlbumParamsStore())
-
-//const handleSortUpdate = (sortType) => {
-//  sort.value = sortType.value
-//}
 
 </script>
 
@@ -127,19 +119,3 @@ h4 {
   width: 75px;
 }
 </style>
-
-<!--
-<div class='media-sort options'>
-      <button 
-        v-for="(option, key) of imagesSort"
-        :key="key"
-        @click="sort = option.value"
-        :class="{
-        'btn': true,
-        'option': true,
-        'btn--inverse': option.value === sort,
-      }">
-        {{ option.name }}
-      </button>
-    </div>
--->

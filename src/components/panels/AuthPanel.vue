@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { BtnRadios } from '@/components/ui'
 import { useAuthStore } from '@/stores'
+import { InputFormItem } from '@/components/form'
 
 const isFetching = ref(false) // Статус "загружается"
 const mode = ref('login')    // Режим
@@ -37,8 +38,8 @@ watch(
     <BtnRadios name="mode" v-model="mode" :options="{login: 'Log In', signup: 'Sign Up'}"/>
     <!-- Форма входа -->
     <form @submit.prevent="authorize" v-if="mode == 'login'">
-      <input class="text-box" required v-model="form.login"    placeholder="Login">
-      <input class="text-box" required v-model="form.password" placeholder="Password" type="password">
+      <InputFormItem     v-model="form" :error="error" name="login" label="Login"/>
+      <InputFormItem     v-model="form" :error="error" name="password" label="Password" type="password"/>
       <button class="btn" :disable="isFetching">Enter</button>
       <!-- Окно ошибки -->
       <div class="error" v-if="error">
@@ -48,18 +49,14 @@ watch(
     </form>
     <!-- Форма регистрации -->
     <form @submit.prevent="authorize" v-else>
-      <input class="text-box" required v-model="form.nickname" placeholder="Nickname">
-      <input class="text-box" required v-model="form.login"    placeholder="Login">
-      <input class="text-box" required v-model="form.password" placeholder="Password" type="password">
+      <InputFormItem     v-model="form" :error="error" name="nickname" label="Nickname"/>
+      <InputFormItem     v-model="form" :error="error" name="login" label="Login"/>
+      <InputFormItem     v-model="form" :error="error" name="password" label="Password" type="password"/>
       <button class="btn" :disable="isFetching">Create</button>
       <!-- Окно ошибки -->
       <div class="error" v-if="error">
         <template v-if="error.status == 422">
-          <template v-for="errorArr in error.message" :key="errorArr">
-            <template v-for="error in errorArr" :key="error">
-              <p>{{ error }}</p>
-            </template>
-          </template>
+          <p>Request validation error</p>
         </template>
         <p v-else>Registration failed</p>
       </div>
@@ -80,7 +77,6 @@ button {
 form {
   display: flex;
   flex-direction: column;
-  gap: 12px
 }
 .error {
   background-color: #a004;
