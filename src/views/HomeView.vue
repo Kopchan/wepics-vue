@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -24,6 +24,7 @@ import {
   humanDuration,
   toggleReaction
 } from '@/helpers'
+import type { AlbumItem, ImageItem } from '@/types'
 
 // Параметры в адресной строке
 const  {
@@ -67,21 +68,21 @@ const {
   ambient, albumsLayout, albumPreviewSize, imagePreviewSize,
 } = storeToRefs(useSettingsStore())
 
-const imgSign = ref(null)
+const imgSign = ref<string | null>(null)
 
 // Порционный запрос картинок
 let currentPage = 1
 let retries = 0
-const isLoading   = ref(null)
+const isLoading   = ref(false)
 const canLoadMore = ref(true)
-const images      = ref([])
+const images      = ref<ImageItem[]>([])
 const loadMore = async () => {
   if (!canLoadMore.value || isLoading.value) return
   isLoading.value = true
 
-  await fetchWrapper.get(
+  await fetchWrapper.get<{ total: number, sign?: string, pictures: ImageItem[] }>(
     urls.albumImages(targetAlbum.value, {
-      page: currentPage, 
+      page: currentPage,
       limit: limit.value,
       tags: tags.value,
       sort: sort.value,
@@ -96,17 +97,18 @@ const loadMore = async () => {
     if (!canLoadMore.value) return
     canLoadMore.value = !(data.total < currentPage * limit.value)
 
-    albumData.value.sign = imgSign.value = data?.sign
-   
+    imgSign.value = data?.sign ?? null
+    albumData.value.sign = data?.sign
+
     const newImages = data.pictures
     newImages.forEach(element => {
-      const parts = element.name.split('.')
+      const parts = element.name!.split('.')
       element.ext = parts.length === 1 ? 'no ext' : parts.at(-1)
       element.name = parts.slice(0, -1).join('.')
-      element.ratio = element.width / element.height
+      element.ratio = element.width! / element.height!
       element.thumbURLorig = urls.imageOrig (element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value)
-      element.thumbURL     = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value) 
-      element.thumbURLanim = element.bitrate > 8_000_000 || element?.type != 'video'
+      element.thumbURL     = urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value)
+      element.thumbURLanim = (element.bitrate ?? 0) > 8_000_000 || element?.type != 'video'
         ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value, true)
         : element.thumbURLorig
 
@@ -147,23 +149,24 @@ const loadMore = async () => {
 
 // Перезагрузка превьюшек с ошибками
 const maxImgRetries = 4
-const imgRetryCounts = ref({})
-const onErrorImgLoad = async (event) => {
+const imgRetryCounts = ref<Record<string, number>>({})
+const onErrorImgLoad = async (event: Event) => {
   // FIXME: не всегда срабатывает (второй раз?)
-  const src = event.target.attributes.src.value
+  const anyEvent = event as any
+  const src = anyEvent.target.attributes.src.value
   imgRetryCounts.value[src] ||= 0
- 
+
   if (imgRetryCounts.value[src] <= maxImgRetries) {
     await sleep(1000)
     imgRetryCounts.value[src]++
-    event.src = event.src + ''
+    anyEvent.src = anyEvent.src + ''
   }
 }
 
-const downloadOriginal = (img) =>
+const downloadOriginal = (img: ImageItem) =>
   window.location.href = urls.imageDownload(
-    img.album?.hash ?? albumData.value?.hash ?? targetAlbum.value, 
-    img.hash, 
+    img.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,
+    img.hash,
     img.album?.sign ?? imgSign.value
   )
 
@@ -174,13 +177,13 @@ const editAlbum       = ref()
 const authCard      = ref()
 const reactionCard  = ref()
 const editAlbumCard = ref()
-const showAuthCard     = (e) => authCard.value.toggle(e)
-const showReactionCard = (e, image) => {
+const showAuthCard     = (e: Event) => authCard.value.toggle(e)
+const showReactionCard = (e: Event, image: ImageItem) => {
   imageForReact.value = image
   albumWhereReact.value = albumData.value?.hash ?? targetAlbum
   reactionCard.value.toggle(e)
 }
-const showAlbumEditCard = (e, album) => {
+const showAlbumEditCard = (e: Event, album: AlbumItem) => {
   editAlbum.value = album
   editAlbumCard.value.toggle(e)
 }
@@ -189,7 +192,7 @@ const showAlbumEditCard = (e, album) => {
 const { user } = storeToRefs(useAuthStore())
 
 // Переключение реакции на картинке
-const toggleReactionWrap = (image, reaction, e) => {
+const toggleReactionWrap = (image: ImageItem, reaction: string, e: Event) => {
   if (!user.value.token) {
     showAuthCard(e)
     return
@@ -200,12 +203,12 @@ const toggleReactionWrap = (image, reaction, e) => {
 // Параметры предустановок
 const { ageRatings, allowedPreviewSizes } = storeToRefs(useServerSetupsStore())
 
-// Установка класса (blur/hide), если есть определённый рейтинг   
-const ratingPreset = (albumRating, imgRating) => {
-  if (!albumRating && !imgRating) 
+// Установка класса (blur/hide), если есть определённый рейтинг
+const ratingPreset = (albumRating: string | number | undefined, imgRating: string | number | undefined) => {
+  if (!albumRating && !imgRating)
     return false
 
-  const rating = ageRatings.value?.find(r => 
+  const rating = ageRatings.value?.find(r =>
     r.id === (imgRating ?? albumRating)
   )
 
@@ -219,26 +222,26 @@ const ratingPreset = (albumRating, imgRating) => {
 }
 
 // Генерация ссылок на несколько разных разрешений
-const getThumbMultiURL = (albumHash, img, sign = null) => {
-  const srcsetItems = []
+const getThumbMultiURL = (albumHash: string, img: ImageItem, sign: string | null = null) => {
+  const srcsetItems: string[] = []
   for (const allowSize of allowedPreviewSizes.value) {
     const urlW = urls.imageThumb(albumHash, img.hash, sign, 'w', allowSize)
     srcsetItems.push(urlW +' '+ allowSize +'w')
     const urlH = urls.imageThumb(albumHash, img.hash, sign, 'h', allowSize)
-    srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio) +'w')
+    srcsetItems.push(urlH +' '+ Math.round(allowSize * img.ratio!) +'w')
   }
   return srcsetItems.join(', ')
 }
 
 const router = useRouter() // Маршуртизатор
 const route = useRoute()   // Маршрут
-const videoRefs = ref([])  // Ссылки-переменные на <video> 
+const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссылки-переменные на <video>
 
 // Открытие просмоторщика
-const openViewer = (image) => {
+const openViewer = (image: ImageItem) => {
   const watchedToNow = videoRefs.value[image.hash]?.currentTime
 
-  if (!image?.watchedTo || image.watchedTo < watchedToNow)
+  if (!image?.watchedTo || (watchedToNow != null && image.watchedTo < watchedToNow))
     image.watchedTo = watchedToNow
 
   imageData.value = image
@@ -247,8 +250,8 @@ const openViewer = (image) => {
     name: routeNameViewer(!!targetUser.value, image),
     query: route.query,
     params: {
-      user: targetUser.value, 
-      type: routeViewerType(image?.type), 
+      user: targetUser.value,
+      type: routeViewerType(image?.type ?? ''),
       album: albumData.value?.alias ?? targetAlbum.value,
       trueAlbum: image?.album?.alias ?? image?.album?.hash,
       image: image?.hash,
@@ -258,9 +261,9 @@ const openViewer = (image) => {
 
 // Отключение скролла при открытом просмоторщике
 watch(
-  () => route?.name, 
+  () => route?.name,
   () => {
-    fullImage.value = route.name?.endsWith("Image")
+    fullImage.value = typeof route.name === 'string' && route.name.endsWith("Image")
     scroll.value = !fullImage.value
   },
   { immediate: true }
@@ -309,9 +312,9 @@ watch(
               query: $route.query 
           }">
             <div :class="{previews: true, blur: true}">
-              <img 
-                v-for="img in child?.images?.slice(0, 4)" 
-                :key="img"
+              <img
+                v-for="img in child?.images?.slice(0, 4)"
+                :key="img.hash"
                 :class="ratingPreset(child?.ratingId, img?.ratingId)"
                 :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)" 
                 :alt="img.name"
@@ -324,11 +327,11 @@ watch(
                 <div class="block">
                   <p class="name">{{ child.name }}</p>
                   <div class="inline" v-if="child.imagesCount">
-                    <FileIcon size="16"/>
-                    <span>{{ humanCount(child.mediasCount) }}</span>
+                    <FileIcon :size="16"/>
+                    <span>{{ humanCount(child.mediasCount ?? 0) }}</span>
                   </div>
                   <div class="inline" v-if="child.albumsCount">
-                    <FoldersIcon size="16"/>
+                    <FoldersIcon :size="16"/>
                     <span>{{ humanCount(child.albumsCount) }}</span>
                   </div>
                   <span class="text" v-if="!child.albumsCount && !child.mediasCount">EMPTY</span>
@@ -342,9 +345,9 @@ watch(
       </section>
       <section class="wall" :style="'--size:'+ size">
         <div class="img"
-          v-for="img in images" 
+          v-for="img in images"
           :class="ratingPreset(img?.album?.ratingId ?? albumData?.ratingId, img?.ratingId)"
-          :key="img" 
+          :key="img.hash"
           :style="'--ratio:'+ img.ratio">
 
           <i></i>
@@ -369,7 +372,7 @@ watch(
             loop
             preload="none"
             v-intersect-video
-            :ref="el => videoRefs[img.hash] = el"
+            :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
             @error="onErrorImgLoad"
           ></video>
 
@@ -379,7 +382,7 @@ watch(
               <span class="name">{{ img.name }}</span>
               <div class="badges">
                 <span class="badge up">{{ img.ext }}</span>
-                <span class="badge" :title="img.date">{{ humanDate(img.date) }}</span>
+                <span class="badge" :title="img.date">{{ humanDate(img.date!) }}</span>
                 <span class="badge">{{ img.width }}×{{ img.height }}</span>
                 <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'"  >{{ humanSI(img.bitrate) + 'bps'}}</span>
                 <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration) }}</span>
@@ -403,7 +406,7 @@ watch(
                 <button class="btn btn--reaction" 
                   v-if="user?.token"
                   @click.stop="showReactionCard($event, img)">
-                  <SmilePlusIcon size="20"/>
+                  <SmilePlusIcon :size="20"/>
                 </button>
                 <div class="reactions">
                   <template 
@@ -421,8 +424,8 @@ watch(
                 </div>
               </div>
               <button class="btn btn--download" @click.stop="downloadOriginal(img)">
-                <span class="size">{{ humanFileSize(img.size) }}</span>
-                <DownloadIcon size="20"/>
+                <span class="size">{{ humanFileSize(img.size ?? 0) }}</span>
+                <DownloadIcon :size="20"/>
               </button>
             </div>
           </div>

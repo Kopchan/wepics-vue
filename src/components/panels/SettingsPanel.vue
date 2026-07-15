@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from '@/stores'
 import { BtnRadios } from '@/components/ui'
@@ -29,9 +29,9 @@ const {
     <!-- Выбор размера карточек -->
     <div class="label-group">
       <label>{{ orientation == 'w' ? 'Width' : 'Height' }}</label>
-      <input type="number" min="144" max="1080" v-model.number="size" class="text-box small" :disabled="lines && !isStrictSize">
+      <input type="number" min="144" max="1080" v-model.number="size" class="text-box small" :disabled="!!lines && !isStrictSize">
     </div>
-    <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="lines && !isStrictSize">
+    <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="!!lines && !isStrictSize">
 
     <!-- Выбор размера отступов -->
     <div class="label-group">

@@ -1,9 +1,12 @@
-export const debounceImmediate = (func, ms) => {
-  let timeout
+export const debounceImmediate = <Args extends unknown[]>(
+  func: (...args: Args) => void,
+  ms: number,
+) => {
+  let timeout: ReturnType<typeof setTimeout>
   let isAsked = false
   let isDoubleAsked = false
 
-  const createTimeout = (...args) => {
+  const createTimeout = (...args: Args) => {
     timeout = setTimeout(() => {
       isAsked = false
       if (isDoubleAsked) {
@@ -13,7 +16,7 @@ export const debounceImmediate = (func, ms) => {
     }, ms)
   }
 
-  return (...args) => {
+  return (...args: Args) => {
     if (!isAsked) {
       func(...args)
       createTimeout(...args)

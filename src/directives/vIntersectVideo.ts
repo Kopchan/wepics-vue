@@ -1,18 +1,22 @@
-// intersectVideo.js
-
 import { useAlbumParamsStore } from "@/stores"
-import { watch } from "vue"
+import { watch, type Directive } from "vue"
 
+interface VideoElement extends HTMLElement {
+  play?: () => Promise<void>
+  pause?: () => void
+  _observer?: IntersectionObserver
+  _unwatchFullImage?: () => void
+}
 
-export default {
+const vIntersectVideo: Directive<VideoElement> = {
   mounted(el) {
     const store = useAlbumParamsStore()
-    
-    const state = {
+
+    const state: { entry: IntersectionObserverEntry | null } = {
       entry: null,
     }
 
-    const checkVisibilityAndState = (entry) => {
+    const checkVisibilityAndState = (entry: IntersectionObserverEntry) => {
       state.entry = entry
 
       if (store.fullImage) {
@@ -61,3 +65,5 @@ export default {
     delete el._unwatchFullImage
   }
 }
+
+export default vIntersectVideo

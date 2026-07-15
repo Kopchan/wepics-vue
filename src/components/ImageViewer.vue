@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { ref, toRefs, onMounted, onBeforeUnmount, watch } from 'vue';
 import { XIcon } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia';
 import { useSettingsStore } from '@/stores';
 import { urls } from '@/api';
+import type { ImageItem } from '@/types';
 
 // Параметры компонента
-const props = defineProps({
-  album: String,
-  image: Object,
-  sign: String|null,
-})
+const props = defineProps<{
+  album?: string
+  image?: ImageItem
+  sign?: string | null
+}>()
 
 // Параметры компонента в переменные
 const { album, image, sign } = toRefs(props)
@@ -19,13 +20,13 @@ const {
   radius, gap
 } = storeToRefs(useSettingsStore())
 
-const isScope = ref(false)
+const isScope = ref(0)
 const isFill = ref(false)
 
 const pxRatio = ref(window.devicePixelRatio || 1)
 
 const emit = defineEmits(['targetImage'])
-const handleKeyDown = (event) => {
+const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     emit('targetImage', null)
   }
@@ -48,12 +49,12 @@ onBeforeUnmount(() => {
     @click="$emit('targetImage', null)"
     :class="{'scoped': isScope, 'fill': isFill}">
     <img
-      @click.stop="isScope ^= 1" 
+      @click.stop="isScope ^= 1"
       alt="name"
-      :height="isScope ? image.height / pxRatio : 'none'"
-      :src="urls.imageOrig(image?.album?.hash ?? album, image.hash, image?.album?.sign ?? sign)">
+      :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
+      :src="urls.imageOrig(image!.album?.hash ?? album!, image!.hash, image?.album?.sign ?? sign)">
       <button class="btn close" @click="$emit('targetImage', null)">
-        <XIcon size="32"/>
+        <XIcon :size="32"/>
       </button>
   </div>
 </template>

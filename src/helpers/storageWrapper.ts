@@ -2,18 +2,18 @@ import { STORAGE_PREFIX } from "@/config"
 import { watchDebounced } from "@vueuse/core"
 import { reactive } from "vue"
 
-const getTrueKey = (key) => STORAGE_PREFIX + "_" + key
+const getTrueKey = (key: string): string => STORAGE_PREFIX + "_" + key
 
-const readStorage = (key) => {
+const readStorage = <T extends object>(key: string): T => {
   try {
-    return JSON.parse(localStorage.getItem(getTrueKey(key))) || {}
+    return JSON.parse(localStorage.getItem(getTrueKey(key)) ?? '') || {}
   } catch (e) {
-    return {}
+    return {} as T
   }
 }
 
-export const storageWrapper = (key = 'data') => {
-  const dataStorage = reactive(readStorage(key))
+export const storageWrapper = <T extends object = Record<string, unknown>>(key = 'data'): T => {
+  const dataStorage = reactive(readStorage<T>(key)) as T
 
   watchDebounced(
     () => dataStorage,

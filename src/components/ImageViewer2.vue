@@ -1,6 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
+import type { ImageItem } from '@/types'
 import { XIcon } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
@@ -32,7 +33,7 @@ const {
   radius, gap
 } = storeToRefs(useSettingsStore())
 
-const isScope = ref(false)
+const isScope = ref(0)
 const isFill = ref(false)
 
 const pxRatio = ref(window.devicePixelRatio || 1)
@@ -44,7 +45,7 @@ const close = () => {
   if (image.value)
     image.value.watchedTo = videoPlayer.value?.currentTime
 
-  image.value = null
+  image.value = null as unknown as ImageItem
 
   router.push({
     name: userName.value 
@@ -69,7 +70,7 @@ const onVideoLoaded = () => {
   ) videoPlayer.value.currentTime = image.value.watchedTo
 }
 
-useEventListener(window, 'keydown', (event) => {
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   if (event.key === 'Escape') 
     close()
 })
@@ -90,32 +91,32 @@ useEventListener(window, 'keydown', (event) => {
       @click.stop
       @loadedmetadata="onVideoLoaded"
       :alt="image?.name ?? 'fullscreen video'"
-      :height="isScope ? image.height / pxRatio : 'none'"
+      :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
       :src="urls.imageOrig(
-        image?.album?.hash ?? trueAlbumHash ?? albumHash, 
-        image?.hash        ?? imageHash, 
-        image?.album?.sign ?? album?.sign
+        image?.album?.hash ?? trueAlbumHash ?? albumHash,
+        image?.hash        ?? imageHash,
+        image?.album?.sign ?? album?.sign ?? null
       )"
       :poster="urls.imageThumb(
-        image?.album?.hash ?? trueAlbumHash ?? albumHash, 
-        image?.hash        ?? imageHash, 
-        image?.album?.sign ?? album?.sign,
-        'h', 
+        image?.album?.hash ?? trueAlbumHash ?? albumHash,
+        image?.hash        ?? imageHash,
+        image?.album?.sign ?? album?.sign ?? null,
+        'h',
         1080
     )"></video>
     <img
       class="content"
       v-else
-      @click.stop="isScope ^= 1" 
+      @click.stop="isScope ^= 1"
       :alt="image?.name ?? 'fullscreen image'"
-      :height="isScope ? image?.height / pxRatio : 'none'"
+      :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
       :src="urls.imageOrig(
-        image?.album?.hash ?? trueAlbumHash ?? albumHash, 
-        image?.hash        ?? imageHash, 
-        image?.album?.sign ?? album?.sign
+        image?.album?.hash ?? trueAlbumHash ?? albumHash,
+        image?.hash        ?? imageHash,
+        image?.album?.sign ?? album?.sign ?? null
     )">
       <button class="btn close" @click="close()">
-        <XIcon size="32"/>
+        <XIcon :size="32"/>
       </button>
   </div>
 </template>

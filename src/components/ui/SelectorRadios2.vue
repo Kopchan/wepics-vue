@@ -1,64 +1,30 @@
-<script setup>
-/**
- * @typedef {Object} Option
- * @property {string} icon
- * @property {any}    value
- * @property {string} name
- * @property {string} color
- */
-
+<script setup lang="ts">
 import { toRefs } from 'vue'
+import type { SelectorOption } from '@/types'
 
 // Параметры компонента
-const props = defineProps({
-  name: {
-    type: String,
-    required: false,
-    default: Math.random().toString(),
-  },
-  /** @type {import('vue').PropType<Option[]>} */
-  options: {
-    type: Array,
-    required: true,
-  },
-  disabled: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  squared: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  background: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
-  point: {
-    type: String,
-    required: false,
-    default: null,
-  },
-  noCenter: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  grid: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  columnWidth: {
-    type: Number,
-    required: false,
-    default: 100,
-  },
+const props = withDefaults(defineProps<{
+  name?: string
+  options: SelectorOption[]
+  disabled?: boolean
+  squared?: boolean
+  background?: boolean
+  point?: string | number | null
+  noCenter?: boolean
+  grid?: boolean
+  columnWidth?: number
+}>(), {
+  name: () => Math.random().toString(),
+  disabled: false,
+  squared: false,
+  background: true,
+  point: null,
+  noCenter: false,
+  grid: false,
+  columnWidth: 100,
 })
 // v-model компонента
-const value = defineModel()
+const value = defineModel<unknown>()
 
 // Параметры компонента в переменные
 const { name: selectorName, options, disabled, squared, background, point } = toRefs(props)
@@ -89,9 +55,9 @@ const { name: selectorName, options, disabled, squared, background, point } = to
         :style="{
           '--selectColor':   option?.color,
           '--selectColorFg': option?.color ? 'white' : null,
-        }"
+        } as any"
       >
-        <component :is="option?.icon" size="20"/> 
+        <component :is="option?.icon" :size="20"/> 
         {{ squared ? null : option.name ?? option.value }}
       </label>
     </template>

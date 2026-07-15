@@ -5,21 +5,37 @@ import { useDevicePixelRatio } from '@vueuse/core'
 import { useServerSetupsStore } from './serverSetups'
 import { urls } from '@/api'
 
+interface SettingsData {
+  size?: number
+  isStrictSize?: number
+  isRealSize?: number
+  lines?: number
+  gap?: number
+  extGap?: boolean
+  radius?: number
+  orientation?: string
+  theme?: string
+  ambient?: boolean
+  albumsLayout?: string
+  lineWidth?: number
+  [key: string]: unknown
+}
+
 export const useSettingsStore = defineStore('settings', () => {
   // Инфа об настройках в localStorage
-  const settings = storageWrapper('settings')
+  const settings = storageWrapper<SettingsData>('settings')
 
   // Сброс настроек
-  const reset = () => {
+  const reset = (): void => {
     for (const key in settings) {
       delete settings[key]
     }
   }
   // Создание параметра в localStorage со значением по умолчанию
-  const createProp = (name, defaultValue) => {
-    return computed({
-      get: ()      => settings[name] ?? defaultValue,
-      set: (value) => settings[name] = value
+  const createProp = <T,>(name: keyof SettingsData, defaultValue: T) => {
+    return computed<T>({
+      get: ()      => (settings[name] as T) ?? defaultValue,
+      set: (value) => { settings[name] = value }
     })
   }
 
@@ -40,11 +56,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const { getAllowedSize, allowedPreviewSizes } = useServerSetupsStore()
   const { pixelRatio } = useDevicePixelRatio()
 
-  const pixelSize = computed(() => {
-    const result = size.value * pixelRatio.value
-    console.log(`pixel base size: ${result} = ${size.value} * ${pixelRatio.value}`)
-    return result
-  })
+  const pixelSize = computed(() => size.value * pixelRatio.value)
  
   const imagePreviewSize = computed(() => getAllowedSize(pixelSize.value * 1.2))
   const albumPreviewSize = computed(() => getAllowedSize(pixelSize.value / 2))

@@ -1,12 +1,13 @@
 import { urls } from "@/api"
 import fetchWrapper from "./fetchWrapper"
+import type { ImageItem } from "@/types"
 
-export const toggleReaction = (albumHash, image, reaction) => {
+export const toggleReaction = (albumHash: string | undefined, image: ImageItem, reaction: string): void => {
   const isYouSetted = image.reactions?.[reaction]?.isYouSet || false
 
   fetchWrapper[isYouSetted ? 'delete' : 'post'](
     urls.imageReaction(
-      image?.album?.hash ?? albumHash,
+      image?.album?.hash ?? albumHash ?? '',
       image.hash, 
       reaction
     )

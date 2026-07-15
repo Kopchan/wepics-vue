@@ -1,43 +1,46 @@
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect, type WritableComputedRef } from 'vue'
 import { defineStore } from 'pinia'
 //import { router } from '@/router'
 import { SITE_NAME } from '@/config'
 import { albumsSortTypes, imagesSortTypes } from '@/api'
 import { useRoute, useRouter } from 'vue-router'
+import type { AlbumItem, ImageItem } from '@/types'
+
+type QueryPropValue = string | number | boolean | string[]
 
 export const useAlbumParamsStore = defineStore('albumParams', () => {
   const route = useRoute()
   const router = useRouter()
 
   // Функция создания get-set переменной для параметра в адресной строке
-  const createProp = (
-    name,
-    defaultValue = null,
+  const createProp = <T extends QueryPropValue = string>(
+    name: string,
+    defaultValue: T | null = null,
     routeName = false,
     isArray = false,
-  ) => {
-    const cached = ref(null)  // кеш
-  
+  ): WritableComputedRef<T> => {
+    const cached = ref<string | string[] | null>(null)  // кеш
+
     watchEffect(() => {
       const raw = route[routeName ? 'params' : 'query'][name]
-      cached.value = raw
+      cached.value = raw as string | string[] | null
     })
-  
-    return computed({
-      get: () => {
+
+    return computed<T>({
+      get: (): T => {
         const prop = cached.value
-  
+
         if (isArray) {
-          if (!prop) return []
-          return prop.split(',').map(decodeURIComponent)
+          if (!prop) return [] as unknown as T
+          return (Array.isArray(prop) ? prop : prop.split(',')).map(decodeURIComponent) as T
         }
-  
-        if (prop === null) return true
-        return prop ?? defaultValue
+
+        if (prop === null) return true as T
+        return (prop ?? defaultValue) as T
       },
-      set: (value) => {
+      set: (value: T) => {
         const newQuery = { ...route.query }
-  
+
         if (
           value === undefined ||
           value === false ||
@@ -50,41 +53,41 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
         } else if (Array.isArray(value)) {
           newQuery[name] = value.map(encodeURIComponent).join(',')
         } else {
-          newQuery[name] = value
+          newQuery[name] = value as string
         }
-  
+
         router.replace({ query: newQuery })
       }
     })
   }
 
-  const albumData = ref({})
-  const imageData = ref({})
+  const albumData = ref<AlbumItem>({} as AlbumItem)
+  const imageData = ref<ImageItem>({} as ImageItem)
   const fullImage = ref(false)
 
-  const targetImage = ref(null)
-  const targetUser      = createProp('user'     ,  null , true)
-  const targetAlbum     = createProp('album'    , 'root', true)
-  const imageTrueAlbum  = createProp('trueAlbum',  null , true)
-  const targetImage2    = createProp('image'    ,  null , true)
-  const targetImageType = createProp('type'     ,  null , true)
+  const targetImage = ref<ImageItem | null>(null)
+  const targetUser      = createProp<string>('user'     ,  null , true)
+  const targetAlbum     = createProp<string>('album'    , 'root', true)
+  const imageTrueAlbum  = createProp<string>('trueAlbum',  null , true)
+  const targetImage2    = createProp<string>('image'    ,  null , true)
+  const targetImageType = createProp<string>('type'     ,  null , true)
 
-  const limit           = createProp('limit'  , 30)
-  const sort            = createProp('sort'   , 'date')
-  const isReverse       = createProp('r'      , false)
-  const sortAlbums      = createProp('asort'  , 'content')
-  const isReverseAlbums = createProp('ar'     , false)
-  const nested          = createProp('nested' , false)
-  const disrespect      = createProp('disord' , false)
-  const randomSeed      = createProp('seed'   , null)
-  const tags            = createProp('tags'   , [], false, true)
-  const ratings         = createProp('ratings', [], false, true)
-  const types           = createProp('type'   , [], false, true)
+  const limit           = createProp<number>('limit'  , 30)
+  const sort            = createProp<string>('sort'   , 'date')
+  const isReverse       = createProp<boolean>('r'      , false)
+  const sortAlbums      = createProp<string>('asort'  , 'content')
+  const isReverseAlbums = createProp<boolean>('ar'     , false)
+  const nested          = createProp<boolean>('nested' , false)
+  const disrespect      = createProp<boolean>('disord' , false)
+  const randomSeed      = createProp<number>('seed'   , null)
+  const tags            = createProp<string[]>('tags'   , [], false, true)
+  const ratings         = createProp<string[]>('ratings', [], false, true)
+  const types           = createProp<string[]>('type'   , [], false, true)
 
   const sortType          = computed(() => imagesSortTypes.find(s => s.value === sort.value))
-  const trueReverse       = computed(() => sortType.value.reverse !== isReverse.value)
+  const trueReverse       = computed(() => sortType.value?.reverse !== isReverse.value)
   const albumSortType     = computed(() => albumsSortTypes.find(s => s.value === sortAlbums.value))
-  const trueReverseAlbums = computed(() => albumSortType.value.reverse !== isReverseAlbums.value)
+  const trueReverseAlbums = computed(() => albumSortType.value?.reverse !== isReverseAlbums.value)
   
   watch(
     [
@@ -112,7 +115,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
       if (sort.value === 'random' || sortAlbums.value === 'random')
         randomSeed.value ??= Math.floor(100000 + Math.random() * 900000)
       else
-        randomSeed.value = null
+        randomSeed.value = null as unknown as number
     },
   )
  

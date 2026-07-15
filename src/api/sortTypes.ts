@@ -1,11 +1,12 @@
-import { 
-  ArrowDownUpIcon, BookAIcon, CalendarIcon, DicesIcon, RulerDimensionLineIcon, ProportionsIcon, 
-  RatioIcon, SaveIcon, SmileIcon, ImagePlayIcon, HourglassIcon, GalleryHorizontalEndIcon, 
+import {
+  ArrowDownUpIcon, BookAIcon, CalendarIcon, DicesIcon, RulerDimensionLineIcon, ProportionsIcon,
+  RatioIcon, SaveIcon, SmileIcon, ImagePlayIcon, HourglassIcon, GalleryHorizontalEndIcon,
   FoldersIcon, FileIcon, ImageIcon, VideoIcon, Music2Icon, FolderPlusIcon, SearchCheckIcon,
   ArchiveIcon,
 } from "lucide-vue-next"
+import type { SortType } from "@/types"
 
-export const imagesSortTypes = [
+export const imagesSortTypes: SortType[] = [
   { name: 'Name'      , value: 'name'      , reverse: false , icon: BookAIcon },
   { name: 'Date'      , value: 'date'      , reverse: true  , icon: CalendarIcon },
   { name: 'Random'    , value: 'random'    , reverse: null  , icon: DicesIcon },
@@ -21,7 +22,7 @@ export const imagesSortTypes = [
   // { name: 'Frames'    , value: 'frames'    , reverse: true  , icon: ImagesIcon },
 ]
 
-export const albumsSortTypes = [
+export const albumsSortTypes: SortType[] = [
   { name: 'Name'       , value: 'name'      , reverse: false , icon: BookAIcon },
   { name: 'Content'    , value: 'content'   , reverse: true  , icon: ArchiveIcon },
   { name: 'Random'     , value: 'random'    , reverse: null  , icon: DicesIcon },

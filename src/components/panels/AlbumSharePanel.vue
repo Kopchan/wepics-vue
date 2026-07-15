@@ -1,29 +1,45 @@
-<script setup>
+<script setup lang="ts">
 import { toRefs, ref } from 'vue'
 import { fetchWrapper } from '@/helpers'
 import { BanIcon, CircleMinusIcon, PlusIcon } from 'lucide-vue-next'
 import { urls } from '@/api';
 
+interface AccessRule {
+  user_id: string | number | null
+  nickname: string
+}
+
+interface SystemUser {
+  id: string | number | null
+  nickname: string
+}
+
+interface AlbumAccessesResponse {
+  isGuestAllowed?: boolean | null
+  listAllowed?: AccessRule[]
+  listDisallowed?: AccessRule[]
+}
+
 // Параметры компонента
-const props = defineProps({
-  hash: String
-})
+const props = defineProps<{
+  hash: string
+}>()
 // Параметры компонента в переменные
 const { hash } = toRefs(props)
 
 const isErrored = ref(false) // Статус "произошла ошибка"
 const isLoading = ref(true) // Статус "загружается"
 
-const disallowedRights = ref([]) // Список не допущенных
-const allowedRights = ref([])   // Список допущенных
-const isForGuest = ref(null)   // Статус "для гостей доступ открыт"
-const guestObj = {
+const disallowedRights = ref<AccessRule[]>([]) // Список не допущенных
+const allowedRights = ref<AccessRule[]>([])   // Список допущенных
+const isForGuest = ref<boolean | null>(null)   // Статус "для гостей доступ открыт"
+const guestObj: AccessRule = {
   user_id: null,
   nickname: 'guest'
 }
 
 // Запрос списка прав на выбранном альбоме
-fetchWrapper.get(
+fetchWrapper.get<AlbumAccessesResponse>(
   urls.albumAccesses(hash.value)
 ).then(data => {
   isLoading.value = false
@@ -31,9 +47,9 @@ fetchWrapper.get(
   allowedRights   .value = data.listAllowed    ?? []
   disallowedRights.value = data.listDisallowed ?? []
 
-  if (isForGuest.value === true ) 
+  if (isForGuest.value === true )
     allowedRights.value.push(guestObj)
-  if (isForGuest.value === false) 
+  if (isForGuest.value === false)
     disallowedRights.value.push(guestObj)
 }).catch(() => {
   isLoading.value = false
@@ -41,7 +57,7 @@ fetchWrapper.get(
 })
 
 // Удаление правила
-const removeAccess = (user_id = null) => {
+const removeAccess = (user_id: string | number | null = null) => {
   fetchWrapper.delete(
     urls.albumAccesses(hash.value), {user_id}
   )
@@ -55,23 +71,23 @@ const removeAccess = (user_id = null) => {
 }
 
 const mode = ref('show') // Режим отображения
-const users = ref([]) // Список пользователей системы
+const users = ref<SystemUser[]>([]) // Список пользователей системы
 // Переключение на страницу выбора пользователя для создания правила
 const toUserSelect = () => {
   mode.value = 'addRule'
   isLoading.value = true
 
   // Получение всех пользователей
-  fetchWrapper.get(urls.users()).then(gettedUsers => {
+  fetchWrapper.get<SystemUser[]>(urls.users()).then(gettedUsers => {
     // Все правила на выбранном альбоме
     const rules = [
-      ...(   allowedRights.value), 
+      ...(   allowedRights.value),
       ...(disallowedRights.value)
     ]
     // Добавление гостя в список пользователей
     gettedUsers.push({id: null, nickname: 'guest'})
-    
-    // Запись допущенных для выборки создания правила 
+
+    // Запись допущенных для выборки создания правила
     // т.е. пользователи, которые не указаны в правилах выбранного альбома
     users.value = gettedUsers.filter(user => {
       for (const rule of rules) {
@@ -85,15 +101,15 @@ const toUserSelect = () => {
     isLoading.value = false
     isErrored.value = true
   })
-} 
+}
 
 // Создания правила
-const addAccess = (user = null, isAllow = true) => {
+const addAccess = (user: SystemUser | null = null, isAllow = true) => {
   fetchWrapper.post(
-    urls.albumAccesses(hash.value), {user_id: user.id, allow: isAllow}
+    urls.albumAccesses(hash.value), {user_id: user!.id, allow: isAllow}
   ).then(() => {
-    if (isAllow) allowedRights.value.push({user_id: user.id, nickname: user.nickname})
-    else      disallowedRights.value.push({user_id: user.id, nickname: user.nickname})
+    if (isAllow) allowedRights.value.push({user_id: user!.id, nickname: user!.nickname})
+    else      disallowedRights.value.push({user_id: user!.id, nickname: user!.nickname})
     mode.value = 'show'
   }).catch(() => {
     isLoading.value = false
@@ -118,8 +134,8 @@ const addAccess = (user = null, isAllow = true) => {
       <template v-if="allowedRights?.length">
         <p>Allowed users</p>
         <div class="users">
-          <div v-for="access in allowedRights" 
-            :key="access"
+          <div v-for="access in allowedRights"
+            :key="access.user_id ?? access.nickname"
             class="user-line">
             <span :class="{guest: access.user_id === null}">
               {{ access.nickname }}
@@ -128,7 +144,7 @@ const addAccess = (user = null, isAllow = true) => {
             <button 
               class="btn btn--danger btn--quad"
               @click="removeAccess(access.user_id)">
-              <CircleMinusIcon size="20"/>
+              <CircleMinusIcon :size="20"/>
             </button>
           </div>
         </div>
@@ -137,9 +153,9 @@ const addAccess = (user = null, isAllow = true) => {
       <template v-if="disallowedRights?.length">
         <p>Disallowed users</p>
         <div class="users">
-          <div 
-            v-for="access in disallowedRights" 
-            :key="access"
+          <div
+            v-for="access in disallowedRights"
+            :key="access.user_id ?? access.nickname"
             class="user-line">
             <span :class="{guest: access.user_id === null}">
               {{ access.nickname }}
@@ -148,7 +164,7 @@ const addAccess = (user = null, isAllow = true) => {
             <button 
               class="btn btn--danger btn--quad"
               @click="removeAccess(access.user_id)">
-              <CircleMinusIcon size="20"/>
+              <CircleMinusIcon :size="20"/>
             </button>
           </div>
         </div>
@@ -166,19 +182,19 @@ const addAccess = (user = null, isAllow = true) => {
       <div class="users">
         <div 
           v-for="user in users"
-          :key="user"
+          :key="user.id ?? user.nickname"
           class="user-line">
           <span :class="{guest: user.id === null}">{{ user.nickname }}</span>
           <div style="margin-left: auto"></div>
           <button 
             class="btn btn--danger btn--quad"
             @click="addAccess(user, true)">
-            <PlusIcon size="20"/>
+            <PlusIcon :size="20"/>
           </button>
           <button 
             class="btn btn--danger btn--quad"
             @click="addAccess(user, false)">
-            <BanIcon size="20"/>
+            <BanIcon :size="20"/>
           </button>
         </div>
       </div>

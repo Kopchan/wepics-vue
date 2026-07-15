@@ -1,13 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { toggleReaction } from '@/helpers'
 import { storeToRefs } from 'pinia'
 import { useServerSetupsStore } from '@/stores'
+import type { FetchErrorPayload } from '@/helpers'
+import type { ImageItem } from '@/types'
 // Параметры компонента
-/*const props =*/ defineProps({
-  albumHash: String,
-  image: Object,
-})
+/*const props =*/ defineProps<{
+  albumHash?: string
+  image?: ImageItem
+}>()
 
 // Параметры компонента в переменные
 //const { image } = toRefs(props)
@@ -15,7 +17,7 @@ import { useServerSetupsStore } from '@/stores'
 // v-model компонента
 //const value = defineModel()
 
-const error = ref()
+const error = ref<FetchErrorPayload | null>(null)
 
 // Получение разрешённых реакций 
 const { allowedReactions } = storeToRefs(useServerSetupsStore())
@@ -26,10 +28,10 @@ const { allowedReactions } = storeToRefs(useServerSetupsStore())
   <div class="outer">
     <div class="options">
       <button class="btn btn--quad option"
-        v-for="option in allowedReactions"
-        :key="option"
+        v-for="option in (allowedReactions as unknown as { value: string }[])"
+        :key="option.value"
         :class="{'btn--inverse': image?.reactions?.[option.value]?.isYouSet}"
-        @click.stop="toggleReaction(image?.album?.hash ?? albumHash, image, option.value)">
+        @click.stop="toggleReaction(image?.album?.hash ?? albumHash, image!, option.value)">
         {{ option.value }}
       </button>
     </div>

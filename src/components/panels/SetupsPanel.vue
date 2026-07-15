@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useAuthStore, useServerSetupsStore } from '@/stores'
 import { BtnRadios } from '@/components/ui'
@@ -6,6 +6,7 @@ import { computed, onMounted, ref, toRaw } from 'vue'
 import AgeRatingLabel from '../AgeRatingLabel.vue'
 import SelectorRadios from '../ui/SelectorRadios.vue'
 import { EyeIcon, EyeOffIcon, GripIcon, SlashIcon } from 'lucide-vue-next'
+import type { SelectorOption } from '@/types'
 
 // Стор с глобальными серверными преднастроками
 const setups = useServerSetupsStore()
@@ -24,11 +25,11 @@ const onThingOptions = {
 
 const forWho = ref('device')
 const forWhoOptions = computed(() => {
-  const options = { device: 'This device' }
+  const options: Record<string, string> = { device: 'This device' }
 
   if (user.value) {
     options.yourself = 'My account'
-    
+
     if (user.value?.isAdmin)
       options.everyone = 'Any user'
   }
@@ -37,11 +38,11 @@ const forWhoOptions = computed(() => {
 })
 
 const ratingPresetOptions = computed(() => {
-  const options = {}
+  const options: Record<string, SelectorOption> = {}
 
   if (!(onThing.value === 'global' && forWho.value === 'everyone'))
     options.inherit = { name: 'Inherit rule', icon: SlashIcon }
-  
+
   options.show = { name: 'Show images', icon: EyeIcon   , color: 'var(--green)'  }
   options.blur = { name: 'Blur images', icon: GripIcon  , color: 'var(--yellow)' }
   options.hide = { name: 'Hide images', icon: EyeOffIcon, color: 'var(--red)'    }

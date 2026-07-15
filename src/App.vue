@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { TheHeader, SideBar } from '@/components'
 import { useServerSetupsStore, useSettingsStore } from '@/stores'
 import { storeToRefs } from 'pinia'
@@ -11,7 +11,7 @@ document.title = SITE_NAME
 const { theme, scroll } = storeToRefs(useSettingsStore())
 
 // Функция получения HTML Node'ов по обычной строке
-const getNodesFromString = (html) => {
+const getNodesFromString = (html: string) => {
   const template = document.createElement('div')
   template.innerHTML = html
   return template.childNodes

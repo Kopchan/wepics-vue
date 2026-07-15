@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { debouncedWatch, useWindowScroll } from '@vueuse/core'
@@ -19,6 +19,7 @@ import {
 } from '@/components/panels'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 import SortFilterPanel from './panels/SortFilterPanel.vue'
+import type { AlbumItem } from '@/types'
 
 // Попапы
 const { isOpened } = storeToRefs(useSidebarStore())
@@ -45,15 +46,15 @@ const objCreateCard   = ref()
 const albumRenameCard = ref()
 
 // Логика переключение попапа со списком дочерних альбомов
-const albumChildren = ref(null)
-const albumChildSelect = ref(null)
-const toggleSubAlbumsCard = (e, hash, selectedHash) => {
+const albumChildren = ref<string | null>(null)
+const albumChildSelect = ref<string | null | undefined>(null)
+const toggleSubAlbumsCard = (e: Event, hash: string | null, selectedHash: string | null | undefined) => {
   albumChildren.value = hash
   albumChildSelect.value = selectedHash
   subAlbumsCard.value.toggle(e)
 }
 
-const isLoading = ref(null)
+const isLoading = ref(false)
 const isError = ref(false)
 const { y: yScroll } = useWindowScroll()
 const isScrolledDown = computed(() => yScroll.value !== 0)
@@ -63,10 +64,10 @@ const router = useRouter()
 const route = useRoute()
 
 // Запрос данных об альбоме
-const getAlbumData = async (newHash = null, oldHash = null) => {
+const getAlbumData = async (newHash: string | null = null, oldHash: string | null = null) => {
   isLoading.value = true
   isError.value = false
-  albumData.value.hash = null
+  albumData.value.hash = null as unknown as string
 
   //console.log(newHash, oldHash, albumData.value, albumData.value != null, !!albumData.value)
 
@@ -82,10 +83,10 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
         canFind = false
         //console.log('ans', albumData.value.ancestors?.slice(0, index))
         albumData.value = {
-          ...ancestor, 
+          ...ancestor,
           ancestors: albumData.value.ancestors?.slice(0, index),
-          children: (index + 1) in albumData.value.ancestors ? [
-            albumData.value.ancestors[index + 1]
+          children: (index + 1) in albumData.value.ancestors! ? [
+            albumData.value.ancestors![index + 1]
           ] : undefined,
         }
       }
@@ -98,16 +99,16 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
         canFind = false
         //console.log('chd', child)
         albumData.value = {
-          ...child, 
-          ancestors: [...albumData.value.ancestors, albumData.value],
+          ...child,
+          ancestors: [...(albumData.value.ancestors ?? []), albumData.value],
         }
       }
     })
-  
+
 
   // Основной запрос информации об альбоме
-  await fetchWrapper.get(
-    urls.albumInfo(newHash ?? targetAlbum.value, { 
+  await fetchWrapper.get<AlbumItem>(
+    urls.albumInfo(newHash ?? targetAlbum.value, {
       sort: sort.value, 
       sortAlbums: sortAlbums.value, 
       isReverse: trueReverse.value,
@@ -161,7 +162,7 @@ const reindexAlbum = () => {
     urls.albumReindex(albumData.value?.hash ?? targetAlbum.value)
   ).then(async () => {
     const temp = albumData.value?.hash ?? targetAlbum.value
-    targetAlbum.value = null // FIXME: успевает за это время загрузить root альбом
+    targetAlbum.value = null as unknown as string // FIXME: успевает за это время загрузить root альбом
     // FIXME: targetAlbum больше нельзя задавать, делай через pinia actions, и вынеси наконец картинки туда
     await sleep(10)
     targetAlbum.value = temp
@@ -191,7 +192,7 @@ onMounted(() => {
             class="btn btn--quad menu-btn" 
             title="Toggle menu" 
             @click="isOpened = !isOpened">
-            <MenuIcon size="20"/>
+            <MenuIcon :size="20"/>
           </button>
         </div>
         <!--    =  Навигационная цепочка  =    -->
@@ -201,27 +202,27 @@ onMounted(() => {
             <button
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
-              @click="toggleSubAlbumsCard($event, 'root', albumData?.ancestors[1]?.hash)">
-              <ChevronRightIcon size="20" />
+              @click="toggleSubAlbumsCard($event, 'root', albumData?.ancestors?.[1]?.hash)">
+              <ChevronRightIcon :size="20" />
             </button>
           </span>
           <span class="section" v-if="targetAlbum !== 'root' && (
             albumData?.ancestors?.length && 
-            albumData?.ancestors[0]?.hash != 'root'
+            albumData?.ancestors?.[0]?.hash != 'root'
           )">
             <a class="btn" disabled>...</a>
             <button
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
               disabled>
-              <ChevronRightIcon size="20" />
+              <ChevronRightIcon :size="20" />
             </button>
           </span>
           <span 
             v-for="(ancestor, index) in albumData?.ancestors?.slice(1)"
             :key="index"
             class="section">
-            <template v-if="index !== '/'">
+            <template v-if="(index as unknown as string) !== '/'">
               <RouterLink class="btn" :to="{ 
                 name: 'openAlbum',
                 params: { album: ancestor?.alias ?? ancestor.hash }, 
@@ -234,10 +235,10 @@ onMounted(() => {
                 title="Show subfolders"
                 @click="toggleSubAlbumsCard(
                   $event, 
-                  ancestor.hash, 
-                  albumData?.ancestors[index + 2]?.hash ?? albumData?.hash
+                  ancestor.hash,
+                  albumData?.ancestors?.[index + 2]?.hash ?? albumData?.hash
                 )">
-                <ChevronRightIcon size="20" />
+                <ChevronRightIcon :size="20" />
               </button>
             </template>
           </span>
@@ -255,13 +256,13 @@ onMounted(() => {
               class="btn btn--circle folder-select-btn" 
               title="Edit current album"
               @click="albumRenameCard.toggle">
-              <PenIcon size="20" />
+              <PenIcon :size="20" />
             </button>
             <button v-if="albumData?.children?.length"
               class="btn btn--circle folder-select-btn" 
               title="Show subfolders"
-              @click="toggleSubAlbumsCard($event, albumData.value?.hash ?? targetAlbum, null)">
-              <ChevronRightIcon size="20" />
+              @click="toggleSubAlbumsCard($event, albumData?.hash ?? targetAlbum, null)">
+              <ChevronRightIcon :size="20" />
             </button>
           </span>
         </div>
@@ -282,34 +283,34 @@ onMounted(() => {
           v-if="albumData?.ratingId"
         />
         <div class="inline" v-if="albumData?.audiosCount">
-          <Music2Icon size="18"/>
+          <Music2Icon :size="18"/>
           <span>{{ albumData.audiosCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.videosCount">
-          <VideoIcon size="18"/>
+          <VideoIcon :size="18"/>
           <span>{{ albumData.videosCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.imagesCount">
-          <ImageIcon size="18"/>
+          <ImageIcon :size="18"/>
           <span>{{ albumData.imagesCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.nestedImagesCount && (albumData.nestedImagesCount > (albumData?.mediasCount ?? 0))">
           <template v-if="!albumData?.mediasCount || albumData.mediasCount == 0">
-            <FilesIcon size="18"/>
+            <FilesIcon :size="18"/>
             <span title="nested media count">({{ (albumData.nestedImagesCount).toLocaleString() }})</span>
           </template>
           <span v-else title="+ nested media">(+{{ (albumData.nestedImagesCount - albumData.mediasCount).toLocaleString() }})</span>
         </div>
         <div class="inline" v-if="albumData?.albumsCount">
-          <FoldersIcon size="18"/>
+          <FoldersIcon :size="18"/>
           <span>{{ albumData.albumsCount }}</span>
         </div>
         <div class="inline" v-if="albumData?.duration">
-          <Hourglass size="18"/>
+          <Hourglass :size="18"/>
           <span>{{ humanDuration(albumData.duration) }}</span>
         </div>
         <div class="inline" v-if="albumData?.size">
-          <SaveIcon size="18"/>
+          <SaveIcon :size="18"/>
           <span>{{ humanFileSize(albumData.size) }}</span>
         </div>
       </div>
@@ -322,7 +323,7 @@ onMounted(() => {
           :disabled="isLoading"
           :class="{spin: isLoading, error: isError}"
           @click="isError ? getAlbumData() : reindexAlbum()">
-          <RefreshCcwIcon size="20"/>
+          <RefreshCcwIcon :size="20"/>
         </button>
         <!--    =  Панель создания  =    -->
         <button
@@ -330,20 +331,20 @@ onMounted(() => {
           title="Open creation panel"
           v-if="user.isAdmin"
           @click="objCreateCard.toggle">
-          <PlusCircleIcon size="20"/>
+          <PlusCircleIcon :size="20"/>
         </button>
         <OverlayPanel ref="objCreateCard" class="popup popup--fixed">
-          <ObjCreatePanel :hash="albumData.value?.hash ?? targetAlbum"/>
+          <ObjCreatePanel :hash="albumData?.hash ?? targetAlbum"/>
         </OverlayPanel>
         <!--    =  Панель предустановок  =    -->
         <button
           class="btn btn--quad"
           title="Open setups panel"
           @click="setupsCard.toggle">
-          <ViewIcon size="20"/>
+          <ViewIcon :size="20"/>
         </button>
         <OverlayPanel ref="setupsCard" class="popup popup--fixed">
-          <SetupsPanel :hash="albumData.value?.hash ?? targetAlbum"/>
+          <SetupsPanel :hash="albumData?.hash ?? targetAlbum"/>
         </OverlayPanel>
         <!--    =  Панель поделиться  =    -->
         <button
@@ -351,10 +352,10 @@ onMounted(() => {
           title="Open share panel"
           v-if="user.isAdmin"
           @click="albumShareCard.toggle">
-          <Share2Icon size="20"/>
+          <Share2Icon :size="20"/>
         </button>
         <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
-          <AlbumSharePanel :hash="albumData.value?.hash ?? targetAlbum"/>
+          <AlbumSharePanel :hash="albumData?.hash ?? targetAlbum"/>
         </OverlayPanel>
         <!--    =  Сортировка 2 =     -->
         <button
@@ -362,15 +363,15 @@ onMounted(() => {
           title="Open sort and filter panel"
           @click="sortFilterCard.toggle"
         >
-          <component :is="sortType?.icon" size="20"/> 
+          <component :is="sortType?.icon" :size="20"/> 
           {{ sortType?.name ?? sort }}
           <template v-if="sort == 'name'">
-            <ArrowUpAZIcon size="20" v-if="isReverse"/>
-            <ArrowDownAZIcon size="20" v-else/>
+            <ArrowUpAZIcon :size="20" v-if="isReverse"/>
+            <ArrowDownAZIcon :size="20" v-else/>
           </template>
           <template v-else>
-            <ArrowUp10Icon size="20" v-if="isReverse"/>
-            <ArrowDown10Icon size="20" v-else/>
+            <ArrowUp10Icon :size="20" v-if="isReverse"/>
+            <ArrowDown10Icon :size="20" v-else/>
           </template>
         </button>
         <OverlayPanel ref="sortFilterCard" class="popup popup--fixed">
@@ -381,7 +382,7 @@ onMounted(() => {
           class="btn btn--quad"
           title="Open customization panel"
           @click="customizCard.toggle">
-          <PaletteIcon size="20"/>
+          <PaletteIcon :size="20"/>
         </button>
         <OverlayPanel ref="customizCard" class="popup popup--fixed">
           <SettingsPanel/>
@@ -392,7 +393,7 @@ onMounted(() => {
           title="Open user panel"
           v-if="user.nickname"
           @click="userCard.toggle">
-          <UserIcon size="20"/>
+          <UserIcon :size="20"/>
         </button>
         <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
           <UserPanel/>
@@ -403,7 +404,7 @@ onMounted(() => {
           title="Open authorization form"
           v-else
           @click="authCard.toggle">
-          <LogInIcon size="20"/>
+          <LogInIcon :size="20"/>
         </button>
         <OverlayPanel ref="authCard" class="popup popup--fixed" v-if="!user.nickname">
           <AuthPanel/>

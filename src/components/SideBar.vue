@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { PinIcon, PinOffIcon } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { useSidebarStore } from '@/stores'
@@ -18,8 +18,8 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
           class="btn pin-sidebar-btn" 
           title="Pin/Unpin sidebar" 
           @click="isPinned = !isPinned">
-          <PinIcon v-if="!isPinned" size="20"/>
-          <PinOffIcon v-else size="20"/>
+          <PinIcon v-if="!isPinned" :size="20"/>
+          <PinOffIcon v-else :size="20"/>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore } from '@/stores'
 import { imagesSortTypes, albumsSortTypes } from '@/api'
@@ -35,12 +35,12 @@ const  {
       }">
         Reverse
         <template v-if="sort == 'name'">
-          <ArrowUpAZIcon size="20" v-if="isReverse"/>
-          <ArrowDownAZIcon size="20" v-else/>
+          <ArrowUpAZIcon :size="20" v-if="isReverse"/>
+          <ArrowDownAZIcon :size="20" v-else/>
         </template>
         <template v-else>
-          <ArrowUp10Icon size="20" v-if="isReverse"/>
-          <ArrowDown10Icon size="20" v-else/>
+          <ArrowUp10Icon :size="20" v-if="isReverse"/>
+          <ArrowDown10Icon :size="20" v-else/>
         </template>
       </button>
     </div>
@@ -71,12 +71,12 @@ const  {
       }">
         Reverse
         <template v-if="sortAlbums == 'name'">
-          <ArrowUpAZIcon size="20" v-if="isReverseAlbums"/>
-          <ArrowDownAZIcon size="20" v-else/>
+          <ArrowUpAZIcon :size="20" v-if="isReverseAlbums"/>
+          <ArrowDownAZIcon :size="20" v-else/>
         </template>
         <template v-else>
-          <ArrowUp10Icon size="20" v-if="isReverseAlbums"/>
-          <ArrowDown10Icon size="20" v-else/>
+          <ArrowUp10Icon :size="20" v-if="isReverseAlbums"/>
+          <ArrowDown10Icon :size="20" v-else/>
         </template>
       </button>
     </div>

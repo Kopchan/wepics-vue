@@ -1,30 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, toRefs } from 'vue'
-import { fetchWrapper, sleep } from '@/helpers'
+import { fetchWrapper, sleep, type FetchErrorPayload } from '@/helpers'
 import { storeToRefs } from 'pinia'
 import { useServerSetupsStore } from '@/stores'
 import { urls } from '@/api'
 import { SelectorRadios2 } from '@/components/ui'
 import { InputFormItem, SelectFormItem, RadioBtnsFormItem } from '@/components/form'
+import type OverlayPanel from 'primevue/overlaypanel'
+import type { AlbumItem } from '@/types'
 
 // Параметры компонента
-const props = defineProps({
-  overlay: Object,
-})
+const props = defineProps<{
+  overlay?: OverlayPanel
+}>()
 
 // Параметры компонента в переменные
 const { overlay } = toRefs(props)
 
 // v-model компонента
-const album = defineModel()
+const album = defineModel<AlbumItem>({ required: true })
 
 const isFetching = ref(false) // Статус "данные отправляются"
-const error = ref(null) // Ошибка
-const form = ref({})        // Данные для отправки
+const error = ref<FetchErrorPayload | null>(null) // Ошибка
+const form = ref<Record<string, unknown>>({})        // Данные для отправки
 
-const inputBox = ref(null)
+const inputBox = ref<HTMLInputElement | null>(null)
 
-      
+
 if (album.value?.path) {
   const parts = album.value.path?.split(/[\\/]/)
   form.value.pathName = parts[parts?.length - 2]
@@ -41,13 +43,13 @@ form.value.guestAllow  = album.value?.guestAllow ?? null
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
 const ratingOptions = computed(() => {
-  const options = {}
+  const options: Record<string, string | number | null> = {}
   options['None'] = null
 
   if (ageRatings.value?.length)
     for (const rating of ageRatings.value)
       options[`${rating.code} - ${rating.name}`] = rating.id
-  
+
   return options
 })
 
@@ -63,14 +65,14 @@ const editAlbum = () => {
   isFetching.value = true
   error.value = null
 
-  fetchWrapper.patch(urls.album(album.value.hash), form.value)
+  fetchWrapper.patch<Partial<AlbumItem>>(urls.album(album.value.hash), form.value)
     .then(data => {
       Object.assign(album.value, data)
       album.value.oldUrlNames = form.value.oldUrlNames
-      
+
       if (album.value?.path) {
         const parts = album.value.path?.split(/[\\/]/)
-        parts[parts?.length - 2] = form.value?.pathName
+        parts[parts?.length - 2] = form.value?.pathName as string
         album.value.path = parts.join('/')
       }
       isFetching.value = false

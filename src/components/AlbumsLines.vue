@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, toRefs } from 'vue'
 import { storeToRefs } from 'pinia'
 import { 
@@ -17,12 +17,13 @@ import AlbumsLines from '@/components/AlbumsLines.vue'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 import { useRoute, useRouter } from 'vue-router'
 import vIntersectVideo from '@/directives/vIntersectVideo'
+import type { AlbumItem, ImageItem } from '@/types'
 
 // Параметры компонента
-const props = defineProps({
-  album: Object,
-  loading: Boolean,
-})
+const props = defineProps<{
+  album?: AlbumItem
+  loading?: boolean
+}>()
 
 // Параметры компонента в переменные
 const { album } = toRefs(props)
@@ -47,7 +48,7 @@ const {
 // Параметры предустановок
 const { ageRatings } = storeToRefs(useServerSetupsStore())
 
-const ratingPreset = (albumRating, imgRating) => {
+const ratingPreset = (albumRating: string | number | undefined, imgRating: string | number | undefined) => {
   if (!albumRating && !imgRating) 
     return false
 
@@ -65,12 +66,12 @@ const ratingPreset = (albumRating, imgRating) => {
 }
 
 // Обработка нажатия на расширения ребёнка
-const handleChildExpand = async (child) => {
+const handleChildExpand = async (child: AlbumItem) => {
   child.vueExpanded = !child?.vueExpanded
   if (child.vueExpanded && !child?.data) {
     child.vueLoading = true
-    await fetchWrapper.get(
-      urls.albumInfo(child.hash, { 
+    await fetchWrapper.get<AlbumItem>(
+      urls.albumInfo(child.hash, {
         sort: sort.value, 
         sortAlbums: sortAlbums.value, 
         isReverse: reverseCheckInSortType(sortType, isReverse, sort),
@@ -92,25 +93,25 @@ const handleChildExpand = async (child) => {
   }
 }
 
-const formatContentSort = value => {
+const formatContentSort = (value: string | number) => {
   switch (album.value?.contentSortField) {
   case 'date':      return humanDate(value)
-  case 'size':      return humanFileSize(value)
-  case 'duration':  return humanDuration(value / 1000)
-  case 'bitrate':   return humanSI(Math.floor(value)) + 'bps'
-  case 'framerate': return Math.floor(value) + ' fps'
+  case 'size':      return humanFileSize(Number(value))
+  case 'duration':  return humanDuration(Number(value) / 1000)
+  case 'bitrate':   return humanSI(Math.floor(Number(value))) + 'bps'
+  case 'framerate': return Math.floor(Number(value)) + ' fps'
   default:          return value
   }
 }
 
 const router = useRouter()
 const route = useRoute()
-const videoRefs = ref([])
+const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
 
-const openViewer = (image) => {
+const openViewer = (image: ImageItem) => {
   const watchedToNow = videoRefs.value[image.hash]?.currentTime
 
-  if (!image?.watchedTo || image.watchedTo < watchedToNow)
+  if (!image?.watchedTo || (watchedToNow != null && image.watchedTo < watchedToNow))
     image.watchedTo = watchedToNow
 
   imageData.value = image
@@ -119,8 +120,8 @@ const openViewer = (image) => {
     name: routeNameViewer(!!targetUser.value, image),
     query: route.query,
     params: {
-      user: targetUser.value, 
-      type: routeViewerType(image?.type), 
+      user: targetUser.value,
+      type: routeViewerType(image?.type ?? ''),
       album: albumData.value?.alias ?? targetAlbum.value,
       trueAlbum: image?.album?.alias ?? image?.album?.hash,
       image: image?.hash,
@@ -130,16 +131,17 @@ const openViewer = (image) => {
 
 // Перезагрузка превьюшек с ошибками
 const maxImgRetries = 4
-const imgRetryCounts = ref({})
-const onErrorImgLoad = async (event) => {
+const imgRetryCounts = ref<Record<string, number>>({})
+const onErrorImgLoad = async (event: Event) => {
   // FIXME: не всегда срабатывает (второй раз?)
-  const src = event.target.attributes.src.value
+  const anyEvent = event as any
+  const src = anyEvent.target.attributes.src.value
   imgRetryCounts.value[src] ||= 0
- 
+
   if (imgRetryCounts.value[src] <= maxImgRetries) {
     await sleep(1000)
     imgRetryCounts.value[src]++
-    event.src = event.src + ''
+    anyEvent.src = anyEvent.src + ''
   }
 }
 
@@ -165,20 +167,20 @@ const onErrorImgLoad = async (event) => {
             <p>{{ child.orderLevel }}</p>
           </div>
           <div v-if="child.guestAllow != null" class="visibility">
-            <EyeIcon size="24" v-if="child.guestAllow"/>
-            <EyeOffIcon size="24" v-else/>
+            <EyeIcon :size="24" v-if="child.guestAllow"/>
+            <EyeOffIcon :size="24" v-else/>
           </div>
           <h3 class="name">{{ child.name }}</h3>
           <button v-if="user.isAdmin"
             class="btn btn--circle edit-btn" 
             title="Edit this album"
             @click="emit('edit-album', $event, child)">
-            <PenIcon size="20" />
+            <PenIcon :size="20" />
           </button>
         </div>
         <div class="right">
           <div class="inline" v-if="child?.contentSort">
-            <span class="badge" :title="child.contentSort">
+            <span class="badge" :title="String(child.contentSort)">
               {{ formatContentSort(child.contentSort) }}
             </span>
           </div>
@@ -187,27 +189,27 @@ const onErrorImgLoad = async (event) => {
             v-if="child?.ratingId"
           />
           <div class="inline" v-if="child?.audiosCount">
-            <Music2Icon size="18"/>
+            <Music2Icon :size="18"/>
             <span>{{ humanCount(child.audiosCount) }}</span>
           </div>
           <div class="inline" v-if="child?.videosCount">
-            <VideoIcon size="18"/>
+            <VideoIcon :size="18"/>
             <span>{{ humanCount(child.videosCount) }}</span>
           </div>
           <div class="inline" v-if="child?.imagesCount">
-            <ImageIcon size="18"/>
+            <ImageIcon :size="18"/>
             <span>{{ humanCount(child.imagesCount) }}</span>
           </div>
           <div class="inline" v-if="child?.albumsCount">
-            <FoldersIcon size="18"/>
+            <FoldersIcon :size="18"/>
             <span>{{ humanCount(child.albumsCount) }}</span>
           </div>
           <div class="inline" v-if="child?.duration">
-            <Hourglass size="18"/>
+            <Hourglass :size="18"/>
             <span>{{ humanDuration(child.duration) }}</span>
           </div>
           <div class="inline" v-if="child?.size">
-            <SaveIcon size="18"/>
+            <SaveIcon :size="18"/>
             <span>{{ humanFileSize(child.size) }}</span>
           </div>
 
@@ -215,7 +217,7 @@ const onErrorImgLoad = async (event) => {
             v-if="child.albumsCount || child.mediasCount || !child.indexedAt"
             :class="{'btn--inverse': child.vueExpanded}"
             @click.stop="handleChildExpand(child)">
-            <ChevronDownIcon size="24"/>
+            <ChevronDownIcon :size="24"/>
           </button>
         </div>
       </div>
@@ -257,7 +259,7 @@ const onErrorImgLoad = async (event) => {
             loop
             preload="none"
             v-intersect-video
-            :ref="el => videoRefs[img.hash] = el"
+            :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
             @error="onErrorImgLoad"
           ></video>
           <div class="overlay">
@@ -271,14 +273,14 @@ const onErrorImgLoad = async (event) => {
             <div class="bottom"></div>
           </div>
         </div>
-        <RouterLink class="more" 
-          v-if="child.imagesCount > child?.images?.length"
-          :to="{ 
+        <RouterLink class="more"
+          v-if="(child.imagesCount ?? 0) > (child?.images?.length ?? 0)"
+          :to="{
             name: 'openAlbum',
-            params: { album: child?.alias ?? child.hash }, 
-            query: $route.query 
+            params: { album: child?.alias ?? child.hash },
+            query: $route.query
         }">
-          <p>Explore {{ child.imagesCount - child?.images?.length }} remaining images</p>
+          <p>Explore {{ (child.imagesCount ?? 0) - (child?.images?.length ?? 0) }} remaining images</p>
           <ArrowRightIcon/>
         </RouterLink>
       </div>
