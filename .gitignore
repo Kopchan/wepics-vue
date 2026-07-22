@@ -1,32 +1,35 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Пакеты-кеш
+node_modules/
+.pnp.*
 
-node_modules
-.DS_Store
-dist
-dist-ssr
-coverage
+# Переменные окружения
 *.local
 .env*
 !.env.example
 
-/cypress/videos/
-/cypress/screenshots/
+# Сборка
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+.DS_Store
 
-# Editor directories and files
+# Сохранение конфигурации пакетного менеджера
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Логи
+*.log
+yarn-error.log*
+
+# Редакторы кода
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-*.tsbuildinfo
+!.vscode/pnpify/
+!.vscode/settings.json
