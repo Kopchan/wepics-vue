@@ -3,7 +3,7 @@ import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore } from '@/stores'
 import { imagesSortTypes, albumsSortTypes } from '@/api'
 import { SelectorRadios2 } from '@/components/ui'
-import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from 'lucide-vue-next'
+import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from '@lucide/vue'
 
 // Параметры в ссылке
 const  {

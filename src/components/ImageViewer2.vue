@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import type { ImageItem } from '@/types'
-import { XIcon } from 'lucide-vue-next'
+import { XIcon } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
 import { urls } from '@/api'

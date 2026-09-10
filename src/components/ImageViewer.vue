@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, toRefs, onMounted, onBeforeUnmount, watch } from 'vue';
-import { XIcon } from 'lucide-vue-next'
+import { XIcon } from '@lucide/vue'
 import { storeToRefs } from 'pinia';
 import { useSettingsStore } from '@/stores';
 import { urls } from '@/api';

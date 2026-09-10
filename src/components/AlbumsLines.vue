@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { 
   FoldersIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, 
   EyeOffIcon, VideoIcon, ImageIcon, Music2Icon, Hourglass
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 import { urls } from '@/api'
 import { 

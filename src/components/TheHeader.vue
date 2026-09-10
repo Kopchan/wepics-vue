@@ -6,13 +6,13 @@ import OverlayPanel from 'primevue/overlaypanel'
 import { useRoute, useRouter } from 'vue-router'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon, Hourglass,
-  ArrowDownAZIcon, ArrowUpAZIcon, Share2Icon, RefreshCcwIcon, ViewIcon, FoldersIcon, SaveIcon, 
+  ArrowDownAZIcon, ArrowUpAZIcon, Share2Icon, RefreshCcwIcon, ViewIcon, FoldersIcon, SaveIcon,
   ArrowDown10Icon, ArrowUp10Icon, ImageIcon, Music2Icon, VideoIcon, FilesIcon
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
-import { fetchWrapper, humanFileSize, reverseCheckInSortType, sleep, humanDuration } from '@/helpers'
-import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
-import { imagesSortTypes, urls } from '@/api'
+import { fetchWrapper, humanFileSize, sleep, humanDuration } from '@/helpers'
+import { useAlbumParamsStore, useAuthStore, useSettingsStore, useSidebarStore } from '@/stores'
+import { urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, AlbumEditPanel,
   SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel

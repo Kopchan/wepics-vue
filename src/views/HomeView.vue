@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import OverlayPanel from 'primevue/overlaypanel'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, FileIcon } from 'lucide-vue-next'
+import { SmilePlusIcon, DownloadIcon, FoldersIcon, FileIcon } from '@lucide/vue'
 
 import { urls } from '@/api'
 import { useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
@@ -14,8 +14,8 @@ import AgeRatingLabel  from '@/components/AgeRatingLabel.vue'
 import ImageViewer2    from '@/components/ImageViewer2.vue'
 import ReactionPanel   from '@/components/panels/ReactionPanel.vue'
 import vIntersectVideo from '@/directives/vIntersectVideo'
-import { 
-  fetchWrapper, sleep, debounceImmediate, humanFileSize, 
+import {
+  fetchWrapper, sleep, debounceImmediate, humanFileSize,
   humanCount,
   humanDate,
   routeNameViewer,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toRefs, ref } from 'vue'
 import { fetchWrapper } from '@/helpers'
-import { BanIcon, CircleMinusIcon, PlusIcon } from 'lucide-vue-next'
+import { BanIcon, CircleMinusIcon, PlusIcon } from '@lucide/vue'
 import { urls } from '@/api';
 
 interface AccessRule {

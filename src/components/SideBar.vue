@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PinIcon, PinOffIcon } from 'lucide-vue-next'
+import { PinIcon, PinOffIcon } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { useSidebarStore } from '@/stores'
 import { PROJECT_NAME } from '@/config'
