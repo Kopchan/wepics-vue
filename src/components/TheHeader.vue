@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { debouncedWatch, useWindowScroll } from '@vueuse/core'
+import { debouncedWatch } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -31,6 +31,9 @@ const {
   tags, nested, limit, randomSeed, isReverse,
 } = storeToRefs(useAlbumParamsStore())
 
+// Режим фокусировки на медиа
+const { zen } = storeToRefs(useSettingsStore())
+
 // Данные об текущем пользователе
 const { user } = storeToRefs(useAuthStore())
 
@@ -56,8 +59,6 @@ const toggleSubAlbumsCard = (e: Event, hash: string | null, selectedHash: string
 
 const isLoading = ref(false)
 const isError = ref(false)
-const { y: yScroll } = useWindowScroll()
-const isScrolledDown = computed(() => yScroll.value !== 0)
 
 
 const router = useRouter()
@@ -109,8 +110,8 @@ const getAlbumData = async (newHash: string | null = null, oldHash: string | nul
   // Основной запрос информации об альбоме
   await fetchWrapper.get<AlbumItem>(
     urls.albumInfo(newHash ?? targetAlbum.value, {
-      sort: sort.value, 
-      sortAlbums: sortAlbums.value, 
+      sort: sort.value,
+      sortAlbums: sortAlbums.value,
       isReverse: trueReverse.value,
       isReverseAlbums: trueReverseAlbums.value,
       disrespect: disrespect.value,
@@ -126,7 +127,7 @@ const getAlbumData = async (newHash: string | null = null, oldHash: string | nul
   }).then(data => {
     // Предотвращение обновление данных если ушли с альбома
     if (targetAlbum.value && (
-      targetAlbum.value?.toLowerCase() != data?.alias?.toLowerCase() && 
+      targetAlbum.value?.toLowerCase() != data?.alias?.toLowerCase() &&
       targetAlbum.value != data?.hash
     )) return
 
@@ -142,8 +143,8 @@ const getAlbumData = async (newHash: string | null = null, oldHash: string | nul
     // Обновление данных с записью названия сортировки
     // TODO: обновлять при изменении сортировки и других параметров в ссылке
     albumData.value = {
-      ...albumData.value, 
-      ...data, 
+      ...albumData.value,
+      ...data,
       contentSortField: sortAlbums.value === 'content' ? sort.value : null
     }
     isError.value = false
@@ -188,9 +189,9 @@ onMounted(() => {
       <div class="left">
         <!--    =  Кнопка меню  =    -->
         <div class="menu-btn-place">
-          <button 
-            class="btn btn--quad menu-btn" 
-            title="Toggle menu" 
+          <button
+            class="btn btn--quad menu-btn"
+            title="Toggle menu"
             @click="isOpened = !isOpened">
             <MenuIcon :size="20"/>
           </button>
@@ -200,41 +201,41 @@ onMounted(() => {
           <span class="section">
             <RouterLink class="btn" :to="{ path: '/', query: $route.query }">Home</RouterLink>
             <button
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Show subfolders"
               @click="toggleSubAlbumsCard($event, 'root', albumData?.ancestors?.[1]?.hash)">
               <ChevronRightIcon :size="20" />
             </button>
           </span>
           <span class="section" v-if="targetAlbum !== 'root' && (
-            albumData?.ancestors?.length && 
+            albumData?.ancestors?.length &&
             albumData?.ancestors?.[0]?.hash != 'root'
           )">
             <a class="btn" disabled>...</a>
             <button
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Show subfolders"
               disabled>
               <ChevronRightIcon :size="20" />
             </button>
           </span>
-          <span 
+          <span
             v-for="(ancestor, index) in albumData?.ancestors?.slice(1)"
             :key="index"
             class="section">
             <template v-if="(index as unknown as string) !== '/'">
-              <RouterLink class="btn" :to="{ 
+              <RouterLink class="btn" :to="{
                 name: 'openAlbum',
-                params: { album: ancestor?.alias ?? ancestor.hash }, 
-                query: $route.query 
+                params: { album: ancestor?.alias ?? ancestor.hash },
+                query: $route.query
               }">
                 {{ ancestor.name }}
               </RouterLink>
-              <button 
-                class="btn btn--circle folder-select-btn" 
+              <button
+                class="btn btn--circle folder-select-btn"
                 title="Show subfolders"
                 @click="toggleSubAlbumsCard(
-                  $event, 
+                  $event,
                   ancestor.hash,
                   albumData?.ancestors?.[index + 2]?.hash ?? albumData?.hash
                 )">
@@ -243,23 +244,23 @@ onMounted(() => {
             </template>
           </span>
           <span
-            v-if="targetAlbum !== 'root'" 
+            v-if="targetAlbum !== 'root'"
             class="section">
-            <RouterLink class="btn" :to="{ 
+            <RouterLink class="btn" :to="{
               name: 'openAlbum',
-              params: { album: albumData?.alias ?? targetAlbum }, 
-              query: $route.query 
+              params: { album: albumData?.alias ?? targetAlbum },
+              query: $route.query
             }">
               {{ albumData?.name ?? '...' }}
             </RouterLink>
             <button v-if="user.isAdmin"
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Edit current album"
               @click="albumRenameCard.toggle">
               <PenIcon :size="20" />
             </button>
             <button v-if="albumData?.children?.length"
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Show subfolders"
               @click="toggleSubAlbumsCard($event, albumData?.hash ?? targetAlbum, null)">
               <ChevronRightIcon :size="20" />
@@ -363,7 +364,7 @@ onMounted(() => {
           title="Open sort and filter panel"
           @click="sortFilterCard.toggle"
         >
-          <component :is="sortType?.icon" :size="20"/> 
+          <component :is="sortType?.icon" :size="20"/>
           {{ sortType?.name ?? sort }}
           <template v-if="sort == 'name'">
             <ArrowUpAZIcon :size="20" v-if="isReverse"/>
@@ -415,23 +416,45 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@property --gradient-top { syntax: '<color>'; inherits: true; initial-value: transparent }
+@property --gradient-bot { syntax: '<color>'; inherits: true; initial-value: transparent }
+:global(body.zen.scrolled header),
+:global(body.zen.viewer header) {
+  backdrop-filter: none;
+  --header-opacity: 0;
+  --gradient-top: transparent;
+  --gradient-bot: transparent;
+}
+:global(body.zen.scrolled header:hover),
+:global(body.scrolled header) {
+  backdrop-filter: blur(var(--div-blur));
+  --gradient-top: var(--c-b0);
+  --gradient-bot: var(--c-b0a);
+}
 header {
-  background: linear-gradient(180deg, var(--c-b0), v-bind("isScrolledDown ? 'var(--c-b0a)' : 'transparent'"));
+  --gradient-top: transparent;
+  --gradient-bot: transparent;
+  --header-opacity: 1;
+  opacity: var(--header-opacity);
+  transition: --gradient-top .2s ease, --gradient-bot .2s ease, opacity .2s ease !important;
+  background: linear-gradient(180deg, var(--gradient-top), var(--gradient-bot)) !important;
   position: fixed;
   width: 100%;
   z-index: 100;
   height: var(--header-height);
-  backdrop-filter: v-bind("isScrolledDown ? 'blur(var(--div-blur))' : 'none'");
   -webkit-app-region: drag;
   overflow-x: auto;
+  &:hover {
+    opacity: 1;
+  }
   .header_inner {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
+    //height: 32px;
     left: env(titlebar-area-x, 0);
     top: env(titlebar-area-y, 0);
-    width: calc(env(titlebar-area-width, 100%) - 16px);
+    width: env(titlebar-area-width, 100%);
     min-width: max-content;
     gap: 8px;
     padding: 8px;
@@ -486,10 +509,10 @@ header {
   .spin > *:first-child {
     animation: spin 4s linear infinite;
   }
-  @keyframes spin { 
+  @keyframes spin {
     100% {
-      transform:rotate(360deg); 
-    } 
+      transform:rotate(360deg);
+    }
   }
   .error > *:first-child {
     color: red;
@@ -533,7 +556,7 @@ header {
   </template>
 </button>
 <select class="droplist sort-droplist" title="Sort type" v-model="sort">
-  <option 
+  <option
     v-for="sortOption, index in imagesSort"
     :key="index"
     :value="sortOption.value"

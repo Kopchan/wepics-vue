@@ -5,7 +5,7 @@ import { BtnRadios } from '@/components/ui'
 import { computed, ref } from 'vue'
 import AgeRatingLabel from '../AgeRatingLabel.vue'
 import SelectorRadios from '../ui/SelectorRadios.vue'
-import { EyeIcon, EyeOffIcon, GripIcon, SlashIcon } from 'lucide-vue-next'
+import { EyeIcon, EyeOffIcon, GripIcon, SlashIcon } from '@lucide/vue'
 import type { SelectorOption } from '@/types'
 
 // Стор с глобальными серверными преднастроками

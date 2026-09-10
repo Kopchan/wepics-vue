@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { TheHeader, SideBar } from '@/components'
-import { useServerSetupsStore, useSettingsStore } from '@/stores'
+import { useAlbumParamsStore, useServerSetupsStore, useSettingsStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch, watchEffect } from 'vue'
 import { SITE_NAME } from './config'
+import { useWindowScroll } from '@vueuse/core'
+import { useRoute } from 'vue-router'
 
 document.title = SITE_NAME
 
-// Установленная пользователем тема
-const { theme, scroll } = storeToRefs(useSettingsStore())
+// Установленная пользователем тема и другие настройки
+const { theme, zen, ambient, scroll } = storeToRefs(useSettingsStore())
+// Статус открытия просмотрщика
+const  { viewerOpened } = storeToRefs(useAlbumParamsStore())
 
 // Функция получения HTML Node'ов по обычной строке
 const getNodesFromString = (html: string) => {
@@ -17,6 +21,7 @@ const getNodesFromString = (html: string) => {
   return template.childNodes
 }
 
+// Предзагрузка надстроек сервера
 useServerSetupsStore().preLoad()
 
 // Функция  установки темы
@@ -48,14 +53,7 @@ const setupTheme = () => {
     })
     return
   }
-} 
-
-watch(
-  () => scroll.value, 
-  () => {
-    document.body.classList[scroll.value ? 'remove' : 'add']('no-scroll')
-  }
-)
+}
 
 onMounted(() => {
   // Убираем авто-тему, если пользователь установил конкретную
@@ -64,14 +62,39 @@ onMounted(() => {
     setupTheme()
 })
 
+// Узнаём прокручена ли страница
+const { y: yScroll } = useWindowScroll()
+const isScrolledDown = computed(() => yScroll.value > 0)
+
 // Устанавливаем новую тему, если пользователь сменил её
-watch(() => theme.value, setupTheme)
+watch(theme, setupTheme)
+
+// Маршрут
+const route = useRoute()
+
+// Если в имени роута есть в конце Image, то меняем скролл и статус просмотрщика
+watch(
+  () => route?.name,
+  () => {
+    viewerOpened.value = typeof route.name === 'string' && route.name.endsWith("Image")
+    scroll.value = !viewerOpened.value
+  },
+  { immediate: true }
+)
+
+// С инициализации переключаем классы по отслеживаемым настройкам
+watchEffect(() => document.body.classList.toggle('no-scroll', !scroll.value))
+watchEffect(() => document.body.classList.toggle('ambient', ambient.value))
+watchEffect(() => document.body.classList.toggle('zen', zen.value))
+watchEffect(() => document.body.classList.toggle('scrolled', isScrolledDown.value))
+watchEffect(() => document.body.classList.toggle('viewer', viewerOpened.value))
+
 </script>
 
 <template>
-  <TheHeader/>
-  <SideBar/>
-  <RouterView/>
+  <TheHeader />
+  <SideBar />
+  <RouterView />
 </template>
 
 <style lang="scss">

@@ -4,14 +4,13 @@ import { fetchWrapper, sleep, type FetchErrorPayload } from '@/helpers'
 import { storeToRefs } from 'pinia'
 import { useServerSetupsStore } from '@/stores'
 import { urls } from '@/api'
-import { SelectorRadios2 } from '@/components/ui'
 import { InputFormItem, SelectFormItem, RadioBtnsFormItem } from '@/components/form'
-import type OverlayPanel from 'primevue/overlaypanel'
 import type { AlbumItem } from '@/types'
+import { OverlayPanel } from 'primevue'
 
 // Параметры компонента
 const props = defineProps<{
-  overlay?: OverlayPanel
+  overlay?: InstanceType<typeof OverlayPanel> | null;
 }>()
 
 // Параметры компонента в переменные

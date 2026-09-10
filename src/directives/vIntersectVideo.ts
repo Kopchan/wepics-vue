@@ -19,7 +19,7 @@ const vIntersectVideo: Directive<VideoElement> = {
     const checkVisibilityAndState = (entry: IntersectionObserverEntry) => {
       state.entry = entry
 
-      if (store.fullImage) {
+      if (store.viewerOpened) {
         el.pause?.()
         return
       }
@@ -39,9 +39,9 @@ const vIntersectVideo: Directive<VideoElement> = {
     observer.observe(el)
     el._observer = observer
 
-    // Watch for fullImage changes
+    // Watch for viewerOpened changes
     el._unwatchFullImage = watch(
-      () => store.fullImage,
+      () => store.viewerOpened,
       (val) => {
         if (val) {
           el.pause?.()

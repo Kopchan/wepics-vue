@@ -3,7 +3,7 @@ import {
   RatioIcon, SaveIcon, SmileIcon, ImagePlayIcon, HourglassIcon, GalleryHorizontalEndIcon,
   FoldersIcon, FileIcon, ImageIcon, VideoIcon, Music2Icon, FolderPlusIcon, SearchCheckIcon,
   ArchiveIcon,
-} from "lucide-vue-next"
+} from "@lucide/vue"
 import type { SortType } from "@/types"
 
 export const imagesSortTypes: SortType[] = [

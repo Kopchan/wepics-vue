@@ -28,10 +28,10 @@ import type { AlbumItem, ImageItem } from '@/types'
 
 // Параметры в адресной строке
 const  {
-  limit, sort, trueReverse, tags, nested, fullImage, ratings, types,
+  limit, sort, trueReverse, tags, nested, ratings, types, viewerOpened,
   targetUser, targetAlbum, albumData, imageData, randomSeed,
 } = storeToRefs(useAlbumParamsStore())
-  
+
 // Функция очистки всех медиа
 const cleanUpWall = () => {
   //console.log('clean')
@@ -52,11 +52,11 @@ watch(
     debounceImmediate(() => {
       //console.log('imgs', route, isLoading.value)
       if (isLoading.value) watch(
-        isLoading, 
-        cleanUpWall, 
+        isLoading,
+        cleanUpWall,
         { once: true }
       )
-      else 
+      else
         cleanUpWall()
     }, 500)()
   },
@@ -64,7 +64,7 @@ watch(
 
 // Косметические параметры и URL на превью
 const {
-  size, gap, extGap, radius, orientation, scroll,
+  size, gap, extGap, radius, orientation,
   ambient, albumsLayout, albumPreviewSize, imagePreviewSize,
 } = storeToRefs(useSettingsStore())
 
@@ -259,15 +259,6 @@ const openViewer = (image: ImageItem) => {
   })
 }
 
-// Отключение скролла при открытом просмоторщике
-watch(
-  () => route?.name,
-  () => {
-    fullImage.value = typeof route.name === 'string' && route.name.endsWith("Image")
-    scroll.value = !fullImage.value
-  },
-  { immediate: true }
-)
 </script>
 
 <template>
@@ -276,14 +267,14 @@ watch(
     <OverlayPanel ref="authCard" class="popup popup--fixed">
       <AuthPanel/>
     </OverlayPanel>
-    
+
     <OverlayPanel ref="reactionCard" class="popup popup--nopad">
       <ReactionPanel :albumHash="albumWhereReact" :image="imageForReact"/>
     </OverlayPanel>
 
     <ImageViewer2
-      v-if="fullImage" 
-      :album="albumData" 
+      v-if="viewerOpened"
+      :album="albumData"
       :image="imageData"
       :sign="imgSign"
     />
@@ -295,28 +286,28 @@ watch(
           <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumCard"/>
         </OverlayPanel>
 
-        <AlbumsLines 
+        <AlbumsLines
           v-if="albumsLayout == 'lines'"
-          :album="albumData" 
+          :album="albumData"
           @edit-album="showAlbumEditCard"
         />
-      
+
 
         <div class="grid" v-else-if="albumsLayout == 'grid'">
           <RouterLink class="square"
-            v-for="(child, index) in albumData?.children" 
+            v-for="(child, index) in albumData?.children"
             :key="index"
-            :to="{ 
+            :to="{
               name: 'openAlbum',
-              params: { album: child?.alias ?? child.hash }, 
-              query: $route.query 
+              params: { album: child?.alias ?? child.hash },
+              query: $route.query
           }">
             <div :class="{previews: true, blur: true}">
               <img
                 v-for="img in child?.images?.slice(0, 4)"
                 :key="img.hash"
                 :class="ratingPreset(child?.ratingId, img?.ratingId)"
-                :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)" 
+                :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)"
                 :alt="img.name"
                 loading="lazy"
                 @error="onErrorImgLoad"
@@ -351,20 +342,20 @@ watch(
           :style="'--ratio:'+ img.ratio">
 
           <i></i>
-          <img 
+          <img
             v-if="img.type === 'image'"
-            :src="img.thumbURL" 
+            :src="img.thumbURL"
             loading="lazy"
-            alt="" 
+            alt=""
             @error="onErrorImgLoad"
             :srcset="getThumbMultiURL(
-              img?.album?.hash ?? albumData?.hash ?? targetAlbum, 
-              img, 
+              img?.album?.hash ?? albumData?.hash ?? targetAlbum,
+              img,
               img?.album?.sign ?? imgSign
           )">
           <video
             v-else
-            :src="img.thumbURLanim" 
+            :src="img.thumbURLanim"
             :poster="img.thumbURL"
             loading="lazy"
             muted
@@ -376,7 +367,7 @@ watch(
             @error="onErrorImgLoad"
           ></video>
 
-          <div class="overlay" 
+          <div class="overlay"
             @click="openViewer(img)">
             <div class="top-group">
               <span class="name">{{ img.name }}</span>
@@ -387,14 +378,14 @@ watch(
                 <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'"  >{{ humanSI(img.bitrate) + 'bps'}}</span>
                 <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration) }}</span>
                 <RouterLink class="badge wide"
-                  v-if="img.album?.name 
-                    && !(img.album?.alias && img.album.alias === targetAlbum) 
+                  v-if="img.album?.name
+                    && !(img.album?.alias && img.album.alias === targetAlbum)
                     && !(img.album?.hash  && img.album.hash  === targetAlbum)"
                   @click.stop
-                  :to="{ 
+                  :to="{
                     name: 'openAlbum',
-                    params: { album: img.album?.alias ?? img.album?.hash }, 
-                    query: $route.query 
+                    params: { album: img.album?.alias ?? img.album?.hash },
+                    query: $route.query
                 }">
                   {{ img.album.name }}
                 </RouterLink>
@@ -403,16 +394,16 @@ watch(
 
             <div class="bottom-group">
               <div class="reactions-place">
-                <button class="btn btn--reaction" 
+                <button class="btn btn--reaction"
                   v-if="user?.token"
                   @click.stop="showReactionCard($event, img)">
                   <SmilePlusIcon :size="20"/>
                 </button>
                 <div class="reactions">
-                  <template 
-                    v-for="(reactionParams, reaction) in img.reactions" 
+                  <template
+                    v-for="(reactionParams, reaction) in img.reactions"
                     :key="reaction">
-                    <div 
+                    <div
                       v-if="reactionParams.count > 0"
                       class="reaction"
                       :class="{setted: reactionParams.isYouSet}"
@@ -446,9 +437,9 @@ watch(
         <p>End</p>
       </div>
       <div class="inf-handler-position" v-if="canLoadMore && !isLoading">
-        <!-- 
+        <!--
           // FIXME: Если пользователь опустится моментально в самый низ и экран по высоте будет меньше
-                    3000px, то подгружаться будет если опустится в самый конец 
+                    3000px, то подгружаться будет если опустится в самый конец
         -->
         <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
         <div style="min-height: 0; height: 3000px;"></div>
@@ -459,10 +450,15 @@ watch(
 </template>
 
 <style lang="scss" scoped>
+
+:global(body.zen.viewer .grid_outer) {
+  opacity: 0;
+  transition: 0.1s, opacity 1s;
+}
 .grid_outer {
   padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap +"px") : 0') v-bind('gap +"px"');
   overflow-x: hidden;
-  transition: 0.1s;
+  transition: 0.1s, opacity .2s;
   position: relative;
   min-height: calc(100vh - var(--header-height) - v-bind('gap +"px"') - 1px);
   overflow: hidden;
@@ -583,7 +579,7 @@ watch(
         }
       }
     }
-  } 
+  }
 }
 
 
@@ -660,7 +656,7 @@ watch(
         flex-wrap: wrap;
         justify-content: space-between;
         filter:
-          drop-shadow(0 0 10px #000) 
+          drop-shadow(0 0 10px #000)
           drop-shadow(0 0 3px #000);
         .name {
           justify-self: flex-start;
@@ -672,7 +668,7 @@ watch(
         .badges {
           display: flex;
           gap: 6px;
-          align-items: flex-start; 
+          align-items: flex-start;
           flex-wrap: wrap;
         }
         .badge {
@@ -719,7 +715,7 @@ watch(
             padding: 0;
             color: #fff;
             filter:
-              drop-shadow(0 0 10px #000) 
+              drop-shadow(0 0 10px #000)
               drop-shadow(0 0 3px #000);
             &:hover,
             &:active {
@@ -767,7 +763,7 @@ watch(
           backdrop-filter: none;
           gap: 6px;
           filter:
-            drop-shadow(0 0 10px #000) 
+            drop-shadow(0 0 10px #000)
             drop-shadow(0 0 3px #000);
           .size {
             color: transparent;
@@ -811,9 +807,9 @@ watch(
       align-items: center;
       //display: flex;
       display: none;
-      pointer-events: none;     
+      pointer-events: none;
       > * {
-        pointer-events: unset;  
+        pointer-events: unset;
       }
     }
     &.blur {

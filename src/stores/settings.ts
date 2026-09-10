@@ -49,6 +49,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const orientation  = createProp('orientation', 'h')
   const theme        = createProp('theme', 'auto')
   const ambient      = createProp('ambient', true)
+  const zen          = createProp('zen', false)
   const albumsLayout = createProp('albumsLayout', 'lines')
   const lineWidth    = createProp('lineWidth', 720)
   const scroll = ref(true)
@@ -57,18 +58,18 @@ export const useSettingsStore = defineStore('settings', () => {
   const { pixelRatio } = useDevicePixelRatio()
 
   const pixelSize = computed(() => size.value * pixelRatio.value)
- 
+
   const imagePreviewSize = computed(() => getAllowedSize(pixelSize.value * 1.2))
   const albumPreviewSize = computed(() => getAllowedSize(pixelSize.value / 2))
 
-  return { 
+  return {
     settings, reset, scroll,
-    orientation, 
-    theme, 
-    size, isStrictSize, isRealSize, lines, 
+    orientation,
+    theme,
+    size, isStrictSize, isRealSize, lines,
     albumPreviewSize, imagePreviewSize, pixelRatio, pixelSize,
-    ambient, 
-    gap, extGap, radius, 
+    ambient, zen,
+    gap, extGap, radius,
     albumsLayout, lineWidth,
   }
 })

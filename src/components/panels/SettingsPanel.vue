@@ -6,7 +6,7 @@ import { BtnRadios } from '@/components/ui'
 // Стор с настроками кастомизации
 const settings = useSettingsStore()
 const {
-  size, isStrictSize, isRealSize, lines, gap, extGap, radius, orientation, theme, ambient, albumsLayout, lineWidth
+  size, isStrictSize, lines, gap, extGap, radius, orientation, theme, ambient, zen, albumsLayout, lineWidth
 } = storeToRefs(settings)
 </script>
 
@@ -24,6 +24,12 @@ const {
     <div class="label-group">
       <label>Ambient</label>
       <label class="switch"><input type="checkbox" v-model.number="ambient"/><div></div></label>
+    </div>
+
+    <!-- Скрытие элементов, фокус на медиа -->
+    <div class="label-group">
+      <label>Zen mode</label>
+      <label class="switch"><input type="checkbox" v-model.number="zen"/><div></div></label>
     </div>
 
     <!-- Выбор размера карточек -->

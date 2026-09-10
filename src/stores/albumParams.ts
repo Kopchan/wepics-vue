@@ -63,7 +63,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
 
   const albumData = ref<AlbumItem>({} as AlbumItem)
   const imageData = ref<ImageItem>({} as ImageItem)
-  const fullImage = ref(false)
+  const viewerOpened = ref(false)
 
   const targetImage = ref<ImageItem | null>(null)
   const targetUser      = createProp<string>('user'     ,  null , true)
@@ -88,18 +88,18 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const trueReverse       = computed(() => sortType.value?.reverse !== isReverse.value)
   const albumSortType     = computed(() => albumsSortTypes.find(s => s.value === sortAlbums.value))
   const trueReverseAlbums = computed(() => albumSortType.value?.reverse !== isReverseAlbums.value)
-  
+
   watch(
     [
-      () => albumData.value?.name, 
-      () => imageData.value?.name, 
+      () => albumData.value?.name,
+      () => imageData.value?.name,
     ],
     () => {
-      document.title = 
+      document.title =
         (imageData.value?.name ? (imageData.value.name + ' • ') : '') +
         (
           (imageData.value?.album?.name ?? albumData.value?.name)
-            ? ((imageData.value?.album?.name ?? albumData.value.name) + ' • ') 
+            ? ((imageData.value?.album?.name ?? albumData.value.name) + ' • ')
             : ''
         ) +
         SITE_NAME
@@ -108,8 +108,8 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
 
   watch(
     [
-      sort, 
-      sortAlbums, 
+      sort,
+      sortAlbums,
     ],
     () => {
       if (sort.value === 'random' || sortAlbums.value === 'random')
@@ -118,9 +118,9 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
         randomSeed.value = null as unknown as number
     },
   )
- 
-  return { 
-    targetAlbum, limit, sort, isReverse, sortType, targetUser, fullImage,
+
+  return {
+    targetAlbum, limit, sort, isReverse, sortType, targetUser, viewerOpened,
     tags, albumData, nested, sortAlbums, isReverseAlbums, disrespect, randomSeed, types, ratings,
     targetImage, imageData, targetImage2, imageTrueAlbum, targetImageType, trueReverse, trueReverseAlbums,
   }
@@ -137,33 +137,33 @@ const createProp = (
   get: () => {
     // Получение параметра из адресной строки
     const prop = route[routeName ? 'params' : 'query'][name]
-    // Если переменная была с предустановкой "это массив", 
-    // то элементы массива считываются через запятую 
-    if (isArray) 
+    // Если переменная была с предустановкой "это массив",
+    // то элементы массива считываются через запятую
+    if (isArray)
       return prop?.split(',')?.map(elem => decodeURIComponent(elem)) ?? []
     // Если null, то это true
     else if (prop === null)
       return true
-   
-    // Если undefined, то возвращается стандартное значение, 
+
+    // Если undefined, то возвращается стандартное значение,
     // иначе полученное из адресной строки
     return prop ?? defaultValue
   },
   set: (value) => {
-    
+
     // Обработка нового параметра
     let newQuery = {...route.query}
-    if  (value === undefined 
-      || value === false 
-      || value.length === 0 
+    if  (value === undefined
+      || value === false
+      || value.length === 0
       || value === defaultValue)
       delete newQuery[name]
-   
+
     else if (value === true)
       newQuery[name] = null
     else if (value instanceof Array)
       newQuery[name] = value.map(elem => encodeURIComponent(elem))?.join(',')
-    
+
     else newQuery[name] = value
     // Замена параметров в адресной строке
     router.replace({ query: newQuery })
@@ -178,7 +178,7 @@ const getAlbumData = () => {
 }
 setTimeout(getAlbumData(), 100)
 watch(
-  () => targetAlbum.value, 
+  () => targetAlbum.value,
   getAlbumData(),
 )*/
 

@@ -1,4 +1,4 @@
-@import './base.scss';
+@use './base.scss';
 
 @font-face {
   font-family: "Roboto Flex";
@@ -81,10 +81,10 @@ body {
     background-color: none;
     cursor: not-allowed;
     color: var(--c-t2a);
-    &--inverse {
-      background-color: var(--c-t2a);
-      color: var(--c-b2);
-    }
+  }
+  &--inverse:disabled {
+    background-color: var(--c-t2a);
+    color: var(--c-b2);
   }
 }
 // Выпадающий список
@@ -160,10 +160,12 @@ body {
 }
 // Модальное окно
 .popup {
-  box-shadow: 0 0 10px #000;
-  background-color: var(--c-b2a);
+  color: none !important;
+  border: none !important;
+  box-shadow: 0 0 10px #000 !important;
+  background: var(--c-b2a) !important;;
   backdrop-filter: blur(var(--div-blur));
-  border-radius: var(--border-r);
+  border-radius: var(--border-r) !important;;
   padding: 16px;
   &--fixed {
     position: fixed !important;
@@ -175,9 +177,12 @@ body {
   &--nopad {
     padding: 0;
   }
-  &.p-overlaypanel-leave-active {
+  &.p-popover unstyled-leave-active {
     display: none !important;
   }
+}
+.p-popover:before, .p-popover:after, .p-hidden-accessible {
+  display: none;
 }
 // Ползунок
 input[type="range"] {
@@ -202,7 +207,7 @@ input[type="range"] {
     margin-top: -5px;
     background-color: var(--c-t0);
     height: 16px;
-    width: 16px;  
+    width: 16px;
     border-radius: 50%;
     &:hover {
       background-color: var(--c-t2);
@@ -222,7 +227,7 @@ input[type="range"] {
     margin-top: -5px;
     background-color: var(--c-t0);
     height: 16px;
-    width: 16px;  
+    width: 16px;
     border-radius: 50%;
     &:hover {
       background-color: var(--c-t2);
