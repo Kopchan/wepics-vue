@@ -17,7 +17,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
     name: string,
     defaultValue: T | null = null,
     routeName = false,
-    isArray = false,
+    isArray = false
   ): WritableComputedRef<T> => {
     const cached = ref<string | string[] | null>(null)  // кеш
 
@@ -57,7 +57,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
         }
 
         router.replace({ query: newQuery })
-      }
+      },
     })
   }
 
@@ -72,14 +72,14 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
   const targetImage2    = createProp<string>('image'    ,  null , true)
   const targetImageType = createProp<string>('type'     ,  null , true)
 
-  const limit           = createProp<number>('limit'  , 30)
-  const sort            = createProp<string>('sort'   , 'date')
-  const isReverse       = createProp<boolean>('r'      , false)
-  const sortAlbums      = createProp<string>('asort'  , 'content')
-  const isReverseAlbums = createProp<boolean>('ar'     , false)
-  const nested          = createProp<boolean>('nested' , false)
-  const disrespect      = createProp<boolean>('disord' , false)
-  const randomSeed      = createProp<number>('seed'   , null)
+  const limit           = createProp<number>  ('limit'  , 30)
+  const sort            = createProp<string>  ('sort'   , 'date')
+  const isReverse       = createProp<boolean> ('r'      , false)
+  const sortAlbums      = createProp<string>  ('asort'  , 'content')
+  const isReverseAlbums = createProp<boolean> ('ar'     , false)
+  const nested          = createProp<boolean> ('nested' , false)
+  const disrespect      = createProp<boolean> ('disord' , false)
+  const randomSeed      = createProp<number>  ('seed'   , null)
   const tags            = createProp<string[]>('tags'   , [], false, true)
   const ratings         = createProp<string[]>('ratings', [], false, true)
   const types           = createProp<string[]>('type'   , [], false, true)
@@ -103,7 +103,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
             : ''
         ) +
         SITE_NAME
-    },
+    }
   )
 
   watch(
@@ -116,7 +116,7 @@ export const useAlbumParamsStore = defineStore('albumParams', () => {
         randomSeed.value ??= Math.floor(100000 + Math.random() * 900000)
       else
         randomSeed.value = null as unknown as number
-    },
+    }
   )
 
   return {

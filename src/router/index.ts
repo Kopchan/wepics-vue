@@ -7,64 +7,64 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/', // Главная
     name: 'home',
-    component: HomeView
+    component: HomeView,
   },
   {
     path: '/album/:albumHash?', // Поддержка старого маршрута
     name: 'albumLegacy',
-    redirect: to => ({ 
-      name: 'openAlbum', 
+    redirect: to => ({
+      name: 'openAlbum',
       params: { album: to.params.albumHash },
       query: to.query,
-    })
+    }),
   },
   {
-    path: '/root', // Корневой серверный альбом отображается на главной 
+    path: '/root', // Корневой серверный альбом отображается на главной
     name: 'toHome',
-    redirect: to => ({ 
-      name: 'home', 
+    redirect: to => ({
+      name: 'home',
       query: to.query,
-    })
+    }),
   },
   {
-    path: '/@:user', // Корневой альбом пользователя 
+    path: '/@:user', // Корневой альбом пользователя
     name: 'userRoot',
-    component: HomeView
+    component: HomeView,
   },
   {
     path: '/@:user/:album?',
     name: 'userAlbum',
-    component: HomeView
+    component: HomeView,
   },
   {
-    path: '/@:user/:album/:type/:image',
+    path: '/@:user/:album/:type(v|i|a)/:image',
     name: 'userAlbumImage',
-    component: HomeView
+    component: HomeView,
   },
   {
-    path: '/@:user/:album/:trueAlbum/:type/:image',
+    path: '/@:user/:album/:trueAlbum/:type(v|i|a)/:image',
     name: 'userAlbumNestedImage',
-    component: HomeView
+    component: HomeView,
   },
   {
     path: '/:album',
     name: 'openAlbum',
-    component: HomeView
+    component: HomeView,
   },
   {
-    path: '/:album/:type/:image', // Просмотр медиа 
+    path: '/:album/:type(v|i|a)/:image', // Просмотр медиа
     name: 'openAlbumImage',
-    component: HomeView
+    component: HomeView,
   },
   {
-    path: '/:album/:trueAlbum/:type/:image', // Просмотр медиа во вложенном альбоме
+    path: '/:album/:trueAlbum/:type(v|i|a)/:image', // Просмотр медиа во вложенном альбоме
     name: 'openAlbumNestedImage',
-    component: HomeView
+    component: HomeView,
   },
   {
     path: '/:catchAll(.*)', // Неизвестный путь
     name: 'notFound',
-    component: PageNotExist
+    component: PageNotExist,
   },
 ]
 

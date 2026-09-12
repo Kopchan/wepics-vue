@@ -7,22 +7,19 @@ import OverlayPanel from 'primevue/overlaypanel'
 import { SmilePlusIcon, DownloadIcon, FoldersIcon, FileIcon } from '@lucide/vue'
 
 import { urls } from '@/api'
-import { useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
+import {
+  useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore,
+} from '@/stores'
 import { AuthPanel, AlbumEditPanel } from '@/components/panels'
 import AlbumsLines     from '@/components/AlbumsLines.vue'
 import AgeRatingLabel  from '@/components/AgeRatingLabel.vue'
-import ImageViewer2    from '@/components/ImageViewer2.vue'
+import MediaViewer     from '@/components/MediaViewer.vue'
 import ReactionPanel   from '@/components/panels/ReactionPanel.vue'
 import vIntersectVideo from '@/directives/vIntersectVideo'
 import {
-  fetchWrapper, sleep, debounceImmediate, humanFileSize,
-  humanCount,
-  humanDate,
-  routeNameViewer,
-  routeViewerType,
-  humanSI,
-  humanDuration,
-  toggleReaction
+  fetchWrapper, sleep, debounceImmediate,
+  humanFileSize, humanCount, humanDate, humanSI, humanDuration,
+  routeNameViewer, routeViewerType, toggleReaction,
 } from '@/helpers'
 import type { AlbumItem, ImageItem } from '@/types'
 
@@ -59,7 +56,7 @@ watch(
       else
         cleanUpWall()
     }, 500)()
-  },
+  }
 )
 
 // Косметические параметры и URL на превью
@@ -111,7 +108,6 @@ const loadMore = async () => {
       element.thumbURLanim = (element.bitrate ?? 0) > 8_000_000 || element?.type != 'video'
         ? urls.imageThumb(element?.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,  element.hash,  element?.album?.sign ?? imgSign.value, orientation.value, imagePreviewSize.value, true)
         : element.thumbURLorig
-
     })
 
     // FIXME: Сжирает производительность как чудовище, но нужно для @yeger/vue-masonry-wall
@@ -151,6 +147,26 @@ const loadMore = async () => {
 const maxImgRetries = 4
 const imgRetryCounts = ref<Record<string, number>>({})
 const onErrorImgLoad = async (event: Event) => {
+  const target = event.target as HTMLImageElement | HTMLVideoElement | null
+
+  if (!target) {
+    console.error('onErrorImgLoad???', event)
+    return
+  }
+
+  const src = target.src
+  imgRetryCounts.value[src] ||= 0
+
+  console.warn(`onErrorImgLoad (${imgRetryCounts.value[src]})`, src, target)
+
+  if (imgRetryCounts.value[src] <= maxImgRetries) {
+    await sleep(1000)
+    imgRetryCounts.value[src]++
+    target.src = src + ''
+  }
+}
+/*
+const onErrorImgLoad = async (event: Event) => {
   // FIXME: не всегда срабатывает (второй раз?)
   const anyEvent = event as any
   const src = anyEvent.target.attributes.src.value
@@ -162,6 +178,8 @@ const onErrorImgLoad = async (event: Event) => {
     anyEvent.src = anyEvent.src + ''
   }
 }
+*/
+
 
 const downloadOriginal = (img: ImageItem) =>
   window.location.href = urls.imageDownload(
@@ -262,17 +280,16 @@ const openViewer = (image: ImageItem) => {
 </script>
 
 <template>
-
   <main>
     <OverlayPanel ref="authCard" class="popup popup--fixed">
       <AuthPanel/>
     </OverlayPanel>
 
     <OverlayPanel ref="reactionCard" class="popup popup--nopad">
-      <ReactionPanel :albumHash="albumWhereReact" :image="imageForReact"/>
+      <ReactionPanel :album-hash="albumWhereReact" :image="imageForReact"/>
     </OverlayPanel>
 
-    <ImageViewer2
+    <MediaViewer
       v-if="viewerOpened"
       :album="albumData"
       :image="imageData"
@@ -281,7 +298,6 @@ const openViewer = (image: ImageItem) => {
 
     <div class="grid_outer">
       <section class="albums" v-if="albumData?.children?.length">
-
         <OverlayPanel ref="editAlbumCard" class="popup">
           <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumCard"/>
         </OverlayPanel>
@@ -294,14 +310,15 @@ const openViewer = (image: ImageItem) => {
 
 
         <div class="grid" v-else-if="albumsLayout == 'grid'">
-          <RouterLink class="square"
+          <RouterLink
+            class="square"
             v-for="(child, index) in albumData?.children"
             :key="index"
             :to="{
               name: 'openAlbum',
               params: { album: child?.alias ?? child.hash },
               query: $route.query
-          }">
+            }">
             <div :class="{previews: true, blur: true}">
               <img
                 v-for="img in child?.images?.slice(0, 4)"
@@ -311,7 +328,7 @@ const openViewer = (image: ImageItem) => {
                 :alt="img.name"
                 loading="lazy"
                 @error="onErrorImgLoad"
-              >
+              />
             </div>
             <div class="overlay">
               <div class="center">
@@ -332,7 +349,6 @@ const openViewer = (image: ImageItem) => {
             </div>
           </RouterLink>
         </div>
-
       </section>
       <section class="wall" :style="'--size:'+ size">
         <div class="img"
@@ -340,8 +356,7 @@ const openViewer = (image: ImageItem) => {
           :class="ratingPreset(img?.album?.ratingId ?? albumData?.ratingId, img?.ratingId)"
           :key="img.hash"
           :style="'--ratio:'+ img.ratio">
-
-          <i></i>
+          <i/>
           <img
             v-if="img.type === 'image'"
             :src="img.thumbURL"
@@ -352,7 +367,8 @@ const openViewer = (image: ImageItem) => {
               img?.album?.hash ?? albumData?.hash ?? targetAlbum,
               img,
               img?.album?.sign ?? imgSign
-          )">
+            )"
+          />
           <video
             v-else
             :src="img.thumbURLanim"
@@ -365,7 +381,7 @@ const openViewer = (image: ImageItem) => {
             v-intersect-video
             :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
             @error="onErrorImgLoad"
-          ></video>
+          />
 
           <div class="overlay"
             @click="openViewer(img)">
@@ -375,8 +391,8 @@ const openViewer = (image: ImageItem) => {
                 <span class="badge up">{{ img.ext }}</span>
                 <span class="badge" :title="img.date">{{ humanDate(img.date!) }}</span>
                 <span class="badge">{{ img.width }}×{{ img.height }}</span>
-                <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'"  >{{ humanSI(img.bitrate) + 'bps'}}</span>
-                <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration) }}</span>
+                <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'">{{ humanSI(img.bitrate) + 'bps' }}</span>
+                <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration)  }}</span>
                 <RouterLink class="badge wide"
                   v-if="img.album?.name
                     && !(img.album?.alias && img.album.alias === targetAlbum)
@@ -386,7 +402,7 @@ const openViewer = (image: ImageItem) => {
                     name: 'openAlbum',
                     params: { album: img.album?.alias ?? img.album?.hash },
                     query: $route.query
-                }">
+                  }">
                   {{ img.album.name }}
                 </RouterLink>
               </div>
@@ -422,7 +438,7 @@ const openViewer = (image: ImageItem) => {
           </div>
 
           <AgeRatingLabel class="rating"
-            :ratingId="img?.ratingId ?? img?.album?.ratingId"
+            :rating-id="img?.ratingId ?? img?.album?.ratingId"
             v-if="img?.ratingId ?? img?.album?.ratingId ?? albumData?.ratingId"
           />
         </div>
@@ -441,9 +457,9 @@ const openViewer = (image: ImageItem) => {
           // FIXME: Если пользователь опустится моментально в самый низ и экран по высоте будет меньше
                     3000px, то подгружаться будет если опустится в самый конец
         -->
-        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
-        <div style="min-height: 0; height: 3000px;"></div>
-        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"></div>
+        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"/>
+        <div style="min-height: 0; height: 3000px;"/>
+        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"/>
       </div>
     </div>
   </main>

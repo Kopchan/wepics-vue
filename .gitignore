@@ -33,3 +33,6 @@ yarn-error.log*
 !.vscode/extensions.json
 !.vscode/pnpify/
 !.vscode/settings.json
+
+# Ключи
+*.pem

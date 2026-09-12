@@ -20,17 +20,17 @@ import { useRouter, useRoute } from 'vue-router'
 
 // Параметры в ссылке
 const {
-  targetUser: userName, 
-  targetAlbum: albumHash, 
+  targetUser: userName,
+  targetAlbum: albumHash,
   targetImage2: imageHash,
   imageTrueAlbum: trueAlbumHash,
-  albumData: album, 
+  albumData: album,
   imageData: image,
   targetImageType: type,
 } = storeToRefs(useAlbumParamsStore())
 
 const {
-  radius, gap
+  radius, gap,
 } = storeToRefs(useSettingsStore())
 
 const isScope = ref(0)
@@ -48,13 +48,13 @@ const close = () => {
   image.value = null as unknown as ImageItem
 
   router.push({
-    name: userName.value 
-      ? 'userAlbum' 
-      : albumHash.value === 'root' 
-        ? 'home' 
+    name: userName.value
+      ? 'userAlbum'
+      : albumHash.value === 'root'
+        ? 'home'
         : 'openAlbum',
     query: route.query,
-    params: { 
+    params: {
       album: albumHash.value,
       user: userName.value,
     },
@@ -64,27 +64,32 @@ const close = () => {
 const videoPlayer = ref()
 
 const onVideoLoaded = () => {
-  if (videoPlayer.value 
-    && image.value?.watchedTo 
+  if (videoPlayer.value
+    && image.value?.watchedTo
     && image.value.watchedTo > 10
   ) videoPlayer.value.currentTime = image.value.watchedTo
 }
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
-  if (event.key === 'Escape') 
+  if (event.key === 'Escape')
     close()
 })
+
+const currentAlbumHash = ref(image.value?.album?.hash ?? trueAlbumHash.value ?? albumHash.value)
+const currentMediaHash = ref(image.value?.hash ?? imageHash.value)
+const currentSign      = ref(image.value?.album?.sign ?? album.value?.sign ?? null)
 
 </script>
 
 <template>
-  <div class="place" 
+  <div
+    class="place"
     @click="close()"
     :class="{'scoped': isScope, 'fill': isFill}">
     <video
       class="content"
       v-if="type === 'v'"
-      controls 
+      controls
       loop
       autoplay
       ref="videoPlayer"
@@ -92,32 +97,20 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
       @loadedmetadata="onVideoLoaded"
       :alt="image?.name ?? 'fullscreen video'"
       :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
-      :src="urls.imageOrig(
-        image?.album?.hash ?? trueAlbumHash ?? albumHash,
-        image?.hash        ?? imageHash,
-        image?.album?.sign ?? album?.sign ?? null
-      )"
-      :poster="urls.imageThumb(
-        image?.album?.hash ?? trueAlbumHash ?? albumHash,
-        image?.hash        ?? imageHash,
-        image?.album?.sign ?? album?.sign ?? null,
-        'h',
-        1080
-    )"></video>
+      :src="urls.imageOrig(currentAlbumHash, currentMediaHash, currentSign)"
+      :poster="urls.imageThumb(currentAlbumHash, currentMediaHash, currentSign, 'h', 1080)"
+    />
     <img
       class="content"
       v-else
       @click.stop="isScope ^= 1"
       :alt="image?.name ?? 'fullscreen image'"
       :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
-      :src="urls.imageOrig(
-        image?.album?.hash ?? trueAlbumHash ?? albumHash,
-        image?.hash        ?? imageHash,
-        image?.album?.sign ?? album?.sign ?? null
-    )">
-      <button class="btn close" @click="close()">
-        <XIcon :size="32"/>
-      </button>
+      :src="urls.imageOrig(currentAlbumHash, currentMediaHash, currentSign)"
+    />
+    <button class="btn close" @click="close()">
+      <XIcon :size="32"/>
+    </button>
   </div>
 </template>
 

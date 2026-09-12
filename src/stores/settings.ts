@@ -3,7 +3,6 @@ import { defineStore } from 'pinia'
 import { storageWrapper } from '@/helpers'
 import { useDevicePixelRatio } from '@vueuse/core'
 import { useServerSetupsStore } from './serverSetups'
-import { urls } from '@/api'
 
 interface SettingsData {
   size?: number
@@ -32,10 +31,10 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
   // Создание параметра в localStorage со значением по умолчанию
-  const createProp = <T,>(name: keyof SettingsData, defaultValue: T) => {
+  const createProp = <T>(name: keyof SettingsData, defaultValue: T) => {
     return computed<T>({
       get: ()      => (settings[name] as T) ?? defaultValue,
-      set: (value) => { settings[name] = value }
+      set: (value) => { settings[name] = value },
     })
   }
 
@@ -54,7 +53,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const lineWidth    = createProp('lineWidth', 720)
   const scroll = ref(true)
 
-  const { getAllowedSize, allowedPreviewSizes } = useServerSetupsStore()
+  const { getAllowedSize } = useServerSetupsStore()
   const { pixelRatio } = useDevicePixelRatio()
 
   const pixelSize = computed(() => size.value * pixelRatio.value)

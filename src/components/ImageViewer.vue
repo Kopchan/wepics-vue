@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, toRefs, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, toRefs, onMounted, onBeforeUnmount, watch } from 'vue'
 import { XIcon } from '@lucide/vue'
-import { storeToRefs } from 'pinia';
-import { useSettingsStore } from '@/stores';
-import { urls } from '@/api';
-import type { ImageItem } from '@/types';
+import { storeToRefs } from 'pinia'
+import { useSettingsStore } from '@/stores'
+import { urls } from '@/api'
+import type { ImageItem } from '@/types'
 
 // Параметры компонента
 const props = defineProps<{
@@ -17,7 +17,7 @@ const props = defineProps<{
 const { album, image, sign } = toRefs(props)
 
 const {
-  radius, gap
+  radius, gap,
 } = storeToRefs(useSettingsStore())
 
 const isScope = ref(0)
@@ -30,32 +30,33 @@ const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     emit('targetImage', null)
   }
-};
+}
 
 // Закрываем просмотр если альбом сменился
 watch(() => album.value, () => emit('targetImage', null))
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 
 <template>
-  <div class="place" 
+  <div class="place"
     @click="$emit('targetImage', null)"
     :class="{'scoped': isScope, 'fill': isFill}">
     <img
       @click.stop="isScope ^= 1"
       alt="name"
       :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
-      :src="urls.imageOrig(image!.album?.hash ?? album!, image!.hash, image?.album?.sign ?? sign)">
-      <button class="btn close" @click="$emit('targetImage', null)">
-        <XIcon :size="32"/>
-      </button>
+      :src="urls.imageOrig(image!.album?.hash ?? album!, image!.hash, image?.album?.sign ?? sign)"
+    />
+    <button class="btn close" @click="$emit('targetImage', null)">
+      <XIcon :size="32"/>
+    </button>
   </div>
 </template>
 

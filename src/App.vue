@@ -92,9 +92,9 @@ watchEffect(() => document.body.classList.toggle('viewer', viewerOpened.value))
 </script>
 
 <template>
-  <TheHeader />
-  <SideBar />
-  <RouterView />
+  <TheHeader/>
+  <SideBar/>
+  <RouterView/>
 </template>
 
 <style lang="scss">
