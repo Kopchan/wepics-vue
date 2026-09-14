@@ -3,11 +3,10 @@ import { TheHeader, SideBar } from '@/components'
 import { useAlbumParamsStore, useServerSetupsStore, useSettingsStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, watch, watchEffect } from 'vue'
-import { SITE_NAME } from './config'
 import { useWindowScroll } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 
-document.title = SITE_NAME
+//document.title = SITE_NAME
 
 // Установленная пользователем тема и другие настройки
 const { theme, zen, ambient, scroll } = storeToRefs(useSettingsStore())
@@ -69,7 +68,7 @@ const isScrolledDown = computed(() => yScroll.value > 0)
 // Устанавливаем новую тему, если пользователь сменил её
 watch(theme, setupTheme)
 
-// Маршрут
+// Текущий маршрут
 const route = useRoute()
 
 // Если в имени роута есть в конце Image, то меняем скролл и статус просмотрщика
@@ -98,7 +97,7 @@ watchEffect(() => document.body.classList.toggle('viewer', viewerOpened.value))
 </template>
 
 <style lang="scss">
-.no-scroll {
+body.no-scroll {
   overflow: hidden;
 }
 </style>

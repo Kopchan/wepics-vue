@@ -1,13 +1,16 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig, type PluginOption, type ServerOptions } from 'vite'
+import { defineConfig, loadEnv, type PluginOption, type ServerOptions } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import fs from 'node:fs'
 import path from 'node:path'
 import basicSsl from '@vitejs/plugin-basic-ssl'
+import { getPwaConfig } from './vite.pwa.config'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
   const keyPath  = path.resolve(__dirname, './localhost-key.pem')
   const certPath = path.resolve(__dirname, './localhost.pem')
 
@@ -15,6 +18,7 @@ export default defineConfig(({ command }) => {
 
   const plugins: PluginOption[] = [
     vue(),
+    getPwaConfig(env),
   ]
 
   const serverConfig: ServerOptions = {

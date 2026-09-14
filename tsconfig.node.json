@@ -1,5 +1,5 @@
 {
-  "include": ["vite.config.ts"],
+  "include": ["vite.config.ts", "vite.pwa.config.ts"],
   "compilerOptions": {
     "composite": true,
     "noEmit": true,
