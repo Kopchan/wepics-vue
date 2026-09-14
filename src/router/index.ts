@@ -4,68 +4,41 @@ import { BASE_URL } from '@/config'
 import PageNotExist from '@/views/PageNotExist.vue'
 
 const routes: RouteRecordRaw[] = [
+  // Основная группа с HomeView
   {
-    path: '/', // Главная
-    name: 'home',
+    path: '',
     component: HomeView,
+    children: [
+      { path: '/', name: 'home' },
+      {
+        path: '/@:user',  // Группа пользователя
+        children: [
+          { path: '',                                      name: 'userRoot' },
+          { path: ':album',                                name: 'userAlbum' },
+          { path: ':album/:type(v|i|a)/:image',            name: 'userAlbumImage' },
+          { path: ':album/:trueAlbum/:type(v|i|a)/:image', name: 'userAlbumNestedImage' }
+        ]
+      }, {
+        path: '/:album', // Группа общих альбомов
+        children: [
+          { path: '',                               name: 'openAlbum' },
+          { path: ':type(v|i|a)/:image',            name: 'openAlbumImage' },
+          { path: ':trueAlbum/:type(v|i|a)/:image', name: 'openAlbumNestedImage' }
+        ]
+      }
+    ]
   },
+
+  // Редиректы
   {
-    path: '/album/:albumHash?', // Поддержка старого маршрута
+    path: '/album/:albumHash?',
     name: 'albumLegacy',
-    redirect: to => ({
-      name: 'openAlbum',
-      params: { album: to.params.albumHash },
-      query: to.query,
-    }),
+    redirect: to => ({ name: 'openAlbum', params: { album: to.params.albumHash }, query: to.query })
   },
-  {
-    path: '/root', // Корневой серверный альбом отображается на главной
-    name: 'toHome',
-    redirect: to => ({
-      name: 'home',
-      query: to.query,
-    }),
-  },
-  {
-    path: '/@:user', // Корневой альбом пользователя
-    name: 'userRoot',
-    component: HomeView,
-  },
-  {
-    path: '/@:user/:album?',
-    name: 'userAlbum',
-    component: HomeView,
-  },
-  {
-    path: '/@:user/:album/:type(v|i|a)/:image',
-    name: 'userAlbumImage',
-    component: HomeView,
-  },
-  {
-    path: '/@:user/:album/:trueAlbum/:type(v|i|a)/:image',
-    name: 'userAlbumNestedImage',
-    component: HomeView,
-  },
-  {
-    path: '/:album',
-    name: 'openAlbum',
-    component: HomeView,
-  },
-  {
-    path: '/:album/:type(v|i|a)/:image', // Просмотр медиа
-    name: 'openAlbumImage',
-    component: HomeView,
-  },
-  {
-    path: '/:album/:trueAlbum/:type(v|i|a)/:image', // Просмотр медиа во вложенном альбоме
-    name: 'openAlbumNestedImage',
-    component: HomeView,
-  },
-  {
-    path: '/:catchAll(.*)', // Неизвестный путь
-    name: 'notFound',
-    component: PageNotExist,
-  },
+  { path: '/root', name: 'toHome', redirect: to => ({ name: 'home', query: to.query }) },
+
+  // 404 Страница
+  { path: '/:catchAll(.*)', name: 'notFound', component: PageNotExist }
 ]
 
 export const router = createRouter({
