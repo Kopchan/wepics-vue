@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import type { ImageItem } from '@/types'
 import { XIcon } from '@lucide/vue'
@@ -7,16 +7,6 @@ import { storeToRefs } from 'pinia'
 import { useAlbumParamsStore, useSettingsStore } from '@/stores'
 import { urls } from '@/api'
 import { useRouter, useRoute } from 'vue-router'
-
-// Параметры компонента
-//const props = defineProps({
-//  album: Object,
-//  image: Object,
-//  sign: String,
-//})
-
-// Параметры компонента в переменные
-//const { album, image, sign } = toRefs(props)
 
 // Параметры в ссылке
 const {
@@ -30,18 +20,29 @@ const {
 } = storeToRefs(useAlbumParamsStore())
 
 const {
-  radius, gap,
+  radius, gap, openPreviewTo,
 } = storeToRefs(useSettingsStore())
 
 const isScope = ref(0)
 const isFill = ref(false)
+const fullscreenMedia = window.matchMedia('(display-mode: fullscreen)').matches
+const wasFullscreenBeforeMount = !!document.fullscreenElement || fullscreenMedia
+const isBrowserFullscreen = ref(wasFullscreenBeforeMount)
 
 const pxRatio = ref(window.devicePixelRatio || 1)
 
 const router = useRouter()
 const route = useRoute()
 
-const close = () => {
+const close = async () => {
+  if (document.fullscreenElement && !wasFullscreenBeforeMount) {
+    try {
+      await document.exitFullscreen()
+    } catch (e) {
+      console.warn('Exit fullscreen error:', e)
+    }
+  }
+
   if (image.value)
     image.value.watchedTo = videoPlayer.value?.currentTime
 
@@ -71,39 +72,85 @@ const onVideoLoaded = () => {
 }
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
-  if (event.key === 'Escape')
+  if (event.key === 'Escape' && !document.fullscreenElement)
     close()
 })
+
+// Полноэкранный режим браузера
+const place = ref<HTMLElement>()
+
+const toggleBrowserFullscreen = async () => {
+  try {
+    if (!document.fullscreenElement) {
+      console.log(place.value)
+      await place.value?.requestFullscreen()
+    }
+    else
+      await document.exitFullscreen()
+  } catch (e) {
+    console.warn('Fullscreen error:', e)
+  }
+}
+
+// Следим за состоянием fullscreen
+useEventListener(document, 'fullscreenchange', () => {
+  isBrowserFullscreen.value = !!document.fullscreenElement
+})
+
+// Обработка дабл-тапа для тач-устройств
+let tapTimer: ReturnType<typeof setTimeout> | null = null
+const DOUBLE_TAP_DELAY = 300
+
+const handleContentTap = (event: Event) => {
+  event.stopPropagation()
+
+  if (tapTimer) {
+    // Второй тап — отменяем одиночное действие и уходим в fullscreen
+    clearTimeout(tapTimer)
+    tapTimer = null
+    toggleBrowserFullscreen()
+  } else {
+    // Первый тап — откладываем одиночное действие
+    tapTimer = setTimeout(() => {
+      tapTimer = null
+      if (type.value === 'i') isScope.value ^= 1
+    }, DOUBLE_TAP_DELAY)
+  }
+}
 
 const currentAlbumHash = ref(image.value?.album?.hash ?? trueAlbumHash.value ?? albumHash.value)
 const currentMediaHash = ref(image.value?.hash ?? imageHash.value)
 const currentSign      = ref(image.value?.album?.sign ?? album.value?.sign ?? null)
+
+onMounted(() => {
+  if (openPreviewTo.value === 'screen' && !isBrowserFullscreen.value) {
+    console.log('open fullsceen because settings')
+    toggleBrowserFullscreen()
+  }
+})
 
 </script>
 
 <template>
   <div
     class="place"
+    ref="place"
     @click="close()"
-    :class="{'scoped': isScope, 'fill': isFill}">
-    <video
-      class="content"
-      v-if="type === 'v'"
+    :class="{'scoped': isScope, 'fill': isFill, 'fullscreen': isBrowserFullscreen}">
+    <video class="content" v-if="type === 'v'"
       controls
       loop
       autoplay
       ref="videoPlayer"
-      @click.stop
+      @click.stop="handleContentTap"
       @loadedmetadata="onVideoLoaded"
       :alt="image?.name ?? 'fullscreen video'"
       :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
       :src="urls.imageOrig(currentAlbumHash, currentMediaHash, currentSign)"
       :poster="urls.imageThumb(currentAlbumHash, currentMediaHash, currentSign, 'h', 1080)"
     />
-    <img
-      class="content"
-      v-else
-      @click.stop="isScope ^= 1"
+    <img class="content" v-else
+      @click.stop="handleContentTap"
       :alt="image?.name ?? 'fullscreen image'"
       :height="isScope ? (image?.height ?? 0) / pxRatio : 'none'"
       :src="urls.imageOrig(currentAlbumHash, currentMediaHash, currentSign)"
@@ -132,8 +179,12 @@ const currentSign      = ref(image.value?.album?.sign ?? album.value?.sign ?? nu
     margin: auto;
     object-fit: contain;
     filter: drop-shadow(0 0 4px black);
+    // предотвращаем выделение/зум по дабл-тапу на мобилках
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
   }
-  &:not(.scoped):not(.fill) {
+  &:not(.scoped):not(.fill):not(.fullscreen) {
     background-color: var(--c-b0aa);
     .content {
       border-radius: v-bind("radius + 'px'");
@@ -145,6 +196,15 @@ const currentSign      = ref(image.value?.album?.sign ?? album.value?.sign ?? nu
     .content {
       width: 100%;
       object-fit: cover;
+    }
+  }
+  &:not(.scoped):not(.fill).fullscreen {
+    background: #000;
+    .content {
+      border-radius: 0;
+      max-width: 100%;
+      max-height: 100%;
+      filter: none;
     }
   }
   &.scoped .btn {

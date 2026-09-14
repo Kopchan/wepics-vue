@@ -6,7 +6,7 @@ import { BtnRadios } from '@/components/ui'
 // Стор с настроками кастомизации
 const settings = useSettingsStore()
 const {
-  size, isStrictSize, lines, gap, extGap, radius, orientation, theme, ambient, zen, albumsLayout, lineWidth
+  size, isStrictSize, lines, gap, extGap, radius, orientation, theme, ambient, zen, albumsLayout, lineWidth, openPreviewTo,
 } = storeToRefs(settings)
 </script>
 
@@ -73,6 +73,12 @@ const {
       </div>
       <input type="range" min="0" max="3840" v-model.number="lineWidth"/>
     </template>
+
+    <!-- Открытие в полноэкранном прямо из превью -->
+    <div class="label-group">
+      <label>Open preview</label>
+    </div>
+    <BtnRadios name="theme" :options="{fit: 'Fit', screen: 'Screen', window: 'Window'}" v-model="openPreviewTo"/>
 
     <button class="btn" @click="settings.reset">Reset</button>
   </div>
