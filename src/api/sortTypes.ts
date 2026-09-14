@@ -1,6 +1,6 @@
 import {
   ArrowDownUpIcon, BookAIcon, CalendarIcon, DicesIcon, RulerDimensionLineIcon, ProportionsIcon,
-  RatioIcon, SaveIcon, SmileIcon, ImagePlayIcon, HourglassIcon, GalleryHorizontalEndIcon,
+  RatioIcon, SaveIcon, SmileIcon, HourglassIcon, GalleryHorizontalEndIcon,
   FoldersIcon, FileIcon, ImageIcon, VideoIcon, Music2Icon, FolderPlusIcon, SearchCheckIcon,
   ArchiveIcon,
 } from "@lucide/vue"

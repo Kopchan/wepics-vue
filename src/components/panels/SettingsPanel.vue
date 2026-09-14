@@ -29,35 +29,35 @@ const {
     <!-- Скрытие элементов, фокус на медиа -->
     <div class="label-group">
       <label>Zen mode</label>
-      <label class="switch"><input type="checkbox" v-model.number="zen"/><div></div></label>
+      <label class="switch"><input type="checkbox" v-model.number="zen"/><div/></label>
     </div>
 
     <!-- Выбор размера карточек -->
     <div class="label-group">
       <label>{{ orientation == 'w' ? 'Width' : 'Height' }}</label>
-      <input type="number" min="144" max="1080" v-model.number="size" class="text-box small" :disabled="!!lines && !isStrictSize">
+      <input type="number" min="144" max="1080" v-model.number="size" class="text-box small" :disabled="!!lines && !isStrictSize"/>
     </div>
-    <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="!!lines && !isStrictSize">
+    <input type="range" step="2" min="144" max="1080" v-model.number="size" :disabled="!!lines && !isStrictSize"/>
 
     <!-- Выбор размера отступов -->
     <div class="label-group">
       <label>Gap</label>
-      <input type="number" min="0" max="32" v-model.number="gap" class="text-box small">
+      <input type="number" min="0" max="32" v-model.number="gap" class="text-box small"/>
     </div>
-    <input type="range" min="0" max="32" v-model.number="gap">
+    <input type="range" min="0" max="32" v-model.number="gap"/>
 
     <!-- Переключение отступов по краям окна -->
     <div class="label-group">
       <label>External gap</label>
-      <label class="switch"><input type="checkbox" v-model.number="extGap"/><div></div></label>
+      <label class="switch"><input type="checkbox" v-model.number="extGap"/><div/></label>
     </div>
 
     <!-- Выбор размера закругления -->
     <div class="label-group">
       <label>Radius</label>
-      <input type="number" min="0" max="32" v-model.number="radius" class="text-box small">
+      <input type="number" min="0" max="32" v-model.number="radius" class="text-box small"/>
     </div>
-    <input type="range" min="0" max="32" v-model.number="radius">
+    <input type="range" min="0" max="32" v-model.number="radius"/>
 
     <!-- Выбор разметки подальбомов -->
     <div class="label-group">
@@ -66,12 +66,12 @@ const {
     <BtnRadios name="subalbums" :options="{hide: 'Hide', grid: 'Grid', lines: 'Lines'}" v-model="albumsLayout"/>
 
     <!-- Выбор ширины столбцов линий -->
-    <template v-if="albumsLayout == 'lines'">
+    <template v-if="albumsLayout === 'lines'">
       <div class="label-group">
         <label>Line width</label>
-        <input type="number" min="0" max="3840" v-model.number="lineWidth" class="text-box small">
+        <input type="number" min="0" max="3840" v-model.number="lineWidth" class="text-box small"/>
       </div>
-      <input type="range" min="0" max="3840" v-model.number="lineWidth">
+      <input type="range" min="0" max="3840" v-model.number="lineWidth"/>
     </template>
 
     <button class="btn" @click="settings.reset">Reset</button>

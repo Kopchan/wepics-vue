@@ -303,13 +303,13 @@ const openViewer = (image: ImageItem) => {
         </OverlayPanel>
 
         <AlbumsLines
-          v-if="albumsLayout == 'lines'"
+          v-if="albumsLayout === 'lines'"
           :album="albumData"
           @edit-album="showAlbumEditCard"
         />
 
 
-        <div class="grid" v-else-if="albumsLayout == 'grid'">
+        <div class="grid" v-else-if="albumsLayout === 'grid'">
           <RouterLink
             class="square"
             v-for="(child, index) in albumData?.children"
@@ -472,7 +472,9 @@ const openViewer = (image: ImageItem) => {
   transition: 0.1s, opacity 1s;
 }
 .grid_outer {
-  padding: calc(var(--header-height) + 1px) v-bind('extGap ? (gap +"px") : 0') v-bind('gap +"px"');
+  padding: v-bind('extGap ? (gap +"px") : 0');
+  padding-top: calc(var(--header-height) + 1px);
+  padding-bottom: v-bind('gap +"px"');
   overflow-x: hidden;
   transition: 0.1s, opacity .2s;
   position: relative;
@@ -482,6 +484,10 @@ const openViewer = (image: ImageItem) => {
     justify-content: center;
     margin: 0 auto;
   }
+}
+
+:root:has(.sidebar_outer.opened.pinned) .grid_outer {
+  padding-left: calc(var(--sidebar-width) + v-bind('gap +"px"'));
 }
 
 .inf-handler-position {
@@ -758,6 +764,7 @@ const openViewer = (image: ImageItem) => {
             z-index: 1;
             .reaction {
               background-color: var(--c-b0a);
+              backdrop-filter: blur(var(--div-blur));
               height: 24px;
               cursor: pointer;
               padding: 2px 8px;
