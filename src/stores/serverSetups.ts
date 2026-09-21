@@ -16,9 +16,12 @@ interface ServerSetupsResponse {
   }
 }
 
+/** Хук хранилища серверных предустановок */
 export const useServerSetupsStore = defineStore('serverSetups', () => {
+  // --------- ЛОКАЛЬНЫЕ ПОСТОЯННЫЕ ХРАНИЛИЩА ---------
   const ratingsStorage = storageWrapper<Record<string, RatingPreset>>('ratings')
 
+  // --------- ПРЕДУСТАНОВКИ ОТ СЕРВЕРА ---------
   const allowedReactions        = ref<string[]>([])
   const ageRatings              = ref<AgeRating[]>([])
   const allowedImageExtensions  = ref<string[]>(['jpg', 'png'])
@@ -27,6 +30,8 @@ export const useServerSetupsStore = defineStore('serverSetups', () => {
   const allowedPreviewSizes     = ref<number[]>([144, 240, 360, 480, 720, 1080])
   const isUploadDisabled        = ref(false)
 
+  // --------- ДЕЙСТВИЯ ---------
+  /** Заранее спрашиваем сервер об предустановках (закешированный http ответ) и устаанвливаем */
   const preLoad = () => fetchWrapper.get<ServerSetupsResponse>(urls.setups()).then(data => {
 
     if (data.setups.reactions                != null) allowedReactions      .value = data.setups.reactions
@@ -45,19 +50,34 @@ export const useServerSetupsStore = defineStore('serverSetups', () => {
     })
   })
 
-  const getAllowedSize = (size: number): number => {
-    const result = allowedPreviewSizes.value.find(s => size <= s) ?? allowedPreviewSizes.value.at(-1) ?? size
-    return result
+  // --------- ВНЕШНИЕ ФУНКЦИИ ---------
+  /** Получение ближнего разрешённого размера превью к переданному */
+  const getAllowedSize = (size: number): number =>
+    allowedPreviewSizes.value.find(s => size <= s)
+    ?? allowedPreviewSizes.value.at(-1)
+    ?? size
+
+  /** Получение стилевого пресета (ничего/блюрить/скрыть) возрастного рейтинга  */
+  const getRatingPreset = (
+    albumRating: number | undefined,
+    mediaRating: number | undefined
+  ): RatingPreset | undefined => {
+    if (!albumRating && !mediaRating)
+      return
+
+    const targetId = mediaRating ?? albumRating
+    const rating = ageRatings.value.find(r => r.id === targetId)
+    return rating?.preset
   }
-  
+
   // TODO: получать ещё аккаунт
 
   return {
-    preLoad, 
+    preLoad,
     allowedReactions,
-    allowedImageExtensions, allowedVideoExtensions, allowedAudioExtensions, 
+    allowedImageExtensions, allowedVideoExtensions, allowedAudioExtensions,
     allowedPreviewSizes, getAllowedSize,
-    isUploadDisabled, 
-    ageRatings, ratingsStorage,
+    isUploadDisabled,
+    ageRatings, ratingsStorage, getRatingPreset,
   }
 })

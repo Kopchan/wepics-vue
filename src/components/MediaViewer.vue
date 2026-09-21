@@ -4,7 +4,7 @@ import { useEventListener } from '@vueuse/core'
 import type { ImageItem } from '@/types'
 import { XIcon } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
-import { useAlbumParamsStore, useSettingsStore } from '@/stores'
+import { useRouterHandlerStore, useSettingsStore } from '@/stores'
 import { urls } from '@/api'
 import { useRouter, useRoute } from 'vue-router'
 

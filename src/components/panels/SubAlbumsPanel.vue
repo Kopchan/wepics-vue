@@ -3,7 +3,7 @@ import { toRefs, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { fetchWrapper } from '@/helpers'
-import { useAlbumParamsStore } from '@/stores'
+import { useRouterHandlerStore } from '@/stores'
 import { urls } from '@/api'
 import type { AlbumItem } from '@/types'
 
@@ -16,7 +16,7 @@ const props = defineProps<{
 const { hash } = toRefs(props)
 
 // Данные по текущему открытому альбому
-const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
+const { targetAlbum, albumData } = storeToRefs(useRouterHandlerStore())
 
 // FIXME: пропа nextName не существует, изначально всегда undefined
 const nextName = ref<string | number | undefined>(undefined)

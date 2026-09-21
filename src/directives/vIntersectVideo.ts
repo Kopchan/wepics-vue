@@ -1,4 +1,4 @@
-import { useAlbumParamsStore } from "@/stores"
+import { useRouterHandlerStore } from "@/stores"
 import { watch, type Directive } from "vue"
 
 interface VideoElement extends HTMLElement {
@@ -10,7 +10,7 @@ interface VideoElement extends HTMLElement {
 
 const vIntersectVideo: Directive<VideoElement> = {
   mounted(el) {
-    const store = useAlbumParamsStore()
+    const store = useRouterHandlerStore()
 
     const state: { entry: IntersectionObserverEntry | null } = {
       entry: null,

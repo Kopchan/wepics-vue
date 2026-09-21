@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { TheHeader, SideBar } from '@/components'
-import { useAlbumParamsStore, useServerSetupsStore, useSettingsStore } from '@/stores'
+import { TheHeader, SideBar, MediaViewer } from '@/components'
+import { useRouterHandlerStore, useServerSetupsStore, useSettingsStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, watch, watchEffect } from 'vue'
 import { useWindowScroll } from '@vueuse/core'
@@ -11,15 +11,7 @@ import { useRoute } from 'vue-router'
 // Установленная пользователем тема и другие настройки
 const { theme, zen, ambient, scroll } = storeToRefs(useSettingsStore())
 // Статус открытия просмотрщика
-const  { viewerOpened } = storeToRefs(useAlbumParamsStore())
-
-// Функция получения HTML Node'ов по обычной строке
-const getNodesFromString = (html: string) => {
-  const template = document.createElement('div')
-  template.innerHTML = html
-  return template.childNodes
-}
-
+const  { viewerOpened } = storeToRefs(useRouterHandlerStore())
 // Предзагрузка надстроек сервера
 useServerSetupsStore().preLoad()
 

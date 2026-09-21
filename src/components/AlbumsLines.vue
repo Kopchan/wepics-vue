@@ -11,7 +11,7 @@ import {
   fetchWrapper, humanDate, humanCount, humanFileSize, routeNameViewer,
   routeViewerType, humanSI, humanDuration, reverseCheckInSortType, sleep,
 } from '@/helpers'
-import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
+import { useRouterHandlerStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -34,10 +34,12 @@ const emit = defineEmits(['edit-album'])
 const { user } = storeToRefs(useAuthStore())
 
 // Параметры в ссылке
-const  {
-  limit, sort, isReverse, tags, nested, imageData, sortAlbums,
-  disrespect, isReverseAlbums, sortType, albumData, targetUser, targetAlbum,
-} = storeToRefs(useAlbumParamsStore())
+const routerHandler = useRouterHandlerStore()
+const { openViewer } = routerHandler
+const {
+  limit, sort, isReverse, tags, nested, sortAlbums, randomSeed, types,
+  disrespect, isReverseAlbums, sortType,
+} = storeToRefs(routerHandler)
 
 // Косметические параметры
 const {

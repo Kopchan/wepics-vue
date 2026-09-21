@@ -3,7 +3,7 @@ import { ref, toRefs } from 'vue'
 import { BtnRadios } from '@/components/ui'
 import { fetchWrapper } from '@/helpers'
 import { urls } from '@/api'
-import { useAlbumParamsStore } from '@/stores'
+import { useRouterHandlerStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import type { AlbumItem } from '@/types'
 
@@ -20,7 +20,7 @@ const mode = ref('album')   // Режим добавления
 const form = ref<{ name?: string }>({})       // Данные для отправки
 
 // Данные по текущему открытому альбому
-const { albumData } = storeToRefs(useAlbumParamsStore())
+const { albumData } = storeToRefs(useRouterHandlerStore())
 
 // Создание альбома
 const createAlbum = () => {

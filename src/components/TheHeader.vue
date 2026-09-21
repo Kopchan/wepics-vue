@@ -11,7 +11,7 @@ import {
 } from '@lucide/vue'
 
 import { fetchWrapper, humanFileSize, sleep, humanDuration } from '@/helpers'
-import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
+import { useRouterHandlerStore, useAuthStore, useSidebarStore } from '@/stores'
 import { urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, AlbumEditPanel,
@@ -26,10 +26,10 @@ const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, albumData, sortType,
+  targetAlbum, albumData, sortType, types,
   sort, sortAlbums, trueReverse, trueReverseAlbums, disrespect,
   tags, nested, limit, randomSeed, isReverse,
-} = storeToRefs(useAlbumParamsStore())
+} = storeToRefs(useRouterHandlerStore())
 
 // Режим фокусировки на медиа
 

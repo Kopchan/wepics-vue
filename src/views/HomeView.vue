@@ -24,10 +24,15 @@ import {
 import type { AlbumItem, ImageItem } from '@/types'
 
 // Параметры в адресной строке
-const  {
-  limit, sort, trueReverse, tags, nested, ratings, types, viewerOpened,
-  targetUser, targetAlbum, albumData, imageData, randomSeed,
-} = storeToRefs(useAlbumParamsStore())
+const routerHandler = useRouterHandlerStore()
+const { openViewer } = routerHandler
+const {
+  limit, sort, trueReverse, tags, nested, ratings, types,
+  targetAlbum, albumData, randomSeed,
+} = storeToRefs(routerHandler)
+
+// Хук для медиа для повторной загрузки при ошибке
+const { onErrorMediaLoad, resetMediaRetries } = useMediaRetry()
 
 // Функция очистки всех медиа
 const cleanUpWall = () => {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { useAlbumParamsStore } from '@/stores'
+import { useRouterHandlerStore } from '@/stores'
 import { imagesSortTypes, albumsSortTypes } from '@/api'
 import { SelectorRadios2 } from '@/components/ui'
 import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from '@lucide/vue'
@@ -14,7 +14,7 @@ const  {
   nested,
   disrespect,
   randomSeed,
-} = storeToRefs(useAlbumParamsStore())
+} = storeToRefs(useRouterHandlerStore())
 
 </script>
 
