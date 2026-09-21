@@ -231,9 +231,12 @@ onUnmounted(() => {
   &:not(.scoped):not(.fill):not(.fullscreen) {
     background-color: var(--c-b0aa);
     .content {
-      border-radius: v-bind("radius + 'px'");
-      max-width:  calc(100% - v-bind("gap*2 +'px'"));
-      max-height: calc(100% - v-bind("gap*2 +'px'"));
+      border-radius: calc(var(--radius) * var(--ext-gap));
+      max-width:  calc(100% - var(--gap-doule) * var(--ext-gap));
+      max-height: calc(100% - var(--gap-doule) * var(--ext-gap));
+      object-fit: contain;
+      height: auto;
+      width: auto;
     }
   }
   &.fill {

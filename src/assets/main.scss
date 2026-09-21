@@ -19,6 +19,18 @@ body {
   color:      var(--c-t0);
   user-select: none;
   transition: color .2s;
+
+  --gap: 8px;
+  --ext-gap: 1;
+  --size: 480px;
+  --gap-half: calc(var(--gap) / 2);
+  --gap-doule: calc(var(--gap) * 2);
+  --size-half: calc(var(--size) / 2);
+  --radius: 8px;
+  --radius-half: calc(var(--radius) / 2);
+  --censure-filter-small:  blur(calc(var(--size) / 30)) saturate(.5);
+  --censure-filter-medium: blur(calc(var(--size) / 20)) saturate(.5);
+  --censure-filter-big:    blur(calc(var(--size) / 10)) saturate(.5);
 }
 
 /*  ===  Элементы  ===  */

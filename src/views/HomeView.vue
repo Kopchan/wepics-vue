@@ -17,6 +17,7 @@ import {
   humanFileSize, humanDate, humanSI, humanDuration,
 } from '@/helpers'
 import type { AlbumItem, ImageItem } from '@/types'
+import { useMediaRetry } from '@/composables'
 
 // Параметры в адресной строке
 const routerHandler = useRouterHandlerStore()
@@ -60,10 +61,7 @@ watch(
 )
 
 // Косметические параметры и URL на превью
-const {
-  size, gap, extGap, radius, orientation,
-  ambient, albumsLayout, albumPreviewSize, imagePreviewSize,
-} = storeToRefs(useSettingsStore())
+const { size, orientation, albumsLayout, imagePreviewSize } = storeToRefs(useSettingsStore())
 
 const imgSign = ref<string | null>(null)
 
@@ -143,6 +141,7 @@ const loadMore = async () => {
   })
 }
 
+/** Загрузка оригинала через клик на виртуальную ссылку */
 const downloadOriginal = async (img: ImageItem) => {
   const url = urls.imageOrig(
     img.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,
@@ -318,7 +317,6 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
             </button>
           </div>
         </div>
-      </section>
 
         <AgeRatingLabel class="rating"
           :rating-id="img?.ratingId ?? img?.album?.ratingId"
@@ -357,20 +355,17 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
 .page {
   padding: calc(var(--gap) * var(--ext-gap));
   padding-top: calc(var(--header-height) + 1px);
-  padding-bottom: v-bind('gap +"px"');
+  padding-bottom: var(--gap);
   overflow-x: hidden;
   transition: 0.1s, opacity .2s;
   position: relative;
-  min-height: calc(100vh - var(--header-height) - v-bind('gap +"px"') - 1px);
+  min-height: calc(100vh - var(--header-height) - var(--gap) - 1px);
   overflow: hidden;
-  .grid {
-    justify-content: center;
-    margin: 0 auto;
-  }
 }
 
-:root:has(.sidebar_outer.opened.pinned) .grid_outer {
-  padding-left: calc(var(--sidebar-width) + v-bind('gap +"px"'));
+
+:root:has(.sidebar_outer.opened.pinned) .page {
+  padding-left: calc(var(--sidebar-width) + 8px);
 }
 
 .inf-handler-position {
@@ -491,22 +486,19 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
 .wall {
   display: flex;
   flex-wrap: wrap;
-  gap: v-bind('gap +"px"');
+  gap: var(--gap);
+  position: relative;
+  z-index: 1;
   &:after {
     content: '';
     flex-grow: 1e4;
     //min-width: 20%;
   }
-  .img {
+  .media {
     position: relative;
     width:     calc(var(--ratio) * var(--size) * 1px);
     flex-grow: calc(var(--ratio) * var(--size));
     &:hover {
-      border-radius: v-bind('radius * 2 +"px"');
-      //.reactions {
-      //  opacity: 0;
-      //  z-index: -1;
-      //}
       .btn--reaction {
         max-width: 32px !important;
         opacity: 1 !important;
@@ -517,12 +509,7 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
       }
       .overlay {
         --opacity: 1;
-        border: 1px solid v-bind('ambient ? "transparent" : "var(--c-t0a)"');
-      }
-      img,
-      video {
-        z-index: -1;
-        filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
+        border: 1px solid var(--c-t0a);
       }
     }
     i {
@@ -535,12 +522,11 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
       top: 0;
       width: 100%;
       vertical-align: bottom;
-      border-radius: v-bind('radius +"px"');
+      border-radius: var(--radius);
     }
     .overlay {
       z-index: 20;
-      border-radius: v-bind('radius +"px"');
-      //display: none;
+      border-radius: var(--radius);
       display: flex;
       transition: opacity .2s, --opacity .2s, border .2s;
       position: absolute;
@@ -550,7 +536,7 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
       left: 0;
       top: 0;
       border: 1px solid transparent;
-      padding: calc(v-bind('radius +"px"') / 4 + 6px);
+      padding: calc(var(--radius) / 4 + 6px);
       flex-direction: column;
       justify-content: space-between;
       .top-group {
@@ -702,8 +688,8 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссыл�
     }
     .rating {
       position: absolute;
-      backdrop-filter: blur(v-bind('size / 10 +"px"')) saturate(.5);
-      border-radius: v-bind('radius +"px"');
+      backdrop-filter: var(--censure-filter-medium);
+      border-radius: var(--radius);
       position: absolute;
       bottom: 0;
       right: 0;

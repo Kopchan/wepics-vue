@@ -43,9 +43,7 @@ const {
 } = storeToRefs(routerHandler)
 
 // Косметические параметры
-const {
-  size, gap, radius, ambient, albumsLayout, lineWidth, albumPreviewSize
-} = storeToRefs(useSettingsStore())
+const { albumPreviewSize } = storeToRefs(useSettingsStore())
 
 // Параметры предустановок
 const { getRatingPreset } = useServerSetupsStore()
@@ -122,9 +120,9 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
           </div>
           <h3 class="name">{{ child.name }}</h3>
           <button v-if="user.isAdmin"
-            class="btn btn--circle edit-btn" 
+            class="btn btn--circle edit-btn interactive"
             title="Edit this album"
-            @click="emit('edit-album', $event, child)">
+            @click.stop="emit('edit-album', $event, child)">
             <PenIcon :size="20" />
           </button>
         </div>
@@ -163,7 +161,7 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
             <span>{{ humanFileSize(child.size) }}</span>
           </div>
 
-          <button class="btn btn--quad expand-btn"
+          <button class="btn btn--quad expand-btn interactive"
             v-if="child.albumsCount || child.mediasCount || !child.indexedAt"
             :class="{'btn--inverse': child.vueExpanded}"
             @click.stop="handleChildExpand(child)">
@@ -172,13 +170,12 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
         </div>
       </div>
 
-      <AlbumsLines class="internal" 
-        :album="child?.data" 
+      <AlbumsLines class="internal interactive"
+        :album="child?.data"
         v-if="child?.vueExpanded && child?.albumsCount"
         @edit-album="(event, album) => emit('edit-album', event, album)"
       />
-      <!-- @edit-album="showEditOverlay" -->
-       
+
       <div class="loading" v-if="child?.vueLoading">
         <p class="text">Loading...</p>
       </div>
@@ -222,7 +219,10 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
             </div>
             <div class="bottom"></div>
           </div>
-        </div>
+
+          <div class="gapper interactive"/>
+        </template>
+
         <RouterLink class="more"
           v-if="(child?.imagesCount ?? 0) > (child?.images?.length ?? 0)"
           :to="{
@@ -253,9 +253,8 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
 <style lang="scss" scoped>
 .lines {
   display: grid;
-  grid-template-columns: v-bind("lineWidth ? 'repeat(auto-fill, minmax(min(100%,'+ lineWidth +'px), 1fr))' : '100%'");
-  gap: v-bind('gap +"px"');
-  padding-bottom: v-bind('gap * 2 +"px"');
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--line-width)), 1fr));
+  gap: var(--gap);
   width: 100%;
   .hidden-link {
     position: absolute;
@@ -263,14 +262,15 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 1;
+    z-index: 3;
   }
-} 
+}
 .line {
   max-width: 100%;
   background-color: var(--c-b2a);
-  border-radius: v-bind('radius +"px"');
+  border-radius: var(--radius);
   text-decoration: none;
+  cursor: pointer;
   position: relative;
   z-index: 2;
   &.expanded {
@@ -280,10 +280,13 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
     display: flex;
     min-height: 40px;
     gap: 10px;
-    padding: v-bind('gap / 2 +"px"');
+    padding: var(--gap-half);
     padding-bottom: 0;
     align-items: center;
     justify-content: space-between;
+    position: relative;
+    z-index: 6;
+    pointer-events: none;
     .left {
       min-width: 0;
       display: flex;
@@ -341,7 +344,7 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
       }
     }
     .rating {
-      z-index: 10;
+      z-index: 11;
     }
     .inline {
       display: flex;
@@ -360,50 +363,58 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
       }
     }
   }
-  &:hover:not(:has(.previews:hover)):not(:has(.btn:hover)):not(:has(.internal:hover)) {
+  &:hover:not(:has(.interactive:hover)) {
     background-color: var(--c-b4a);
-    z-index: 1;
-    filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-    .overlay .block {
-      background-color: transparent !important;
-      backdrop-filter: none !important;
-      box-shadow: unset !important;
-    }
   }
-  &:active:not(:has(.previews:hover)):not(:has(.btn:hover)):not(:has(.internal:hover)) {
+  &:active:not(:has(.interactive:hover)) {
     background-color: var(--c-b4);
   }
   .internal {
-    padding: v-bind('gap / 2 +"px"');
+    padding: var(--gap-half);
     width: unset;
+    position: relative;
+    z-index: 4;
   }
   .loading {
     height: 40px;
     text-align: center;
     position: absolute;
-    top: v-bind('gap / 2 +"px"');
+    top: var(--gap-half);
     left: 0;
     right: 0;
-    padding: calc(v-bind('gap / 2 +"px"') + 10px);
+    padding: calc(var(--gap-half) + 10px);
   }
   .previews {
+    cursor: default;
     display: flex;
     overflow-x: auto;
-    overflow-y: hidden;
     justify-items: center;
     align-items: center;
-    gap:     v-bind('gap / 2 +"px"');
-    padding: v-bind('gap / 2 +"px"');
-    height:  v-bind('size / 2 +"px"');
-    z-index: 10;
+    pointer-events: none;
+    overflow-y: hidden;
+    //gap:     var(--gap-half);
+    padding: var(--gap-half);
+    height:  var(--size-half);
+    margin-top: calc(-40px - var(--gap-half));
+    padding-top: calc(40px + var(--gap-half) * 2);
+    border-radius: var(--radius);
     position: relative;
+    z-index: 5;
+    .gapper {
+      pointer-events: auto;
+      min-width: var(--gap-half);
+      height: 100%;
+      position: relative;
+      z-index: 6;
+    }
     /* Если все .child, кроме последнего, скрыты, то скрываем родителя */
     .img-wrapper {
+      pointer-events: auto;
       height: 100%;
       width: auto;
       position: relative;
       &.blur .overlay {
-        backdrop-filter: blur(v-bind('size / 20 +"px"')) saturate(.5);
+        backdrop-filter: var(--censure-filter-medium);
         .rating {
           display: unset;
         }
@@ -419,7 +430,7 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
       }
       &:hover {
         .overlay {
-          outline: 1px solid var(--c-t0a);
+          border: 1px solid var(--c-t0a);
         }
       }
       .overlay {
@@ -433,11 +444,9 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
         justify-content: space-between;
         flex-direction: column;
         overflow: hidden;
-        border-radius: v-bind('radius +"px"');
+        border-radius: var(--radius-half);
         z-index: 20;
-        filter:
-          drop-shadow(0 0 10px #000) 
-          drop-shadow(0 0 3px #000);
+        border: 1px solid transparent;
         .center {
           display: flex;
           justify-content: center;
@@ -451,30 +460,22 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
       height: 100%;
       width: auto;
       object-fit: cover;
-      border-radius: v-bind('radius +"px"');
-      &:hover {
-        //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-        // z-index: 1;
-        z-index: 9;
-      }
+      border-radius: var(--radius-half);
+      position: relative;
+      z-index: 1;
     }
     video {
-      position: absolute;
       left: 0;
       top: 0;
       height: 100%;
       width: 100%;
       object-fit: cover;
-      border-radius: v-bind('radius +"px"');
-      z-index: 1;
-      &:hover {
-        //filter: v-bind('ambient ? "url(#ambient-light)" : "unset"');
-        // z-index: 1;
-        z-index: 10;
-      }
+      border-radius: var(--radius-half);
+      position: absolute;
+      z-index: 2;
     }
     .more {
-      border-radius: v-bind('radius +"px"');
+      border-radius: var(--radius-half);
       height: 100%;
       aspect-ratio: 1;
       display: flex;
@@ -493,7 +494,7 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
     }
   }
   .messages {
-    padding: calc(v-bind('gap / 2 +"px"') + 10px);
+    padding: calc(var(--gap-half) + 10px);
     .text {
       color: var(--c-t2a);
       //justify-self: end;
