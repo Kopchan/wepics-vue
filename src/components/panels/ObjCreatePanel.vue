@@ -1,41 +1,43 @@
-<script setup>
+<script setup lang="ts">
 import { ref, toRefs } from 'vue'
 import { BtnRadios } from '@/components/ui'
 import { fetchWrapper } from '@/helpers'
 import { urls } from '@/api'
-import { useAlbumParamsStore } from '@/stores'
+import { useRouterHandlerStore } from '@/stores'
 import { storeToRefs } from 'pinia'
+import type { AlbumItem } from '@/types'
 
 // Параметры компонента
-const props = defineProps({
-  hash: String
-})
+const props = defineProps<{
+  hash?: string
+}>()
 // Параметры компонента в переменные
 const { hash } = toRefs(props)
 
 const isFetching = ref(false) // Статус "данные отправляются"
 const isErrored = ref(false) // Статус "произошла ошибка"
 const mode = ref('album')   // Режим добавления
-const form = ref({})       // Данные для отправки
+const form = ref<{ name?: string }>({})       // Данные для отправки
 
 // Данные по текущему открытому альбому
-const { albumData } = storeToRefs(useAlbumParamsStore())
+const { albumData } = storeToRefs(useRouterHandlerStore())
 
 // Создание альбома
 const createAlbum = () => {
-  fetchWrapper.post(urls.album(hash), form.value)
+  fetchWrapper.post<AlbumItem>(urls.album(hash as unknown as string), form.value)
     .catch(err => {
       isErrored.value = true
       console.error(err)
     })
     .then(data => {
       isErrored.value = false
-      albumData.value.children[form.value.name] = { hash: data.hash }
+      // FIXME: children — массив, а не карта по имени
+      ;(albumData.value.children as unknown as Record<string, unknown>)[form.value.name as string] = { hash: data?.hash }
     })
 }
 // Отправка картинок
 const sendImages = () => {
-  fetchWrapper.post(urls.album(hash), form.value)
+  fetchWrapper.post(urls.album(hash as unknown as string), form.value)
     .catch(err => {
       isErrored.value = true
       console.error(err)

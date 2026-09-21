@@ -1,5 +1,5 @@
-<script setup>
-import { PinIcon, PinOffIcon } from 'lucide-vue-next'
+<script setup lang="ts">
+import { PinIcon, PinOffIcon } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { useSidebarStore } from '@/stores'
 import { PROJECT_NAME } from '@/config'
@@ -8,18 +8,17 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
 </script>
 
 <template>
-  <div 
+  <aside
     class="sidebar_outer"
     :class="{opened: isOpened, pinned: isPinned}">
     <div class="sidebar">
-
       <div class="btns-place">
-        <button 
-          class="btn pin-sidebar-btn" 
-          title="Pin/Unpin sidebar" 
+        <button
+          class="btn pin-sidebar-btn"
+          title="Pin/Unpin sidebar"
           @click="isPinned = !isPinned">
-          <PinIcon v-if="!isPinned" size="20"/>
-          <PinOffIcon v-else size="20"/>
+          <PinIcon v-if="!isPinned" :size="20"/>
+          <PinOffIcon v-else :size="20"/>
         </button>
       </div>
 
@@ -28,17 +27,18 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
 
       <footer>
         <div class="copyright">
-          <img src="/favicon/icon.svg" alt="WEPICS" height="24" width="24">
-          <p>© 2024 {{ PROJECT_NAME }}</p>
+          <span class="icon-bg"/>
+          <p>© 2026 {{ PROJECT_NAME }}</p>
         </div>
         <div class="links-place">
           <a target="_blank" href="https://github.com/kopchan/wepics-vue">Github</a>
         </div>
       </footer>
-
     </div>
-    <div class="resizer"><div class="bar"></div></div>
-  </div>
+    <div class="resizer">
+      <div class="bar"/>
+    </div>
+  </aside>
 </template>
 
 <style lang="scss">
@@ -86,70 +86,6 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
       }
     }
   }
-  // Дерево
-  //.tree {
-  //  &:hover .tree-item .branches {
-  //    border-left: 1px solid var(--c-b4);
-  //  }
-  //  &-item {
-  //    cursor: pointer;
-  //    display: block;
-  //    /*
-  //    &:hover > .label {
-  //      text-decoration: underline;
-  //    }
-  //    */
-  //    input[type="checkbox"] {
-  //      visibility: hidden;
-  //      width:  0;
-  //      height: 0;
-  //    }
-  //    .label {
-  //      font-size: 16px;
-  //      color: var(--c-t7);
-  //      display: inline-flex;
-  //      align-items: center;
-  //      border-radius: var(--border-r);
-  //      padding-right: 8px;
-  //      height: 32px;
-  //      /*
-  //      &:hover {
-  //        background: var(--c-b4a);
-  //      }
-  //      */
-  //      &::before {
-  //        content: '';
-  //        background: url("../img/icon/arrow-corner_gray.svg");
-  //        display: inline-block;
-  //        width:  20px;
-  //        height: 20px;
-  //        margin-right:    4px;
-  //        vertical-align: -4px;
-  //      }
-  //    }
-  //    input[type="checkbox"]:checked + .label {
-  //      color: var(--c-t0);
-  //    }
-  //    .branches {
-  //      display: none;
-  //      margin-left: 8px;
-  //      border-left: 1px solid transparent;
-  //      transition: 0.2s;
-  //      /*
-  //      display: flex;
-  //      flex-direction: column;
-  //      gap: 8px;
-  //      */
-  //    }
-  //    input[type="checkbox"]:checked + .label + .branches {
-  //      display: block;
-  //    }
-  //    input[type="checkbox"]:checked + .label::before {
-  //      background: url("../img/icon/arrow-corner.svg");
-  //      transform: rotate(90deg);
-  //    }
-  //  }
-  //}
   // Подвал
   footer {
     margin-top: auto;
@@ -160,6 +96,14 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
       align-items: center;
       gap: 8px;
       font-size: 14px;
+      .icon-bg {
+        background-image: url('/icon/maskable.svg');
+        height: 32px;
+        width: 32px;
+        border-radius: 10px;
+        //background-position: center;
+        //background-size: 115%;
+      }
     }
     .links-place {
       display: flex;
@@ -191,8 +135,9 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
     overflow: hidden; //cкрытие полос прокрутки в полноэкранном меню
   }
 }
-.sidebar_outer.opened.pinned .grid_outer {
-  margin-left: var(--sidebar-width);
+.sidebar_outer.pinned {
+  backdrop-filter: none;
+  background: none;
 }
 // Палка для изменения размера бокового меню
 .sidebar_outer .resizer {

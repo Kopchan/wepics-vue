@@ -1,22 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import FormItemWrap from './FormItemWrap.vue'
+import type { FetchErrorPayload } from '@/helpers'
 
-defineProps({
-  label: String,
-  error: Object,
-  name: String,
-  options: Object,
-  required: Boolean,
-  placeholder: String,
-})
+defineProps<{
+  label?: string
+  error?: FetchErrorPayload | null
+  name: string
+  options?: Record<string, unknown>
+  required?: boolean
+  placeholder?: string
+}>()
 
-const form = defineModel()
+const form = defineModel<Record<string, unknown>>({ required: true })
 </script>
 
 <template>
   <FormItemWrap
     :name="name"
-    :label="label" 
+    :label="label"
     :error="error">
     <template #label-extra>
       <slot name="label-extra" />

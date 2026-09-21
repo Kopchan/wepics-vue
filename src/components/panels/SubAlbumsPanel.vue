@@ -1,37 +1,35 @@
-<script setup>
+<script setup lang="ts">
 import { toRefs, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { fetchWrapper } from '@/helpers'
-import { useAlbumParamsStore } from '@/stores'
+import { useRouterHandlerStore } from '@/stores'
 import { urls } from '@/api'
+import type { AlbumItem } from '@/types'
 
 // Заданные данные компоненту
-const props = defineProps({
-  hash: String,
-  selectedAlbumHash: {
-    type: String,
-    required: false,
-  },
-})
+const props = defineProps<{
+  hash?: string | null
+  selectedAlbumHash?: string | null
+}>()
 // Хеш тыкнутого альбома
 const { hash } = toRefs(props)
 
 // Данные по текущему открытому альбому
-const { targetAlbum, albumData } = storeToRefs(useAlbumParamsStore())
+const { targetAlbum, albumData } = storeToRefs(useRouterHandlerStore())
 
-
-const nextName = ref(props.nextName)
-const subAlbumData = ref(null) // Данные по тыкнутому альбому
+// FIXME: пропа nextName не существует, изначально всегда undefined
+const nextName = ref<string | number | undefined>(undefined)
+const subAlbumData = ref<AlbumItem | null>(null) // Данные по тыкнутому альбому
 const isErrored = ref(false)  // Статус "произошла ошибка"
 const isLoading = ref(true)  // Статус "загружаюсь"
-if (hash.value === targetAlbum.value 
- || hash.value === albumData.value?.hash) { // FIXME: проверять что пустое 
-  // Если тыкнутый альбом = текущий альбом, то данные уже есть 
+if (hash.value === targetAlbum.value
+ || hash.value === albumData.value?.hash) { // FIXME: проверять что пустое
+  // Если тыкнутый альбом = текущий альбом, то данные уже есть
   isLoading.value = false
   subAlbumData.value = albumData.value
 }
-else fetchWrapper.get(urls.albumInfo(hash.value, {noChildren: true}))
+else fetchWrapper.get<AlbumItem>(urls.albumInfo(hash.value as string, {noChildren: true}))
   // Иначе загрузить по хешу
   .then(data => {
     isLoading.value = false
@@ -45,17 +43,17 @@ else fetchWrapper.get(urls.albumInfo(hash.value, {noChildren: true}))
 <template>
   <div class="outer">
     <template v-if="subAlbumData?.children">
-      <RouterLink 
+      <RouterLink
         v-for="(child, index) in subAlbumData?.children"
         :key="index"
         class="btn"
         :class="{'btn--inverse': selectedAlbumHash == child.hash}"
         @click="nextName = index"
         :disabled="nextName == index"
-        :to="{ 
+        :to="{
           name: 'openAlbum',
-          params: { album: child.alias ?? child.hash }, 
-          query: $route.query 
+          params: { album: child.alias ?? child.hash },
+          query: $route.query
       }">
         {{ child.name }}
       </RouterLink>

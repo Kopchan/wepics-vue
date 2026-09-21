@@ -1,47 +1,24 @@
-<script setup>
-/**
- * @typedef {Object} Option
- * @property {string} icon
- * @property {string} name
- */
-
+<script setup lang="ts">
 import { toRefs } from 'vue'
+import type { SelectorOption } from '@/types'
 
 // Параметры компонента
-const props = defineProps({
-  name: {
-    type: String,
-    required: false,
-    default: Math.random().toString(),
-  },
-  /** @type {import('vue').PropType<Option[]>} */
-  options: {
-    type: Object,
-    required: true,
-  },
-  disabled: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  squared: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  background: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
-  point: {
-    type: String,
-    required: false,
-    default: null,
-  },
+const props = withDefaults(defineProps<{
+  name?: string
+  options: Record<string, SelectorOption>
+  disabled?: boolean
+  squared?: boolean
+  background?: boolean
+  point?: string | null
+}>(), {
+  name: () => Math.random().toString(),
+  disabled: false,
+  squared: false,
+  background: true,
+  point: null,
 })
 // v-model компонента
-const value = defineModel()
+const value = defineModel<unknown>()
 
 // Параметры компонента в переменные
 const { name, options, disabled, squared, background, point } = toRefs(props)
@@ -71,7 +48,7 @@ value.value ??= Object.keys(options.value)[0]
         :style="{
           '--selectColor':   option?.color,
           '--selectColorFg': option?.color ? 'white' : null,
-        }"
+        } as any"
       >
         <component :is="option?.icon" /> 
         {{ squared ? null : option?.name }}

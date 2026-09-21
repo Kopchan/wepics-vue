@@ -1,10 +1,11 @@
-<script setup>
+<script setup lang="ts">
+import type { FetchErrorPayload } from '@/helpers'
 
-defineProps({
-  label: String,
-  name: String,
-  error: Object,
-})
+defineProps<{
+  label?: string
+  name: string
+  error?: FetchErrorPayload | null
+}>()
 </script>
 
 <template>
@@ -19,7 +20,7 @@ defineProps({
     </div>
     
     <div class="errors">
-      <p v-for="(err, index) in error?.errors?.[name]" :key="index">
+      <p v-for="(err, index) in (error?.errors as Record<string, string[]> | undefined)?.[name]" :key="index">
         {{ err }}
       </p>
     </div>

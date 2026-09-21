@@ -1,17 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { toRefs } from 'vue'
 
 // Параметры компонента
-const props = defineProps({
-  name: String,
-  options: Object,
-  disabled: {
-    required: false,
-    default: false
-  }
-})
+const props = defineProps<{
+  name?: string
+  options: Record<string, string>
+  disabled?: boolean
+}>()
 // v-model компонента
-const value = defineModel()
+const value = defineModel<string>()
 
 // Параметры компонента в переменные
 const { name, options, disabled } = toRefs(props)

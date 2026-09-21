@@ -1,34 +1,38 @@
-<script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { debouncedWatch, useWindowScroll } from '@vueuse/core'
+import { debouncedWatch } from '@vueuse/core'
 import OverlayPanel from 'primevue/overlaypanel'
 import { useRoute, useRouter } from 'vue-router'
 import {
   MenuIcon, ChevronRightIcon, PaletteIcon, LogInIcon, UserIcon, PlusCircleIcon, PenIcon, Hourglass,
-  ArrowDownAZIcon, ArrowUpAZIcon, Share2Icon, RefreshCcwIcon, ViewIcon, FoldersIcon, SaveIcon, 
-  ArrowDown10Icon, ArrowUp10Icon, ImageIcon, Music2Icon, VideoIcon, FilesIcon
-} from 'lucide-vue-next'
+  ArrowDownAZIcon, ArrowUpAZIcon, Share2Icon, RefreshCcwIcon, ViewIcon, FoldersIcon, SaveIcon,
+  ArrowDown10Icon, ArrowUp10Icon, ImageIcon, Music2Icon, VideoIcon, FilesIcon,
+} from '@lucide/vue'
 
-import { fetchWrapper, humanFileSize, reverseCheckInSortType, sleep, humanDuration } from '@/helpers'
-import { useAlbumParamsStore, useAuthStore, useSidebarStore } from '@/stores'
-import { imagesSortTypes, urls } from '@/api'
+import { fetchWrapper, humanFileSize, sleep, humanDuration } from '@/helpers'
+import { useRouterHandlerStore, useAuthStore, useSidebarStore } from '@/stores'
+import { urls } from '@/api'
 import {
   AuthPanel, UserPanel, SettingsPanel, AlbumEditPanel,
-  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel
+  SubAlbumsPanel, AlbumSharePanel, ObjCreatePanel, SetupsPanel,
 } from '@/components/panels'
 import AgeRatingLabel from './AgeRatingLabel.vue'
 import SortFilterPanel from './panels/SortFilterPanel.vue'
+import type { AlbumItem } from '@/types'
 
 // Попапы
 const { isOpened } = storeToRefs(useSidebarStore())
 
 // Данные об текущем открытом альбоме
 const {
-  targetAlbum, albumData, sortType,
+  targetAlbum, albumData, sortType, types,
   sort, sortAlbums, trueReverse, trueReverseAlbums, disrespect,
   tags, nested, limit, randomSeed, isReverse,
-} = storeToRefs(useAlbumParamsStore())
+} = storeToRefs(useRouterHandlerStore())
+
+// Режим фокусировки на медиа
+
 
 // Данные об текущем пользователе
 const { user } = storeToRefs(useAuthStore())
@@ -45,28 +49,26 @@ const objCreateCard   = ref()
 const albumRenameCard = ref()
 
 // Логика переключение попапа со списком дочерних альбомов
-const albumChildren = ref(null)
-const albumChildSelect = ref(null)
-const toggleSubAlbumsCard = (e, hash, selectedHash) => {
+const albumChildren = ref<string | null>(null)
+const albumChildSelect = ref<string | null | undefined>(null)
+const toggleSubAlbumsCard = (e: Event, hash: string | null, selectedHash: string | null | undefined) => {
   albumChildren.value = hash
   albumChildSelect.value = selectedHash
   subAlbumsCard.value.toggle(e)
 }
 
-const isLoading = ref(null)
+const isLoading = ref(false)
 const isError = ref(false)
-const { y: yScroll } = useWindowScroll()
-const isScrolledDown = computed(() => yScroll.value !== 0)
 
 
 const router = useRouter()
 const route = useRoute()
 
 // Запрос данных об альбоме
-const getAlbumData = async (newHash = null, oldHash = null) => {
+const getAlbumData = async (newHash: string | null = null, oldHash: string | null = null) => {
   isLoading.value = true
   isError.value = false
-  albumData.value.hash = null
+  albumData.value.hash = null as unknown as string
 
   //console.log(newHash, oldHash, albumData.value, albumData.value != null, !!albumData.value)
 
@@ -82,10 +84,10 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
         canFind = false
         //console.log('ans', albumData.value.ancestors?.slice(0, index))
         albumData.value = {
-          ...ancestor, 
+          ...ancestor,
           ancestors: albumData.value.ancestors?.slice(0, index),
-          children: (index + 1) in albumData.value.ancestors ? [
-            albumData.value.ancestors[index + 1]
+          children: (index + 1) in albumData.value.ancestors! ? [
+            albumData.value.ancestors![index + 1],
           ] : undefined,
         }
       }
@@ -98,25 +100,27 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
         canFind = false
         //console.log('chd', child)
         albumData.value = {
-          ...child, 
-          ancestors: [...albumData.value.ancestors, albumData.value],
+          ...child,
+          ancestors: [...(albumData.value.ancestors ?? []), albumData.value],
         }
       }
     })
-  
+
 
   // Основной запрос информации об альбоме
-  await fetchWrapper.get(
-    urls.albumInfo(newHash ?? targetAlbum.value, { 
-      sort: sort.value, 
-      sortAlbums: sortAlbums.value, 
+  await fetchWrapper.get<AlbumItem>(
+    urls.albumInfo(newHash ?? targetAlbum.value, {
+      sort: sort.value,
+      sortAlbums: sortAlbums.value,
       isReverse: trueReverse.value,
       isReverseAlbums: trueReverseAlbums.value,
       disrespect: disrespect.value,
+      grandchilds: true,
+      types: types.value,
       tags: tags.value,
       images: Math.max(limit.value, 4),
       nested: nested.value,
-      seed: sortAlbums.value === 'random' ? randomSeed.value : null,
+      seed: (sortAlbums.value === 'random' || sort.value === 'random') ? randomSeed.value : null,
     })
   ).catch(err => {
     isError.value = true
@@ -125,7 +129,7 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
   }).then(data => {
     // Предотвращение обновление данных если ушли с альбома
     if (targetAlbum.value && (
-      targetAlbum.value?.toLowerCase() != data?.alias?.toLowerCase() && 
+      targetAlbum.value?.toLowerCase() != data?.alias?.toLowerCase() &&
       targetAlbum.value != data?.hash
     )) return
 
@@ -134,16 +138,16 @@ const getAlbumData = async (newHash = null, oldHash = null) => {
       router.replace({
         name: 'openAlbum',
         params: { album: data.alias },
-        query: route.query
+        query: route.query,
       })
     }
 
     // Обновление данных с записью названия сортировки
     // TODO: обновлять при изменении сортировки и других параметров в ссылке
     albumData.value = {
-      ...albumData.value, 
-      ...data, 
-      contentSortField: sortAlbums.value === 'content' ? sort.value : null
+      ...albumData.value,
+      ...data,
+      contentSortField: sortAlbums.value === 'content' ? sort.value : null,
     }
     isError.value = false
     isLoading.value = false
@@ -161,7 +165,7 @@ const reindexAlbum = () => {
     urls.albumReindex(albumData.value?.hash ?? targetAlbum.value)
   ).then(async () => {
     const temp = albumData.value?.hash ?? targetAlbum.value
-    targetAlbum.value = null // FIXME: успевает за это время загрузить root альбом
+    targetAlbum.value = null as unknown as string // FIXME: успевает за это время загрузить root альбом
     // FIXME: targetAlbum больше нельзя задавать, делай через pinia actions, и вынеси наконец картинки туда
     await sleep(10)
     targetAlbum.value = temp
@@ -187,11 +191,11 @@ onMounted(() => {
       <div class="left">
         <!--    =  Кнопка меню  =    -->
         <div class="menu-btn-place">
-          <button 
-            class="btn btn--quad menu-btn" 
-            title="Toggle menu" 
+          <button
+            class="btn btn--quad menu-btn"
+            title="Toggle menu"
             @click="isOpened = !isOpened">
-            <MenuIcon size="20"/>
+            <MenuIcon :size="20"/>
           </button>
         </div>
         <!--    =  Навигационная цепочка  =    -->
@@ -199,69 +203,69 @@ onMounted(() => {
           <span class="section">
             <RouterLink class="btn" :to="{ path: '/', query: $route.query }">Home</RouterLink>
             <button
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Show subfolders"
-              @click="toggleSubAlbumsCard($event, 'root', albumData?.ancestors[1]?.hash)">
-              <ChevronRightIcon size="20" />
+              @click="toggleSubAlbumsCard($event, 'root', albumData?.ancestors?.[1]?.hash)">
+              <ChevronRightIcon :size="20"/>
             </button>
           </span>
           <span class="section" v-if="targetAlbum !== 'root' && (
-            albumData?.ancestors?.length && 
-            albumData?.ancestors[0]?.hash != 'root'
+            albumData?.ancestors?.length &&
+            albumData?.ancestors?.[0]?.hash != 'root'
           )">
             <a class="btn" disabled>...</a>
             <button
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Show subfolders"
               disabled>
-              <ChevronRightIcon size="20" />
+              <ChevronRightIcon :size="20"/>
             </button>
           </span>
-          <span 
+          <span
             v-for="(ancestor, index) in albumData?.ancestors?.slice(1)"
             :key="index"
             class="section">
-            <template v-if="index !== '/'">
-              <RouterLink class="btn" :to="{ 
+            <template v-if="(index as unknown as string) !== '/'">
+              <RouterLink class="btn" :to="{
                 name: 'openAlbum',
-                params: { album: ancestor?.alias ?? ancestor.hash }, 
-                query: $route.query 
+                params: { album: ancestor?.alias ?? ancestor.hash },
+                query: $route.query
               }">
                 {{ ancestor.name }}
               </RouterLink>
-              <button 
-                class="btn btn--circle folder-select-btn" 
+              <button
+                class="btn btn--circle folder-select-btn"
                 title="Show subfolders"
                 @click="toggleSubAlbumsCard(
-                  $event, 
-                  ancestor.hash, 
-                  albumData?.ancestors[index + 2]?.hash ?? albumData?.hash
+                  $event,
+                  ancestor.hash,
+                  albumData?.ancestors?.[index + 2]?.hash ?? albumData?.hash
                 )">
-                <ChevronRightIcon size="20" />
+                <ChevronRightIcon :size="20"/>
               </button>
             </template>
           </span>
           <span
-            v-if="targetAlbum !== 'root'" 
+            v-if="targetAlbum !== 'root'"
             class="section">
-            <RouterLink class="btn" :to="{ 
+            <RouterLink class="btn" :to="{
               name: 'openAlbum',
-              params: { album: albumData?.alias ?? targetAlbum }, 
-              query: $route.query 
+              params: { album: albumData?.alias ?? targetAlbum },
+              query: $route.query
             }">
               {{ albumData?.name ?? '...' }}
             </RouterLink>
             <button v-if="user.isAdmin"
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Edit current album"
               @click="albumRenameCard.toggle">
-              <PenIcon size="20" />
+              <PenIcon :size="20"/>
             </button>
             <button v-if="albumData?.children?.length"
-              class="btn btn--circle folder-select-btn" 
+              class="btn btn--circle folder-select-btn"
               title="Show subfolders"
-              @click="toggleSubAlbumsCard($event, albumData.value?.hash ?? targetAlbum, null)">
-              <ChevronRightIcon size="20" />
+              @click="toggleSubAlbumsCard($event, albumData?.hash ?? targetAlbum, null)">
+              <ChevronRightIcon :size="20"/>
             </button>
           </span>
         </div>
@@ -271,45 +275,45 @@ onMounted(() => {
         </OverlayPanel>
         <!--    =  Панель выбора дочернего альбома  =    -->
         <OverlayPanel ref="subAlbumsCard" class="popup popup--fixed">
-          <SubAlbumsPanel :hash="albumChildren" :selectedAlbumHash="albumChildSelect"/>
+          <SubAlbumsPanel :hash="albumChildren" :selected-album-hash="albumChildSelect"/>
         </OverlayPanel>
       </div>
 
-        <!--    =  Информация по текущему альбому  =    -->
+      <!--    =  Информация по текущему альбому  =    -->
       <div class="center">
         <AgeRatingLabel class="inline"
-          :ratingId="albumData?.ratingId"
+          :rating-id="albumData?.ratingId"
           v-if="albumData?.ratingId"
         />
         <div class="inline" v-if="albumData?.audiosCount">
-          <Music2Icon size="18"/>
+          <Music2Icon :size="18"/>
           <span>{{ albumData.audiosCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.videosCount">
-          <VideoIcon size="18"/>
+          <VideoIcon :size="18"/>
           <span>{{ albumData.videosCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.imagesCount">
-          <ImageIcon size="18"/>
+          <ImageIcon :size="18"/>
           <span>{{ albumData.imagesCount.toLocaleString() }}</span>
         </div>
         <div class="inline" v-if="albumData?.nestedImagesCount && (albumData.nestedImagesCount > (albumData?.mediasCount ?? 0))">
           <template v-if="!albumData?.mediasCount || albumData.mediasCount == 0">
-            <FilesIcon size="18"/>
+            <FilesIcon :size="18"/>
             <span title="nested media count">({{ (albumData.nestedImagesCount).toLocaleString() }})</span>
           </template>
           <span v-else title="+ nested media">(+{{ (albumData.nestedImagesCount - albumData.mediasCount).toLocaleString() }})</span>
         </div>
         <div class="inline" v-if="albumData?.albumsCount">
-          <FoldersIcon size="18"/>
+          <FoldersIcon :size="18"/>
           <span>{{ albumData.albumsCount }}</span>
         </div>
         <div class="inline" v-if="albumData?.duration">
-          <Hourglass size="18"/>
+          <Hourglass :size="18"/>
           <span>{{ humanDuration(albumData.duration) }}</span>
         </div>
         <div class="inline" v-if="albumData?.size">
-          <SaveIcon size="18"/>
+          <SaveIcon :size="18"/>
           <span>{{ humanFileSize(albumData.size) }}</span>
         </div>
       </div>
@@ -322,7 +326,7 @@ onMounted(() => {
           :disabled="isLoading"
           :class="{spin: isLoading, error: isError}"
           @click="isError ? getAlbumData() : reindexAlbum()">
-          <RefreshCcwIcon size="20"/>
+          <RefreshCcwIcon :size="20"/>
         </button>
         <!--    =  Панель создания  =    -->
         <button
@@ -330,20 +334,20 @@ onMounted(() => {
           title="Open creation panel"
           v-if="user.isAdmin"
           @click="objCreateCard.toggle">
-          <PlusCircleIcon size="20"/>
+          <PlusCircleIcon :size="20"/>
         </button>
         <OverlayPanel ref="objCreateCard" class="popup popup--fixed">
-          <ObjCreatePanel :hash="albumData.value?.hash ?? targetAlbum"/>
+          <ObjCreatePanel :hash="albumData?.hash ?? targetAlbum"/>
         </OverlayPanel>
         <!--    =  Панель предустановок  =    -->
         <button
           class="btn btn--quad"
           title="Open setups panel"
           @click="setupsCard.toggle">
-          <ViewIcon size="20"/>
+          <ViewIcon :size="20"/>
         </button>
         <OverlayPanel ref="setupsCard" class="popup popup--fixed">
-          <SetupsPanel :hash="albumData.value?.hash ?? targetAlbum"/>
+          <SetupsPanel :hash="albumData?.hash ?? targetAlbum"/>
         </OverlayPanel>
         <!--    =  Панель поделиться  =    -->
         <button
@@ -351,26 +355,25 @@ onMounted(() => {
           title="Open share panel"
           v-if="user.isAdmin"
           @click="albumShareCard.toggle">
-          <Share2Icon size="20"/>
+          <Share2Icon :size="20"/>
         </button>
         <OverlayPanel ref="albumShareCard" class="popup popup--fixed">
-          <AlbumSharePanel :hash="albumData.value?.hash ?? targetAlbum"/>
+          <AlbumSharePanel :hash="albumData?.hash ?? targetAlbum"/>
         </OverlayPanel>
         <!--    =  Сортировка 2 =     -->
         <button
           class="btn btn--fixed"
           title="Open sort and filter panel"
-          @click="sortFilterCard.toggle"
-        >
-          <component :is="sortType?.icon" size="20"/> 
+          @click="sortFilterCard.toggle">
+          <component :is="sortType?.icon" :size="20"/>
           {{ sortType?.name ?? sort }}
           <template v-if="sort == 'name'">
-            <ArrowUpAZIcon size="20" v-if="isReverse"/>
-            <ArrowDownAZIcon size="20" v-else/>
+            <ArrowUpAZIcon :size="20" v-if="isReverse"/>
+            <ArrowDownAZIcon :size="20" v-else/>
           </template>
           <template v-else>
-            <ArrowUp10Icon size="20" v-if="isReverse"/>
-            <ArrowDown10Icon size="20" v-else/>
+            <ArrowUp10Icon :size="20" v-if="isReverse"/>
+            <ArrowDown10Icon :size="20" v-else/>
           </template>
         </button>
         <OverlayPanel ref="sortFilterCard" class="popup popup--fixed">
@@ -381,7 +384,7 @@ onMounted(() => {
           class="btn btn--quad"
           title="Open customization panel"
           @click="customizCard.toggle">
-          <PaletteIcon size="20"/>
+          <PaletteIcon :size="20"/>
         </button>
         <OverlayPanel ref="customizCard" class="popup popup--fixed">
           <SettingsPanel/>
@@ -392,7 +395,7 @@ onMounted(() => {
           title="Open user panel"
           v-if="user.nickname"
           @click="userCard.toggle">
-          <UserIcon size="20"/>
+          <UserIcon :size="20"/>
         </button>
         <OverlayPanel ref="userCard" class="popup popup--fixed" v-if="user.nickname">
           <UserPanel/>
@@ -403,7 +406,7 @@ onMounted(() => {
           title="Open authorization form"
           v-else
           @click="authCard.toggle">
-          <LogInIcon size="20"/>
+          <LogInIcon :size="20"/>
         </button>
         <OverlayPanel ref="authCard" class="popup popup--fixed" v-if="!user.nickname">
           <AuthPanel/>
@@ -414,23 +417,45 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@property --gradient-top { syntax: '<color>'; inherits: true; initial-value: transparent }
+@property --gradient-bot { syntax: '<color>'; inherits: true; initial-value: transparent }
+:global(body.zen.scrolled header),
+:global(body.zen.viewer header) {
+  backdrop-filter: none;
+  --header-opacity: 0;
+  --gradient-top: transparent;
+  --gradient-bot: transparent;
+}
+:global(body.zen.scrolled header:hover),
+:global(body.scrolled header) {
+  backdrop-filter: blur(var(--div-blur));
+  --gradient-top: var(--c-b0);
+  --gradient-bot: var(--c-b0a);
+}
 header {
-  background: linear-gradient(180deg, var(--c-b0), v-bind("isScrolledDown ? 'var(--c-b0a)' : 'transparent'"));
+  --gradient-top: transparent;
+  --gradient-bot: transparent;
+  --header-opacity: 1;
+  opacity: var(--header-opacity);
+  transition: --gradient-top .2s ease, --gradient-bot .2s ease, opacity .2s ease !important;
+  background: linear-gradient(180deg, var(--gradient-top), var(--gradient-bot)) !important;
   position: fixed;
   width: 100%;
   z-index: 100;
   height: var(--header-height);
-  backdrop-filter: v-bind("isScrolledDown ? 'blur(var(--div-blur))' : 'none'");
   -webkit-app-region: drag;
   overflow-x: auto;
+  &:hover {
+    opacity: 1;
+  }
   .header_inner {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
+    //height: 32px;
     left: env(titlebar-area-x, 0);
     top: env(titlebar-area-y, 0);
-    width: calc(env(titlebar-area-width, 100%) - 16px);
+    width: env(titlebar-area-width, 100%);
     min-width: max-content;
     gap: 8px;
     padding: 8px;
@@ -485,10 +510,10 @@ header {
   .spin > *:first-child {
     animation: spin 4s linear infinite;
   }
-  @keyframes spin { 
+  @keyframes spin {
     100% {
-      transform:rotate(360deg); 
-    } 
+      transform:rotate(360deg);
+    }
   }
   .error > *:first-child {
     color: red;
@@ -532,7 +557,7 @@ header {
   </template>
 </button>
 <select class="droplist sort-droplist" title="Sort type" v-model="sort">
-  <option 
+  <option
     v-for="sortOption, index in imagesSort"
     :key="index"
     :value="sortOption.value"

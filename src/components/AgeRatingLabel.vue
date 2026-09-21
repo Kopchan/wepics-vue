@@ -1,18 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { useServerSetupsStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import { computed, watch } from 'vue'
+import type { AgeRating } from '@/types'
 
-const props = defineProps({
-  ratingId: {
-    type: Number,
-    required: false,
-  },
-  rating: {
-    type: Object,
-    required: false,
-  },
-})
+const props = defineProps<{
+  ratingId?: string | number
+  rating?: AgeRating
+}>()
 
 //const emit = defineEmits(['blur-change'])
 

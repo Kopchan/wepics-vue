@@ -1,13 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import { BtnRadios } from '@/components/ui'
 import { useAuthStore } from '@/stores'
 import { InputFormItem } from '@/components/form'
+import type { FetchErrorPayload } from '@/helpers'
 
 const isFetching = ref(false) // Статус "загружается"
 const mode = ref('login')    // Режим
-const form = ref({})        // Отпровляемые данные 
-const error = ref(null)    // Ошибка загрузки
+const form = ref<Record<string, unknown>>({})        // Отпровляемые данные
+const error = ref<FetchErrorPayload | null>(null)    // Ошибка загрузки
 
 // Стор с функциями входа/регистрации
 const auth = useAuthStore()
@@ -18,7 +19,7 @@ const authorize = () => {
   error.value = null
 
   // Выбор входа/регистрации
-  auth[mode.value](form.value)
+  ;(auth[mode.value as 'login' | 'signup'] as (payload: any) => Promise<void>)(form.value)
     .catch(err => error.value = err)
 
   isFetching.value = false

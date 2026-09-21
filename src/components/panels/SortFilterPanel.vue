@@ -1,20 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { useAlbumParamsStore } from '@/stores'
+import { useRouterHandlerStore } from '@/stores'
 import { imagesSortTypes, albumsSortTypes } from '@/api'
 import { SelectorRadios2 } from '@/components/ui'
-import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from 'lucide-vue-next'
+import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from '@lucide/vue'
 
 // Параметры в ссылке
 const  {
-  sort, 
+  sort,
   sortAlbums,
-  isReverse, 
-  isReverseAlbums, 
-  nested, 
+  isReverse,
+  isReverseAlbums,
+  nested,
   disrespect,
   randomSeed,
-} = storeToRefs(useAlbumParamsStore())
+} = storeToRefs(useRouterHandlerStore())
 
 </script>
 
@@ -25,7 +25,7 @@ const  {
     <!-- Медиа -->
     <div class="label-group">
       <label>Media sort</label>
-      <button 
+      <button
         @click="isReverse = !isReverse"
         :disabled="sort === 'random'"
         :class="{
@@ -35,20 +35,20 @@ const  {
       }">
         Reverse
         <template v-if="sort == 'name'">
-          <ArrowUpAZIcon size="20" v-if="isReverse"/>
-          <ArrowDownAZIcon size="20" v-else/>
+          <ArrowUpAZIcon :size="20" v-if="isReverse"/>
+          <ArrowDownAZIcon :size="20" v-else/>
         </template>
         <template v-else>
-          <ArrowUp10Icon size="20" v-if="isReverse"/>
-          <ArrowDown10Icon size="20" v-else/>
+          <ArrowUp10Icon :size="20" v-if="isReverse"/>
+          <ArrowDown10Icon :size="20" v-else/>
         </template>
       </button>
     </div>
-    
-    <SelectorRadios2 
-      :options="imagesSortTypes" 
-      v-model="sort" 
-      name="mediasSort" 
+
+    <SelectorRadios2
+      :options="imagesSortTypes"
+      v-model="sort"
+      name="mediasSort"
       noCenter
       grid
     />
@@ -61,7 +61,7 @@ const  {
     <!-- Альбомы -->
     <div class="label-group">
       <label>Albums sort</label>
-      <button 
+      <button
         @click="isReverseAlbums = !isReverseAlbums"
         :disabled="sortAlbums === 'random'"
         :class="{
@@ -71,20 +71,20 @@ const  {
       }">
         Reverse
         <template v-if="sortAlbums == 'name'">
-          <ArrowUpAZIcon size="20" v-if="isReverseAlbums"/>
-          <ArrowDownAZIcon size="20" v-else/>
+          <ArrowUpAZIcon :size="20" v-if="isReverseAlbums"/>
+          <ArrowDownAZIcon :size="20" v-else/>
         </template>
         <template v-else>
-          <ArrowUp10Icon size="20" v-if="isReverseAlbums"/>
-          <ArrowDown10Icon size="20" v-else/>
+          <ArrowUp10Icon :size="20" v-if="isReverseAlbums"/>
+          <ArrowDown10Icon :size="20" v-else/>
         </template>
       </button>
     </div>
-    
-    <SelectorRadios2 
-      :options="albumsSortTypes" 
-      v-model="sortAlbums" 
-      name="albumSort" 
+
+    <SelectorRadios2
+      :options="albumsSortTypes"
+      v-model="sortAlbums"
+      name="albumSort"
       noCenter
       grid
     />
