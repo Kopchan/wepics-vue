@@ -61,7 +61,7 @@ const  {
     <!-- Альбомы -->
     <div class="label-group">
       <label>Albums sort</label>
-      <button 
+      <button
         @click="isReverseAlbums = !isReverseAlbums"
         :disabled="sortAlbums === 'random'"
         :class="{

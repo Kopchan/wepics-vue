@@ -7,16 +7,17 @@ import {
 } from '@lucide/vue'
 
 import { urls } from '@/api'
-import { 
-  fetchWrapper, humanDate, humanCount, humanFileSize, routeNameViewer,
-  routeViewerType, humanSI, humanDuration, reverseCheckInSortType, sleep,
+import {
+  fetchWrapper, humanDate, humanCount, humanFileSize,
+  humanSI, humanDuration, reverseCheckInSortType,
 } from '@/helpers'
 import { useRouterHandlerStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
 import AgeRatingLabel from './AgeRatingLabel.vue'
-import { useRoute, useRouter } from 'vue-router'
-import vIntersectVideo from '@/directives/vIntersectVideo'
-import type { AlbumItem, ImageItem } from '@/types'
+import { vIntersectVideo } from '@/directives'
+import type { AlbumItem } from '@/types'
+import { useMediaRetry } from '@/composables'
+import AlbumsSquares from './AlbumsSquares.vue'
 
 // Параметры компонента
 const props = defineProps<{
@@ -47,24 +48,10 @@ const {
 } = storeToRefs(useSettingsStore())
 
 // Параметры предустановок
-const { ageRatings } = storeToRefs(useServerSetupsStore())
+const { getRatingPreset } = useServerSetupsStore()
 
-const ratingPreset = (albumRating: string | number | undefined, imgRating: string | number | undefined) => {
-  if (!albumRating && !imgRating) 
-    return false
-
-  const rating = ageRatings.value?.find(r => 
-    r.id === (imgRating ?? albumRating)
-  )
-
-  const preset = rating?.preset
-
-  if (!preset)
-    return
-
-  if (preset === 'hide' || preset === 'blur')
-    return preset
-}
+// Хук для медиа для повторной загрузки при ошибке
+const { onErrorMediaLoad } = useMediaRetry()
 
 // Обработка нажатия на расширения ребёнка
 const handleChildExpand = async (child: AlbumItem) => {
@@ -107,46 +94,7 @@ const formatContentSort = (value: string | number) => {
   }
 }
 
-const router = useRouter()
-const route = useRoute()
 const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
-
-const openViewer = (image: ImageItem) => {
-  const watchedToNow = videoRefs.value[image.hash]?.currentTime
-
-  if (!image?.watchedTo || (watchedToNow != null && image.watchedTo < watchedToNow))
-    image.watchedTo = watchedToNow
-
-  imageData.value = image
-
-  router.push({
-    name: routeNameViewer(!!targetUser.value, image),
-    query: route.query,
-    params: {
-      user: targetUser.value,
-      type: routeViewerType(image?.type ?? ''),
-      album: albumData.value?.alias ?? targetAlbum.value,
-      trueAlbum: image?.album?.alias ?? image?.album?.hash,
-      image: image?.hash,
-    },
-  })
-}
-
-// Перезагрузка превьюшек с ошибками
-const maxImgRetries = 4
-const imgRetryCounts = ref<Record<string, number>>({})
-const onErrorImgLoad = async (event: Event) => {
-  // FIXME: не всегда срабатывает (второй раз?)
-  const anyEvent = event as any
-  const src = anyEvent.target.attributes.src.value
-  imgRetryCounts.value[src] ||= 0
-
-  if (imgRetryCounts.value[src] <= maxImgRetries) {
-    await sleep(1000)
-    imgRetryCounts.value[src]++
-    anyEvent.src = anyEvent.src + ''
-  }
-}
 
 </script>
 

@@ -76,9 +76,9 @@ const {
 
     <!-- Открытие в полноэкранном прямо из превью -->
     <div class="label-group">
-      <label>Open preview</label>
+      <label>Open media</label>
     </div>
-    <BtnRadios name="theme" :options="{fit: 'Fit', screen: 'Screen', window: 'Window'}" v-model="openPreviewTo"/>
+    <BtnRadios name="openPreviewTo" :options="{fit: 'Fit', screen: 'Screen', window: 'Window'}" v-model="openPreviewTo"/>
 
     <button class="btn" @click="settings.reset">Reset</button>
   </div>

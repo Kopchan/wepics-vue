@@ -8,7 +8,7 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
 </script>
 
 <template>
-  <div
+  <aside
     class="sidebar_outer"
     :class="{opened: isOpened, pinned: isPinned}">
     <div class="sidebar">
@@ -38,7 +38,7 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
     <div class="resizer">
       <div class="bar"/>
     </div>
-  </div>
+  </aside>
 </template>
 
 <style lang="scss">
@@ -100,9 +100,9 @@ const { isOpened, isPinned } = storeToRefs(useSidebarStore())
         background-image: url('/icon/maskable.svg');
         height: 32px;
         width: 32px;
-        background-position: center;
         border-radius: 10px;
-        background-size: 115%;
+        //background-position: center;
+        //background-size: 115%;
       }
     }
     .links-place {

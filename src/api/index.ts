@@ -1,2 +1,2 @@
-export { urls } from './urls'
-export { imagesSortTypes, albumsSortTypes } from './sortTypes'
+export * from './urls'
+export * from './sortTypes'

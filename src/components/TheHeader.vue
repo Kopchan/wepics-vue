@@ -118,7 +118,7 @@ const getAlbumData = async (newHash: string | null = null, oldHash: string | nul
       tags: tags.value,
       images: Math.max(limit.value, 4),
       nested: nested.value,
-      seed: sortAlbums.value === 'random' ? randomSeed.value : null,
+      seed: (sortAlbums.value === 'random' || sort.value === 'random') ? randomSeed.value : null,
     })
   ).catch(err => {
     isError.value = true

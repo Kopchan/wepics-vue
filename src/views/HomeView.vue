@@ -1,25 +1,20 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { vInfiniteScroll } from '@vueuse/components'
 import OverlayPanel from 'primevue/overlaypanel'
-import { SmilePlusIcon, DownloadIcon, FoldersIcon, FileIcon } from '@lucide/vue'
+import { SmilePlusIcon, DownloadIcon } from '@lucide/vue'
 
 import { urls } from '@/api'
-import {
-  useAlbumParamsStore, useSettingsStore, useAuthStore, useServerSetupsStore,
-} from '@/stores'
-import { AuthPanel, AlbumEditPanel } from '@/components/panels'
-import AlbumsLines     from '@/components/AlbumsLines.vue'
+import { useRouterHandlerStore, useSettingsStore, useAuthStore, useServerSetupsStore } from '@/stores'
+import { AuthPanel, AlbumEditPanel, ReactionPanel } from '@/components/panels'
+import AlbumsLines from '@/components/AlbumsLines.vue'
+import AlbumsSquares from '@/components/AlbumsSquares.vue'
 import AgeRatingLabel  from '@/components/AgeRatingLabel.vue'
-import MediaViewer     from '@/components/MediaViewer.vue'
-import ReactionPanel   from '@/components/panels/ReactionPanel.vue'
-import vIntersectVideo from '@/directives/vIntersectVideo'
+import { vIntersectVideo } from '@/directives'
 import {
-  fetchWrapper, sleep, debounceImmediate,
-  humanFileSize, humanCount, humanDate, humanSI, humanDuration,
-  routeNameViewer, routeViewerType, toggleReaction,
+  fetchWrapper, sleep, debounceImmediate, toggleReaction,
+  humanFileSize, humanDate, humanSI, humanDuration,
 } from '@/helpers'
 import type { AlbumItem, ImageItem } from '@/types'
 
@@ -41,7 +36,7 @@ const cleanUpWall = () => {
   isLoading  .value = false
   images     .value = []
   retries = 0
-  imgRetryCounts.value = {}
+  resetMediaRetries()
   currentPage = 1
   canLoadMore.value = true
 }
@@ -148,50 +143,27 @@ const loadMore = async () => {
   })
 }
 
-// Перезагрузка превьюшек с ошибками
-const maxImgRetries = 4
-const imgRetryCounts = ref<Record<string, number>>({})
-const onErrorImgLoad = async (event: Event) => {
-  const target = event.target as HTMLImageElement | HTMLVideoElement | null
-
-  if (!target) {
-    console.error('onErrorImgLoad???', event)
-    return
-  }
-
-  const src = target.src
-  imgRetryCounts.value[src] ||= 0
-
-  console.warn(`onErrorImgLoad (${imgRetryCounts.value[src]})`, src, target)
-
-  if (imgRetryCounts.value[src] <= maxImgRetries) {
-    await sleep(1000)
-    imgRetryCounts.value[src]++
-    target.src = src + ''
-  }
-}
-/*
-const onErrorImgLoad = async (event: Event) => {
-  // FIXME: не всегда срабатывает (второй раз?)
-  const anyEvent = event as any
-  const src = anyEvent.target.attributes.src.value
-  imgRetryCounts.value[src] ||= 0
-
-  if (imgRetryCounts.value[src] <= maxImgRetries) {
-    await sleep(1000)
-    imgRetryCounts.value[src]++
-    anyEvent.src = anyEvent.src + ''
-  }
-}
-*/
-
-
-const downloadOriginal = (img: ImageItem) =>
-  window.location.href = urls.imageDownload(
+const downloadOriginal = async (img: ImageItem) => {
+  const url = urls.imageOrig(
     img.album?.hash ?? albumData.value?.hash ?? targetAlbum.value,
     img.hash,
     img.album?.sign ?? imgSign.value
   )
+  try {
+    const response = await fetch(url, { cache: 'force-cache' })
+    const blob = await response.blob()
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `wpx ${img?.name} [${img?.hash}].${img?.ext}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(link.href)
+  } catch (error) {
+    console.error('cannot download', error)
+    window.location.href = url // фоллбэк
+  }
+}
 
 // Всплывающие окна
 const imageForReact   = ref()
@@ -214,7 +186,7 @@ const showAlbumEditCard = (e: Event, album: AlbumItem) => {
 // Текущий пользователь
 const { user } = storeToRefs(useAuthStore())
 
-// Переключение реакции на картинке
+/** Переключение реакции на картинке */
 const toggleReactionWrap = (image: ImageItem, reaction: string, e: Event) => {
   if (!user.value.token) {
     showAuthCard(e)
@@ -224,25 +196,9 @@ const toggleReactionWrap = (image: ImageItem, reaction: string, e: Event) => {
 }
 
 // Параметры предустановок
-const { ageRatings, allowedPreviewSizes } = storeToRefs(useServerSetupsStore())
-
-// Установка класса (blur/hide), если есть определённый рейтинг
-const ratingPreset = (albumRating: string | number | undefined, imgRating: string | number | undefined) => {
-  if (!albumRating && !imgRating)
-    return false
-
-  const rating = ageRatings.value?.find(r =>
-    r.id === (imgRating ?? albumRating)
-  )
-
-  const preset = rating?.preset
-
-  if (!preset)
-    return
-
-  if (preset === 'hide' || preset === 'blur')
-    return preset
-}
+const serverSetups = useServerSetupsStore()
+const { getRatingPreset } = serverSetups
+const { allowedPreviewSizes } = storeToRefs(serverSetups)
 
 // Генерация ссылок на несколько разных разрешений
 const getThumbMultiURL = (albumHash: string, img: ImageItem, sign: string | null = null) => {
@@ -256,228 +212,150 @@ const getThumbMultiURL = (albumHash: string, img: ImageItem, sign: string | null
   return srcsetItems.join(', ')
 }
 
-const router = useRouter() // Маршуртизатор
-const route = useRoute()   // Маршрут
 const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})  // Ссылки-переменные на <video>
-
-// Открытие просмоторщика
-const openViewer = (image: ImageItem) => {
-  const watchedToNow = videoRefs.value[image.hash]?.currentTime
-
-  if (!image?.watchedTo || (watchedToNow != null && image.watchedTo < watchedToNow))
-    image.watchedTo = watchedToNow
-
-  imageData.value = image
-
-  router.push({
-    name: routeNameViewer(!!targetUser.value, image),
-    query: route.query,
-    params: {
-      user: targetUser.value,
-      type: routeViewerType(image?.type ?? ''),
-      album: albumData.value?.alias ?? targetAlbum.value,
-      trueAlbum: image?.album?.alias ?? image?.album?.hash,
-      image: image?.hash,
-    },
-  })
-}
 
 </script>
 
 <template>
-  <main>
-    <OverlayPanel ref="authCard" class="popup popup--fixed">
-      <AuthPanel/>
-    </OverlayPanel>
-
-    <OverlayPanel ref="reactionCard" class="popup popup--nopad">
-      <ReactionPanel :album-hash="albumWhereReact" :image="imageForReact"/>
-    </OverlayPanel>
-
-    <MediaViewer
-      v-if="viewerOpened"
-      :album="albumData"
-      :image="imageData"
-      :sign="imgSign"
-    />
-
-    <div class="grid_outer">
-      <section class="albums" v-if="albumData?.children?.length">
-        <OverlayPanel ref="editAlbumCard" class="popup">
-          <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumCard"/>
-        </OverlayPanel>
-
-        <AlbumsLines
-          v-if="albumsLayout === 'lines'"
-          :album="albumData"
-          @edit-album="showAlbumEditCard"
+  <main class="page">
+    <section class="albums" v-if="albumData?.children?.length">
+      <AlbumsLines
+        v-if="albumsLayout === 'lines'"
+        :album="albumData"
+        @edit-album="showAlbumEditCard"
+      />
+      <AlbumsSquares
+        v-else-if="albumsLayout === 'grid'"
+        :album="albumData"
+      />
+      <OverlayPanel ref="editAlbumCard" class="popup">
+        <AlbumEditPanel v-model="editAlbum" :overlay="editAlbumCard"/>
+      </OverlayPanel>
+    </section>
+    <section class="wall" :style="'--size:'+ size">
+      <div class="media"
+        v-for="img in images"
+        @click="openViewer(img, $event, videoRefs)"
+        :class="getRatingPreset(img?.album?.ratingId ?? albumData?.ratingId, img?.ratingId)"
+        :key="img.hash"
+        :style="'--ratio:'+ img.ratio">
+        <i/>
+        <img
+          v-if="img.type === 'image'"
+          :src="img.thumbURL"
+          loading="lazy"
+          alt=""
+          @error="onErrorMediaLoad"
+          :srcset="getThumbMultiURL(
+            img?.album?.hash ?? albumData?.hash ?? targetAlbum,
+            img,
+            img?.album?.sign ?? imgSign
+          )"
+        />
+        <video
+          v-else
+          :src="img.thumbURLanim"
+          :poster="img.thumbURL"
+          loading="lazy"
+          muted
+          playsinline
+          loop
+          preload="none"
+          v-intersect-video
+          :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
+          @error="onErrorMediaLoad"
         />
 
-
-        <div class="grid" v-else-if="albumsLayout === 'grid'">
-          <RouterLink
-            class="square"
-            v-for="(child, index) in albumData?.children"
-            :key="index"
-            :to="{
-              name: 'openAlbum',
-              params: { album: child?.alias ?? child.hash },
-              query: $route.query
-            }">
-            <div :class="{previews: true, blur: true}">
-              <img
-                v-for="img in child?.images?.slice(0, 4)"
-                :key="img.hash"
-                :class="ratingPreset(child?.ratingId, img?.ratingId)"
-                :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)"
-                :alt="img.name"
-                loading="lazy"
-                @error="onErrorImgLoad"
-              />
-            </div>
-            <div class="overlay">
-              <div class="center">
-                <div class="block">
-                  <p class="name">{{ child.name }}</p>
-                  <div class="inline" v-if="child.imagesCount">
-                    <FileIcon :size="16"/>
-                    <span>{{ humanCount(child.mediasCount ?? 0) }}</span>
-                  </div>
-                  <div class="inline" v-if="child.albumsCount">
-                    <FoldersIcon :size="16"/>
-                    <span>{{ humanCount(child.albumsCount) }}</span>
-                  </div>
-                  <span class="text" v-if="!child.albumsCount && !child.mediasCount">EMPTY</span>
-                  <span class="text" v-if="!child.indexedAt">NOT INDEXED</span>
-                </div>
-              </div>
-            </div>
-          </RouterLink>
-        </div>
-      </section>
-      <section class="wall" :style="'--size:'+ size">
-        <div class="img"
-          v-for="img in images"
-          :class="ratingPreset(img?.album?.ratingId ?? albumData?.ratingId, img?.ratingId)"
-          :key="img.hash"
-          :style="'--ratio:'+ img.ratio">
-          <i/>
-          <img
-            v-if="img.type === 'image'"
-            :src="img.thumbURL"
-            loading="lazy"
-            alt=""
-            @error="onErrorImgLoad"
-            :srcset="getThumbMultiURL(
-              img?.album?.hash ?? albumData?.hash ?? targetAlbum,
-              img,
-              img?.album?.sign ?? imgSign
-            )"
-          />
-          <video
-            v-else
-            :src="img.thumbURLanim"
-            :poster="img.thumbURL"
-            loading="lazy"
-            muted
-            playsinline
-            loop
-            preload="none"
-            v-intersect-video
-            :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
-            @error="onErrorImgLoad"
-          />
-
-          <div class="overlay"
-            @click="openViewer(img)">
-            <div class="top-group">
-              <span class="name">{{ img.name }}</span>
-              <div class="badges">
-                <span class="badge up">{{ img.ext }}</span>
-                <span class="badge" :title="img.date">{{ humanDate(img.date!) }}</span>
-                <span class="badge">{{ img.width }}×{{ img.height }}</span>
-                <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'">{{ humanSI(img.bitrate) + 'bps' }}</span>
-                <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration)  }}</span>
-                <RouterLink class="badge wide"
-                  v-if="img.album?.name
-                    && !(img.album?.alias && img.album.alias === targetAlbum)
-                    && !(img.album?.hash  && img.album.hash  === targetAlbum)"
-                  @click.stop
-                  :to="{
-                    name: 'openAlbum',
-                    params: { album: img.album?.alias ?? img.album?.hash },
-                    query: $route.query
-                  }">
-                  {{ img.album.name }}
-                </RouterLink>
-              </div>
-            </div>
-
-            <div class="bottom-group">
-              <div class="reactions-place">
-                <button class="btn btn--reaction"
-                  v-if="user?.token"
-                  @click.stop="showReactionCard($event, img)">
-                  <SmilePlusIcon :size="20"/>
-                </button>
-                <div class="reactions">
-                  <template
-                    v-for="(reactionParams, reaction) in img.reactions"
-                    :key="reaction">
-                    <div
-                      v-if="reactionParams.count > 0"
-                      class="reaction"
-                      :class="{setted: reactionParams.isYouSet}"
-                      @click.stop="toggleReactionWrap(img, reaction, $event)">
-                      {{ reaction }}
-                      {{ reactionParams.count }}
-                    </div>
-                  </template>
-                </div>
-              </div>
-              <button class="btn btn--download" @click.stop="downloadOriginal(img)">
-                <span class="size">{{ humanFileSize(img.size ?? 0) }}</span>
-                <DownloadIcon :size="20"/>
-              </button>
+        <div class="overlay">
+          <div class="top-group">
+            <span class="name">{{ img.name }}</span>
+            <div class="badges">
+              <span class="badge up">{{ img.ext }}</span>
+              <span class="badge" :title="img.date">{{ humanDate(img.date!) }}</span>
+              <span class="badge">{{ img.width }}×{{ img.height }}</span>
+              <span class="badge" v-if="img.bitrate"  :title="img.bitrate .toLocaleString() + ' bit/sec'">{{ humanSI(img.bitrate) + 'bps' }}</span>
+              <span class="badge" v-if="img.duration" :title="img.duration.toLocaleString() + ' seconds'">{{ humanDuration(img.duration)  }}</span>
+              <RouterLink class="badge wide"
+                v-if="img.album?.name
+                  && !(img.album?.alias && img.album.alias === targetAlbum)
+                  && !(img.album?.hash  && img.album.hash  === targetAlbum)"
+                @click.stop
+                :to="{
+                  name: 'openAlbum',
+                  params: { album: img.album?.alias ?? img.album?.hash },
+                  query: $route.query
+                }">
+                {{ img.album.name }}
+              </RouterLink>
             </div>
           </div>
 
-          <AgeRatingLabel class="rating"
-            :rating-id="img?.ratingId ?? img?.album?.ratingId"
-            v-if="img?.ratingId ?? img?.album?.ratingId ?? albumData?.ratingId"
-          />
+          <div class="bottom-group">
+            <div class="reactions-place">
+              <button class="btn btn--reaction"
+                v-if="user?.token"
+                @click.stop="showReactionCard($event, img)">
+                <SmilePlusIcon :size="20"/>
+              </button>
+              <div class="reactions">
+                <template
+                  v-for="(reactionParams, reaction) in img.reactions"
+                  :key="reaction">
+                  <div
+                    v-if="reactionParams.count > 0"
+                    class="reaction"
+                    :class="{setted: reactionParams.isYouSet}"
+                    @click.stop="toggleReactionWrap(img, reaction, $event)">
+                    {{ reaction }}
+                    {{ reactionParams.count }}
+                  </div>
+                </template>
+              </div>
+            </div>
+            <button class="btn btn--download" @click.stop="downloadOriginal(img)">
+              <span class="size">{{ humanFileSize(img.size ?? 0) }}</span>
+              <DownloadIcon :size="20"/>
+            </button>
+          </div>
         </div>
       </section>
 
-      <div class="message message--download"
-        v-if="isLoading">
-        <p>Loading...</p>
+        <AgeRatingLabel class="rating"
+          :rating-id="img?.ratingId ?? img?.album?.ratingId"
+          v-if="img?.ratingId ?? img?.album?.ratingId ?? albumData?.ratingId"
+        />
       </div>
-      <div class="message message--end"
-        v-else-if="!isLoading && !canLoadMore && images.length">
-        <p>End</p>
-      </div>
-      <div class="inf-handler-position" v-if="canLoadMore && !isLoading">
-        <!--
-          // FIXME: Если пользователь опустится моментально в самый низ и экран по высоте будет меньше
-                    3000px, то подгружаться будет если опустится в самый конец
-        -->
-        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"/>
-        <div style="min-height: 0; height: 3000px;"/>
-        <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"/>
-      </div>
+    </section>
+
+    <div class="message message--download"
+      v-if="isLoading">
+      <p>Loading...</p>
     </div>
+    <div class="message message--end"
+      v-else-if="!isLoading && !canLoadMore && images.length">
+      <p>End</p>
+    </div>
+    <div class="inf-handler-position" v-if="canLoadMore && !isLoading">
+      <!--
+        // FIXME: Если пользователь опустится моментально в самый низ и экран по высоте будет меньше
+                  3000px, то подгружаться будет если опустится в самый конец
+      -->
+      <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"/>
+      <div style="min-height: 0; height: 3000px;"/>
+      <div style="height: 1px" v-infinite-scroll="[loadMore, {interval: 500}]"/>
+    </div>
+    <OverlayPanel ref="authCard" class="popup popup--fixed">
+      <AuthPanel/>
+    </OverlayPanel>
+    <OverlayPanel ref="reactionCard" class="popup popup--nopad">
+      <ReactionPanel :album-hash="albumWhereReact" :image="imageForReact"/>
+    </OverlayPanel>
   </main>
 </template>
 
 <style lang="scss" scoped>
-
-:global(body.zen.viewer .grid_outer) {
-  opacity: 0;
-  transition: 0.1s, opacity 1s;
-}
-.grid_outer {
-  padding: v-bind('extGap ? (gap +"px") : 0');
+.page {
+  padding: calc(var(--gap) * var(--ext-gap));
   padding-top: calc(var(--header-height) + 1px);
   padding-bottom: v-bind('gap +"px"');
   overflow-x: hidden;
@@ -854,6 +732,16 @@ const openViewer = (image: ImageItem) => {
     }
   }
 }
+
+:global(body.ambient .media:hover img),
+:global(body.ambient .media:hover video) {
+  filter: url(#ambient-light);
+  z-index: -1;
+}
+:global(body.ambient .media:hover .overlay) {
+  border: 1px solid transparent !important;
+}
+
 .message {
   margin: 0 auto;
   width: 150px;

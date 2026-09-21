@@ -5,52 +5,20 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, watch, watchEffect } from 'vue'
 import { useWindowScroll } from '@vueuse/core'
 import { useRoute } from 'vue-router'
-
-//document.title = SITE_NAME
+import { setupTheme } from './helpers'
 
 // Установленная пользователем тема и другие настройки
-const { theme, zen, ambient, scroll } = storeToRefs(useSettingsStore())
+const { theme, scroll } = storeToRefs(useSettingsStore())
 // Статус открытия просмотрщика
 const  { viewerOpened } = storeToRefs(useRouterHandlerStore())
 // Предзагрузка надстроек сервера
 useServerSetupsStore().preLoad()
 
-// Функция  установки темы
-const setupTheme = () => {
-  // Удаляем старую тему
-  document.documentElement.classList.remove('light', 'dark')
-  const metaTags = document.head.querySelectorAll('[name="theme-color"]')
-  for(const metaTag of metaTags) metaTag.remove()
-
-  // Устанавливаем новую тему
-  switch (theme.value) {
-  case 'light':
-  case 'dark':
-    // Если тёмная или светлая
-    document.documentElement.classList.add(theme.value)
-    getNodesFromString(
-      `<meta name="theme-color" content="#${theme.value == 'light' ? 'fff' : '000'}">`
-    ).forEach(node => {
-      document.head.appendChild(node)
-    })
-    return
-  case 'auto':
-    // Если автоматическая
-    getNodesFromString(
-      '<meta name="theme-color" content="#fff" media="(prefers-color-scheme: light)">' +
-      '<meta name="theme-color" content="#000" media="(prefers-color-scheme:  dark)">'
-    ).forEach(node => {
-      document.head.appendChild(node)
-    })
-    return
-  }
-}
-
 onMounted(() => {
   // Убираем авто-тему, если пользователь установил конкретную
   if (theme.value == 'light' ||
       theme.value == 'dark')
-    setupTheme()
+    setupTheme(theme.value)
 })
 
 // Узнаём прокручена ли страница
@@ -58,7 +26,7 @@ const { y: yScroll } = useWindowScroll()
 const isScrolledDown = computed(() => yScroll.value > 0)
 
 // Устанавливаем новую тему, если пользователь сменил её
-watch(theme, setupTheme)
+watch(theme, () => setupTheme(theme.value))
 
 // Текущий маршрут
 const route = useRoute()
@@ -75,8 +43,6 @@ watch(
 
 // С инициализации переключаем классы по отслеживаемым настройкам
 watchEffect(() => document.body.classList.toggle('no-scroll', !scroll.value))
-watchEffect(() => document.body.classList.toggle('ambient', ambient.value))
-watchEffect(() => document.body.classList.toggle('zen', zen.value))
 watchEffect(() => document.body.classList.toggle('scrolled', isScrolledDown.value))
 watchEffect(() => document.body.classList.toggle('viewer', viewerOpened.value))
 
@@ -86,10 +52,15 @@ watchEffect(() => document.body.classList.toggle('viewer', viewerOpened.value))
   <TheHeader/>
   <SideBar/>
   <RouterView/>
+  <MediaViewer v-if="viewerOpened"/>
 </template>
 
 <style lang="scss">
 body.no-scroll {
   overflow: hidden;
+}
+body.zen.viewer .page {
+  opacity: 0;
+  transition: 0.1s, opacity 1s;
 }
 </style>

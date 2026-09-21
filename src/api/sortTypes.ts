@@ -20,7 +20,8 @@ export const imagesSortTypes: SortType[] = [
   { name: 'Bitrate'   , value: 'bitrate'   , reverse: true  , icon: ArrowDownUpIcon },
   { name: 'Framerate' , value: 'framerate' , reverse: true  , icon: GalleryHorizontalEndIcon },
   // { name: 'Frames'    , value: 'frames'    , reverse: true  , icon: ImagesIcon },
-]
+] as const
+export type ImageSortValue = typeof imagesSortTypes[number]['value'];
 
 export const albumsSortTypes: SortType[] = [
   { name: 'Name'       , value: 'name'      , reverse: false , icon: BookAIcon },
@@ -36,4 +37,5 @@ export const albumsSortTypes: SortType[] = [
   { name: 'Created'    , value: 'created'   , reverse: true  , icon: FolderPlusIcon },
   { name: 'Indexed'    , value: 'indexed'   , reverse: true  , icon: SearchCheckIcon },
   // { name: 'Frames'    , value: 'frames'    , reverse: true  , icon: ImagesIcon },
-]
+] as const
+export type AlbumSortValue = typeof albumsSortTypes[number]['value'];

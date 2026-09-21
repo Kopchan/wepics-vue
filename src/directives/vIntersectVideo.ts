@@ -8,7 +8,7 @@ interface VideoElement extends HTMLElement {
   _unwatchFullImage?: () => void
 }
 
-const vIntersectVideo: Directive<VideoElement> = {
+export const vIntersectVideo: Directive<VideoElement> = {
   mounted(el) {
     const store = useRouterHandlerStore()
 
@@ -65,5 +65,3 @@ const vIntersectVideo: Directive<VideoElement> = {
     delete el._unwatchFullImage
   },
 }
-
-export default vIntersectVideo
