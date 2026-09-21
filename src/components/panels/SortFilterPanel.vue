@@ -7,11 +7,11 @@ import { ArrowDown10Icon, ArrowDownAZIcon, ArrowUp10Icon, ArrowUpAZIcon } from '
 
 // Параметры в ссылке
 const  {
-  sort, 
+  sort,
   sortAlbums,
-  isReverse, 
-  isReverseAlbums, 
-  nested, 
+  isReverse,
+  isReverseAlbums,
+  nested,
   disrespect,
   randomSeed,
 } = storeToRefs(useAlbumParamsStore())
@@ -25,7 +25,7 @@ const  {
     <!-- Медиа -->
     <div class="label-group">
       <label>Media sort</label>
-      <button 
+      <button
         @click="isReverse = !isReverse"
         :disabled="sort === 'random'"
         :class="{
@@ -44,11 +44,11 @@ const  {
         </template>
       </button>
     </div>
-    
-    <SelectorRadios2 
-      :options="imagesSortTypes" 
-      v-model="sort" 
-      name="mediasSort" 
+
+    <SelectorRadios2
+      :options="imagesSortTypes"
+      v-model="sort"
+      name="mediasSort"
       noCenter
       grid
     />
@@ -80,11 +80,11 @@ const  {
         </template>
       </button>
     </div>
-    
-    <SelectorRadios2 
-      :options="albumsSortTypes" 
-      v-model="sortAlbums" 
-      name="albumSort" 
+
+    <SelectorRadios2
+      :options="albumsSortTypes"
+      v-model="sortAlbums"
+      name="albumSort"
       noCenter
       grid
     />

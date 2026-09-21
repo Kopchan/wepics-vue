@@ -45,7 +45,7 @@ export interface AlbumItem {
   sign?: string
   path?: string
   oldAliases?: string[]
-  ratingId?: string | number
+  ratingId?: number
   ancestors?: AlbumItem[]
   children?: AlbumItem[]
   size?: number
@@ -73,7 +73,7 @@ export interface AlbumItem {
 export interface ImageItem {
   hash: string
   name?: string
-  type?: string
+  type?: 'image'|'video'|'audio'|'imageAnimated'
   ratio?: number
   width?: number
   height?: number
@@ -82,13 +82,14 @@ export interface ImageItem {
   duration?: number
   bitrate?: number
   ext?: string
+  watchedTo?: number
+  ratingId?: number
+  album?: AlbumItem
+  reactions?: Reactions
+  // Клиентские UI-состояния, добавляемые во время работы cо стеной медиа
   thumbURL?: string
   thumbURLanim?: string
   thumbURLorig?: string
-  watchedTo?: number
-  ratingId?: string | number
-  album?: AlbumItem
-  reactions?: Reactions
   [key: string]: unknown
 }
 

@@ -1,16 +1,19 @@
 import { API_PATH } from "@/config"
+import type { AlbumSortValue, ImageSortValue } from "./sortTypes"
+
+export type MediaType = 'img' | 'vid' | 'aud' | 'anim';
 
 export interface AlbumInfoParams {
   noChildren?: boolean
-  sort?: string | null
-  sortAlbums?: string | null
+  sort?: ImageSortValue | null
+  sortAlbums?: AlbumSortValue | null
   images?: number
   isReverse?: boolean
   isReverseAlbums?: boolean
   disrespect?: boolean
   nested?: boolean
   seed?: string | number | boolean | null
-  types?: string[]
+  types?: MediaType[]
   ratings?: (string | number)[]
   tags?: string[]
 }
@@ -18,11 +21,11 @@ export interface AlbumInfoParams {
 export interface AlbumImagesParams {
   page?: number
   limit?: number
-  sort?: string
+  sort?: ImageSortValue
   isReverse?: boolean
   nested?: boolean
   seed?: string | number | boolean | null
-  types?: string[]
+  types?: MediaType[]
   ratings?: (string | number)[]
   tags?: string[]
 }

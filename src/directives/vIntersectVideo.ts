@@ -63,7 +63,7 @@ const vIntersectVideo: Directive<VideoElement> = {
 
     el._unwatchFullImage?.()
     delete el._unwatchFullImage
-  }
+  },
 }
 
 export default vIntersectVideo

@@ -15,7 +15,7 @@ export const fetchWrapper: Record<'get' | 'post' | 'patch' | 'delete', RequestMe
   get:    request('GET'),
   post:   request('POST'),
   patch:  request('PATCH'),
-  delete: request('DELETE')
+  delete: request('DELETE'),
 }
 
 function request(method: string): RequestMethod {

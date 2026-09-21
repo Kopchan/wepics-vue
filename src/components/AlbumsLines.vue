@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { ref, toRefs } from 'vue'
 import { storeToRefs } from 'pinia'
-import { 
-  FoldersIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon, 
-  EyeOffIcon, VideoIcon, ImageIcon, Music2Icon, Hourglass
+import {
+  FoldersIcon, ArrowRightIcon, ChevronDownIcon, SaveIcon, PenIcon, EyeIcon,
+  EyeOffIcon, VideoIcon, ImageIcon, Music2Icon, Hourglass,
 } from '@lucide/vue'
 
 import { urls } from '@/api'
 import { 
   fetchWrapper, humanDate, humanCount, humanFileSize, routeNameViewer,
-  routeViewerType, humanSI, humanDuration, reverseCheckInSortType, 
-  sleep
+  routeViewerType, humanSI, humanDuration, reverseCheckInSortType, sleep,
 } from '@/helpers'
 import { useAlbumParamsStore, useSettingsStore, useServerSetupsStore, useAuthStore } from '@/stores'
 import AlbumsLines from '@/components/AlbumsLines.vue'
@@ -72,14 +71,15 @@ const handleChildExpand = async (child: AlbumItem) => {
     child.vueLoading = true
     await fetchWrapper.get<AlbumItem>(
       urls.albumInfo(child.hash, {
-        sort: sort.value, 
-        sortAlbums: sortAlbums.value, 
+        sort: sort.value,
+        sortAlbums: sortAlbums.value,
         isReverse: reverseCheckInSortType(sortType, isReverse, sort),
         isReverseAlbums: isReverseAlbums.value,
         disrespect: disrespect.value,
         tags: tags.value,
         images: Math.max(limit.value, 4),
         nested: nested.value,
+        seed: sortAlbums.value === 'random' ? randomSeed.value : null,
       })
     ).then(data => {
       child.vueLoading = false
@@ -93,6 +93,7 @@ const handleChildExpand = async (child: AlbumItem) => {
   }
 }
 
+// Форматирование бейджа с информацией по последнему сортированному медиа внутри альбома
 const formatContentSort = (value: string | number) => {
   switch (album.value?.contentSortField) {
   case 'date':      return humanDate(value)
@@ -148,17 +149,16 @@ const onErrorImgLoad = async (event: Event) => {
 </script>
 
 <template>
-  <div class="lines" v-if="albumsLayout == 'lines'">
-    <div 
-      v-for="(child, index) in album?.children" 
+  <div class="lines">
+    <div class="line"
+      v-for="(child, index) in album?.children"
       :key="index"
-      class="line"
       :class="{expanded: child?.vueExpanded}">
 
-      <RouterLink class="hidden-link" :to="{ 
+      <RouterLink class="hidden-link" :to="{
         name: 'openAlbum',
-        params: { album: child?.alias ?? child.hash }, 
-        query: $route.query 
+        params: { album: child?.alias ?? child.hash },
+        query: $route.query
       }"/>
 
       <div class="title">
@@ -274,12 +274,12 @@ const onErrorImgLoad = async (event: Event) => {
           </div>
         </div>
         <RouterLink class="more"
-          v-if="(child.imagesCount ?? 0) > (child?.images?.length ?? 0)"
+          v-if="(child?.imagesCount ?? 0) > (child?.images?.length ?? 0)"
           :to="{
             name: 'openAlbum',
             params: { album: child?.alias ?? child.hash },
             query: $route.query
-        }">
+          }">
           <p>Explore {{ (child.imagesCount ?? 0) - (child?.images?.length ?? 0) }} remaining images</p>
           <ArrowRightIcon/>
         </RouterLink>
@@ -287,7 +287,7 @@ const onErrorImgLoad = async (event: Event) => {
 
       <div class="messages" v-else-if="!child.vueExpanded">
         <span class="text" v-if="!child.albumsCount && !child.imagesCount && child.indexedAt">
-          Empty as of {{child.indexedAt}}
+          Empty as of {{ child.indexedAt }}
         </span>
         <span class="text" v-if="!child.indexedAt">
           Not indexed, maybe has media

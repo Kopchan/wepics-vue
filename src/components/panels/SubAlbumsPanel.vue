@@ -43,17 +43,17 @@ else fetchWrapper.get<AlbumItem>(urls.albumInfo(hash.value as string, {noChildre
 <template>
   <div class="outer">
     <template v-if="subAlbumData?.children">
-      <RouterLink 
+      <RouterLink
         v-for="(child, index) in subAlbumData?.children"
         :key="index"
         class="btn"
         :class="{'btn--inverse': selectedAlbumHash == child.hash}"
         @click="nextName = index"
         :disabled="nextName == index"
-        :to="{ 
+        :to="{
           name: 'openAlbum',
-          params: { album: child.alias ?? child.hash }, 
-          query: $route.query 
+          params: { album: child.alias ?? child.hash },
+          query: $route.query
       }">
         {{ child.name }}
       </RouterLink>
