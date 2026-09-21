@@ -12,6 +12,7 @@ export interface AlbumInfoParams {
   isReverseAlbums?: boolean
   disrespect?: boolean
   nested?: boolean
+  grandchilds?: boolean
   seed?: string | number | boolean | null
   types?: MediaType[]
   ratings?: (string | number)[]
@@ -52,6 +53,7 @@ export const urls = {
     isReverse       = false,
     isReverseAlbums = false,
     disrespect      = false,
+    grandchilds     = false,
     seed            = null,
     types           = [],
     ratings         = [],
@@ -65,6 +67,7 @@ export const urls = {
     + (sortAlbums       ? '&sortAlbums=' + sortAlbums : '')
     + (isReverseAlbums  ? '&reverseAlbums'            : '')
     + (disrespect       ? '&disrespect'               : '')
+    + (grandchilds      ? '&grandchilds' : '')
     + (seed && seed !== true? '&seed=' + seed : '')
     + (types   ?.length ? '&types='  + types  .map(e => encodeURIComponent(e))?.join(',') : '')
     + (ratings ?.length ? '&rating=' + ratings.map(e => encodeURIComponent(String(e)))?.join(',') : '')

@@ -63,6 +63,8 @@ const handleChildExpand = async (child: AlbumItem) => {
         isReverse: reverseCheckInSortType(sortType, isReverse, sort),
         isReverseAlbums: isReverseAlbums.value,
         disrespect: disrespect.value,
+        grandchilds: true,
+        types: types.value,
         tags: tags.value,
         images: Math.max(limit.value, 4),
         nested: nested.value,
@@ -180,44 +182,51 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
         <p class="text">Loading...</p>
       </div>
 
-      <div class="previews" v-if="child?.images?.length">
-        <div class="img-wrapper" 
-          v-for="img, key in child?.images"
-          :key="key"
-          :class="ratingPreset(child?.ratingId, img?.ratingId)"
-          @click="() => {
-            img.album = child
-            openViewer(img)
-        }">
-          <img
-            :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)" 
-            :width="img.width"
-            :height="img.height"
-            :alt="img.name" 
-            loading="lazy"
-            @error="onErrorImgLoad"
-          >
-          <video
-            v-if="img.type === 'video' || img.type === 'imageAnimated'"
-            :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize, true)" 
-            loading="lazy"
-            muted
-            playsinline
-            loop
-            preload="none"
-            v-intersect-video
-            :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
-            @error="onErrorImgLoad"
-          ></video>
-          <div class="overlay">
-            <div class="top"></div>
-            <div class="center">
-              <AgeRatingLabel class="rating"
-                :ratingId="img?.ratingId"
-                v-if="img?.ratingId"
-              />
+      <div class="previews" v-if="child?.images?.length || (child?.children?.length && !child.vueExpanded)">
+        <template v-if="child?.children?.length && !child.vueExpanded">
+          <AlbumsSquares
+            :album="child"
+            class="interactive"
+          />
+          <div class="gapper interactive"/>
+          <div class="gapper interactive"/>
+        </template>
+        <template v-for="(img, key) in child.images" :key="key">
+          <div class="img-wrapper interactive"
+            :class="getRatingPreset(child?.ratingId, img?.ratingId)"
+            @click.stop="(event) => {
+              img.album = child
+              openViewer(img, event, videoRefs)
+          }">
+            <img
+              :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize)"
+              :width="img.width"
+              :height="img.height"
+              :alt="img.name"
+              loading="lazy"
+              @error="onErrorMediaLoad"
+            />
+            <video v-if="img?.type === 'video' || img?.type === 'imageAnimated'"
+              :src="urls.imageThumb(child.hash, img.hash, child?.sign, 'h', albumPreviewSize, true)"
+              loading="lazy"
+              muted
+              playsinline
+              loop
+              preload="none"
+              v-intersect-video
+              :ref="(el) => { videoRefs[img.hash] = el as HTMLVideoElement | null }"
+              @error="onErrorMediaLoad"
+            />
+            <div class="overlay">
+              <div class="top"></div>
+              <div class="center">
+                <AgeRatingLabel class="rating"
+                  :ratingId="img?.ratingId"
+                  v-if="img?.ratingId"
+                />
+              </div>
+              <div class="bottom"></div>
             </div>
-            <div class="bottom"></div>
           </div>
 
           <div class="gapper interactive"/>
@@ -515,5 +524,38 @@ const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
   display: flex;
   justify-items: center;
   align-items: center;
+}
+
+:deep(.grid) {
+  display: flex;
+  height: 100%;
+  gap: var(--gap-half);
+  .square {
+    border-radius: min(var(--radius), max(6px, calc(var(--radius) - var(--gap-half))));
+    .previews {
+      border-radius: var(--radius-half);
+      padding: var(--gap-half);
+      img {
+        border-radius: min(var(--radius), max(6px, calc(var(--radius) - var(--gap))));
+      }
+    }
+  }
+}
+
+// Эмбиент подсветка
+:global(body.ambient .img-wrapper:hover) {
+  filter: url(#ambient-light);
+  z-index: -1;
+}
+:global(body.ambient .img-wrapper:hover .overlay) {
+  border: 1px solid transparent !important;
+}
+:global(body.ambient .line:hover:not(:has(.interactive:hover))) {
+  filter: url(#ambient-light);
+  z-index: 1;
+}
+
+.interactive {
+  pointer-events: auto;
 }
 </style>

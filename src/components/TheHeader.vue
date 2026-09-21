@@ -115,6 +115,8 @@ const getAlbumData = async (newHash: string | null = null, oldHash: string | nul
       isReverse: trueReverse.value,
       isReverseAlbums: trueReverseAlbums.value,
       disrespect: disrespect.value,
+      grandchilds: true,
+      types: types.value,
       tags: tags.value,
       images: Math.max(limit.value, 4),
       nested: nested.value,
